@@ -1,0 +1,596 @@
+import { Router } from 'express'
+import { query } from '../config/database.js'
+import authMiddleware from '../middleware/authMiddleware.js'
+import roleMiddleware from '../middleware/roleMiddleware.js'
+import { logAudit, getClientIp, buildAuditVisibilityClause } from '../utils/audit.js'
+
+const router = Router()
+
+const managerOnly = [authMiddleware, roleMiddleware('manager')]
+const managerOrOwner = [authMiddleware, roleMiddleware('manager', 'owner')]
+const managerOwnerWaiter = [authMiddleware, roleMiddleware('manager', 'owner', 'waiter')]
+
+router.get('/transfers/pending', ...managerOrOwner, async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT t.*, u1.full_name AS from_name, u2.full_name AS to_name, u2.phone AS to_phone
+        FROM transfers t
+        LEFT JOIN users u1 ON u1.id = t.from_user
+        LEFT JOIN users u2 ON u2.id = t.to_user
+        WHERE t.status = 'pending'
+        ORDER BY t.created_at DESC`,
+    )
+
+await logAudit({
+       userId: req.user.id,
+       actorName: req.user.full_name || req.user.email,
+       action: 'Viewed pending transfers',
+       targetModule: 'Transfers',
+       ipAddress: getClientIp(req),
+       businessId: req.user?.businessId,
+     })
+
+    res.json(rows.map((t) => ({
+      id: t.id,
+      name: t.from_name || 'Unknown',
+      phone: t.to_phone || '',
+      amount: t.amount,
+      purpose: t.description || '',
+    })))
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.post('/transfers/:id/approve', ...managerOrOwner, async (req, res) => {
+  try {
+    const { id } = req.params
+    const { action } = req.body
+    if (!['approved', 'rejected'].includes(action)) {
+      return res.status(400).json({ error: 'Action must be "approved" or "rejected".' })
+    }
+    const { rows } = await query(
+      `UPDATE transfers SET status = $1, manager_approval = 1, manager_approved_by = $2, approved_at = NOW()
+         WHERE id = $3 RETURNING *`,
+      [action, req.user.id, id],
+    )
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Transfer not found.' })
+    }
+
+    if (action === 'approved') {
+      const tr = rows[0]
+      const paymentRef = `TRANSFER-${tr.id}-${Date.now().toString(36).toUpperCase()}`
+      await query(
+        `INSERT INTO payments (order_id, received_by, method, amount, reference, paid_at)
+         VALUES ($1, $2, $3, $4, $5, NOW())`,
+        [null, null, 'pos', Number(tr.amount) || 0, paymentRef]
+      )
+      await logAudit({
+        userId: req.user.id,
+        actorName: req.user.full_name || req.user.email,
+        action: `Processed approved transfer: ${Number(tr.amount) || 0} to ${tr.to_phone || 'N/A'} (ref: ${paymentRef})`,
+        targetModule: 'Transfers',
+        ipAddress: getClientIp(req),
+        businessId: req.user?.businessId,
+        metadata: { transferId: tr.id, amount: tr.amount, reference: paymentRef },
+      })
+    }
+
+    await logAudit({
+       userId: req.user.id,
+       actorName: req.user.full_name || req.user.email,
+       action: `${action === 'approved' ? 'Approved' : 'Rejected'} transfer ${id}`,
+       targetModule: 'Transfers',
+       ipAddress: getClientIp(req),
+       businessId: req.user?.businessId,
+    })
+
+    res.json(rows[0])
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.get('/withdrawals/pending', ...managerOrOwner, async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT w.*, u.full_name AS initiated_by_name
+         FROM withdrawals w
+         LEFT JOIN users u ON u.id = w.initiated_by
+         WHERE w.status = 'pending' AND w.business_id = $1
+         ORDER BY w.created_at DESC`,
+      [req.user?.businessId]
+    )
+
+    await logAudit({
+      userId: req.user.id,
+      actorName: req.user.full_name || req.user.email,
+      action: 'Viewed pending withdrawals',
+      targetModule: 'Withdrawals',
+      ipAddress: getClientIp(req),
+      businessId: req.user?.businessId,
+    })
+
+    res.json(rows.map((w) => ({
+      id: w.id,
+      phoneNumber: w.phone_number,
+      purpose: w.purpose,
+      amount: Number(w.amount),
+      initiatedBy: w.initiated_by_name,
+      createdAt: w.created_at,
+    })))
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.post('/withdrawals/:id/approve', ...managerOrOwner, async (req, res) => {
+  try {
+    const { id } = req.params
+    const { action } = req.body
+    if (!['approved', 'rejected'].includes(action)) {
+      return res.status(400).json({ error: 'Action must be "approved" or "rejected".' })
+    }
+    const status = action === 'approved' ? 'completed' : 'cancelled'
+    const { rows } = await query(
+      `UPDATE withdrawals SET status = $1, approved_by = $2, approved_at = NOW()
+         WHERE id = $3 AND business_id = $4 RETURNING *`,
+      [status, req.user.id, id, req.user?.businessId]
+    )
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Withdrawal not found.' })
+    }
+
+    if (action === 'approved') {
+      const w = rows[0]
+      const paymentRef = `WITHDRAWAL-${w.id}-${Date.now().toString(36).toUpperCase()}`
+      await query(
+        `INSERT INTO payments (order_id, received_by, method, amount, reference, paid_at)
+         VALUES ($1, $2, $3, $4, $5, NOW())`,
+        [null, null, 'pos', Number(w.amount) || 0, paymentRef]
+      )
+      await logAudit({
+        userId: req.user.id,
+        actorName: req.user.full_name || req.user.email,
+        action: `Processed approved withdrawal: ${Number(w.amount) || 0} to ${w.phone_number || 'N/A'} (${w.purpose}) (ref: ${paymentRef})`,
+        targetModule: 'Withdrawals',
+        ipAddress: getClientIp(req),
+        businessId: req.user?.businessId,
+        metadata: { withdrawalId: w.id, amount: w.amount, reference: paymentRef },
+      })
+    }
+
+    await logAudit({
+      userId: req.user.id,
+      actorName: req.user.full_name || req.user.email,
+      action: `${action === 'approved' ? 'Approved' : 'Rejected'} withdrawal ${id}`,
+      targetModule: 'Withdrawals',
+      ipAddress: getClientIp(req),
+      businessId: req.user?.businessId,
+    })
+
+    res.json(rows[0])
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// GET /api/manager/refunds
+// Full refund history for the manager's business.
+router.get('/refunds', ...managerOrOwner, async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT r.id, r.amount, r.reason, r.status, r.created_at,
+              o.order_number
+       FROM refunds r
+       JOIN orders o ON o.id = r.order_id
+       WHERE r.business_id = $1
+       ORDER BY r.created_at DESC`,
+      [req.user.businessId]
+    )
+    res.json(rows.map((r) => ({
+      id: r.id,
+      order: r.order_number || r.order_id,
+      amount: Number(r.amount),
+      reason: r.reason || '',
+      status: r.status,
+      date: r.created_at ? new Date(r.created_at).toLocaleString() : '—',
+    })))
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.get('/refunds/pending', ...managerOnly, async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT r.*, o.id AS order_id, o.order_number
+        FROM refunds r
+        JOIN orders o ON o.id = r.order_id
+        WHERE r.status = 'pending'
+        ORDER BY r.created_at DESC`,
+    )
+
+await logAudit({
+       userId: req.user.id,
+       actorName: req.user.full_name || req.user.email,
+       action: 'Viewed pending refunds',
+       targetModule: 'Refunds',
+       ipAddress: getClientIp(req),
+       businessId: req.user?.businessId,
+     })
+
+    res.json(rows.map((r) => ({
+      id: r.id,
+      order: r.order_number || r.order_id,
+      amount: r.amount,
+      reason: r.reason || '',
+    })))
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// POST /api/manager/refunds
+// Creates a refund directly (recorded as approved immediately).
+// The refund is sent to the phone number the client used when paying
+// (the order's customer_phone), so the money goes straight back to the client.
+// Available to managers, owners, and waiters (waiters refund from their order screen).
+router.post('/refunds', ...managerOwnerWaiter, async (req, res) => {
+  try {
+    const { orderId, amount, reason } = req.body
+    if (!orderId || !amount || !reason) {
+      return res.status(400).json({ error: 'Order, amount, and reason are required.' })
+    }
+    const { rows: orderRows } = await query(
+      `SELECT id, order_number, customer_phone, status FROM orders WHERE id = $1 AND business_id = $2`,
+      [orderId, req.user.businessId]
+    )
+    if (!orderRows.length) {
+      return res.status(404).json({ error: 'Order not found.' })
+    }
+    const order = orderRows[0]
+    if (order.status !== 'Paid') {
+      return res.status(400).json({ error: `Refunds are only allowed for paid orders. Current status: ${order.status}` })
+    }
+    const refundPhone = order.customer_phone || ''
+    const { rows } = await query(
+      `INSERT INTO refunds (business_id, order_id, amount, reason, status, approved_by, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, 'approved', $5, NOW(), NOW()) RETURNING *`,
+      [req.user.businessId, orderId, Number(amount), reason, req.user.id]
+    )
+    const refund = rows[0]
+    const paymentRef = `REFUND-${refund.id}-${Date.now().toString(36).toUpperCase()}`
+    await query(
+      `INSERT INTO payments (order_id, received_by, method, amount, reference, paid_at)
+       VALUES ($1, $2, $3, $4, $5, NOW())`,
+      [orderId, null, 'pos', Number(amount) || 0, paymentRef]
+    )
+    await logAudit({
+      userId: req.user.id,
+      actorName: req.user.full_name || req.user.email,
+      action: `Processed refund of ${Number(amount) || 0} for order ${order.order_number || orderId} to client phone ${refundPhone || 'N/A'} (${reason}) (ref: ${paymentRef})`,
+      targetModule: 'Refunds',
+      ipAddress: getClientIp(req),
+      businessId: req.user?.businessId,
+      metadata: { refundId: refund.id, orderId, amount: Number(amount), phone: refundPhone, reference: paymentRef },
+    })
+    res.status(201).json({
+      id: refund.id,
+      order: order.order_number || orderId,
+      amount: Number(refund.amount),
+      reason: refund.reason,
+      status: refund.status,
+      phone: refundPhone,
+    })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.post('/refunds/:id/approve', ...managerOnly, async (req, res) => {
+  try {
+    const { id } = req.params
+    const { action } = req.body
+    if (!['approved', 'rejected'].includes(action)) {
+      return res.status(400).json({ error: 'Action must be "approved" or "rejected".' })
+    }
+    const { rows } = await query(
+      `UPDATE refunds SET status = $1, approved_by = $2, updated_at = NOW()
+        WHERE id = $3 RETURNING *`,
+      [action, req.user.id, id],
+    )
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Refund not found.' })
+    }
+await logAudit({
+       userId: req.user.id,
+       actorName: req.user.full_name || req.user.email,
+       action: `${action === 'approved' ? 'Approved' : 'Rejected'} refund ${id}`,
+       targetModule: 'Refunds',
+       ipAddress: getClientIp(req),
+       businessId: req.user?.businessId,
+     })
+    res.json(rows[0])
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.get('/payrolls/pending', ...managerOrOwner, async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT s.*, u.full_name AS user_name
+         FROM salary_payments s
+         LEFT JOIN users u ON u.id = s.user_id
+         WHERE s.status = 'pending'
+         ORDER BY s.created_at DESC`,
+    )
+
+    await logAudit({
+       userId: req.user.id,
+       actorName: req.user.full_name || req.user.email,
+       action: 'Viewed pending payrolls',
+       targetModule: 'Payroll',
+       ipAddress: getClientIp(req),
+       businessId: req.user?.businessId,
+    })
+
+    res.json(rows.map((s) => ({
+      id: s.id,
+      name: s.user_name || s.name || 'Unknown',
+      phone: s.phone || '',
+      amount: s.amount,
+      netAmount: Number(s.net_amount) || 0,
+      method: s.method,
+      grossAmount: Number(s.gross_amount) || 0,
+      period: s.pay_period || '—',
+    })))
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.post('/payrolls/:id/approve', ...managerOrOwner, async (req, res) => {
+  try {
+    const { id } = req.params
+    const { action } = req.body
+    if (!['approved', 'rejected'].includes(action)) {
+      return res.status(400).json({ error: 'Action must be "approved" or "rejected".' })
+    }
+    const { rows } = await query(
+      `UPDATE salary_payments SET status = $1, approved_by = $2, approved_at = NOW()
+         WHERE id = $3 RETURNING *`,
+      [action, req.user.id, id],
+    )
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Payroll not found.' })
+    }
+
+    if (action === 'approved') {
+      const sp = rows[0]
+      const paymentRef = `SALARY-${sp.id}-${Date.now().toString(36).toUpperCase()}`
+      await query(
+        `INSERT INTO payments (order_id, received_by, method, amount, reference, paid_at)
+         VALUES ($1, $2, $3, $4, $5, NOW())`,
+        [null, null, sp.method || 'mtn_momo', Number(sp.net_amount) || 0, paymentRef]
+      )
+      await logAudit({
+        userId: req.user.id,
+        actorName: req.user.full_name || req.user.email,
+        action: `Processed approved salary payment for ${sp.name}: ${Number(sp.net_amount) || 0} sent (ref: ${paymentRef})`,
+        targetModule: 'Payroll',
+        ipAddress: getClientIp(req),
+        businessId: req.user?.businessId,
+        metadata: { salaryPaymentId: sp.id, amount: sp.net_amount, reference: paymentRef },
+      })
+    }
+
+    await logAudit({
+       userId: req.user.id,
+       actorName: req.user.full_name || req.user.email,
+       action: `${action === 'approved' ? 'Approved' : 'Rejected'} payroll ${id}`,
+       targetModule: 'Payroll',
+       ipAddress: getClientIp(req),
+       businessId: req.user?.businessId,
+    })
+
+    res.json(rows[0])
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.get('/audit-logs', ...managerOnly, async (req, res) => {
+  try {
+    const { where, params } = buildAuditVisibilityClause({
+      role: req.user?.role,
+      businessId: req.user?.businessId,
+      userId: req.user?.id,
+      actorName: req.user?.full_name || req.user?.email,
+    })
+
+    const { rows } = await query(
+      `SELECT al.id, al.actor_id AS user_id, al.actor_name AS actor, al.action,
+              al.target_module AS targetModule, al.ip_address AS ipAddress, al.created_at,
+              u.role AS userRole
+       FROM audit_logs al
+       LEFT JOIN users u ON u.id = al.actor_id
+       ${where}
+       ORDER BY al.created_at DESC`,
+      params
+    )
+    res.json(rows.map((r) => ({
+      id: r.id,
+      userId: r.user_id,
+      actor: r.actor,
+      action: r.action,
+      targetModule: r.targetModule,
+      ipAddress: r.ipAddress,
+      time: new Date(r.created_at).toLocaleString(),
+      userRole: r.userRole || 'system',
+    })))
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Stock report
+router.get('/reports/stock', ...managerOnly, async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT ROW_NUMBER() OVER (ORDER BY name ASC) AS seq, name, category, selling_price, quantity, created_at
+       FROM products
+       WHERE business_id = $1
+       ORDER BY name ASC`,
+      [req.user.businessId]
+    )
+    res.json(rows.map(p => ({
+      id: String(p.seq).padStart(2, '0'),
+      name: p.name,
+      category: p.category || '—',
+      price: Number(p.selling_price || 0),
+      quantity: Number(p.quantity || 0),
+      createdAt: p.created_at,
+    })))
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Transfers approved report
+router.get('/reports/transfers', ...managerOnly, async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT t.id, t.amount, t.description, t.status, t.manager_approval, t.approved_at, t.created_at,
+              u1.full_name AS from_name, u2.full_name AS to_name, u2.phone AS to_phone
+       FROM transfers t
+       LEFT JOIN users u1 ON u1.id = t.from_user
+       LEFT JOIN users u2 ON u2.id = t.to_user
+       WHERE t.business_id = $1
+       ORDER BY t.created_at DESC`,
+      [req.user.businessId]
+    )
+    res.json(rows.map(t => ({
+      id: t.id,
+      from: t.from_name || 'Unknown',
+      to: t.to_name || t.to_phone || 'Unknown',
+      amount: Number(t.amount || 0),
+      description: t.description || '',
+      status: t.status,
+      managerApproval: t.manager_approval ? 'Approved' : 'Pending',
+      approvedAt: t.approved_at,
+      createdAt: t.created_at,
+    })))
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Payrolls approved report
+router.get('/reports/payrolls', ...managerOrOwner, async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT s.id, s.amount, s.pay_period, s.status, s.approved_at, s.created_at,
+              u.full_name AS user_name
+       FROM salary_payments s
+       LEFT JOIN users u ON u.id = s.user_id
+       WHERE s.business_id = $1
+       ORDER BY s.created_at DESC`,
+      [req.user.businessId]
+    )
+    res.json(rows.map(s => ({
+      id: s.id,
+      employee: s.user_name || s.name || 'Unknown',
+      amount: Number(s.amount || 0),
+      period: s.pay_period || '—',
+      status: s.status,
+      approvedAt: s.approved_at,
+      createdAt: s.created_at,
+    })))
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Refunds approved report
+router.get('/reports/refunds', ...managerOnly, async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT r.id, r.amount, r.reason, r.status, r.approved_by, r.created_at,
+              o.id AS order_id, o.order_number
+       FROM refunds r
+       JOIN orders o ON o.id = r.order_id
+       WHERE r.business_id = $1
+       ORDER BY r.created_at DESC`,
+      [req.user.businessId]
+    )
+    res.json(rows.map(r => ({
+      id: r.id,
+      order: r.order_number || r.order_id,
+      amount: Number(r.amount || 0),
+      reason: r.reason || '',
+      status: r.status,
+      createdAt: r.created_at,
+    })))
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Revenue report
+router.get('/reports/revenue', ...managerOnly, async (req, res) => {
+  try {
+    const { from, to } = req.query
+    const clauses = ['o.business_id = $1', "o.status IN ('Paid', 'Served')"]
+    const params = [req.user.businessId]
+    let idx = 2
+    if (from) { clauses.push(`o.created_at >= $${idx++}`); params.push(from) }
+    if (to) { clauses.push(`o.created_at < $${idx++}`); params.push(to) }
+    const where = clauses.join(' AND ')
+
+    const refundClauses = ['r.business_id = $1', "r.status = 'approved'"]
+    const refundParams = [req.user.businessId]
+    let ridx = 2
+    if (from) { refundClauses.push(`r.created_at >= $${ridx++}`); refundParams.push(from) }
+    if (to) { refundClauses.push(`r.created_at < $${ridx++}`); refundParams.push(to) }
+    const refundWhere = refundClauses.join(' AND ')
+
+    const { rows } = await query(
+      `SELECT o.id, o.order_number, o.table_number, o.status, o.total_amount, o.source, o.created_at,
+              (
+                SELECT COALESCE(json_agg(json_build_object(
+                  'name', p.name, 'quantity', oi.quantity, 'price', oi.unit_price, 'lineTotal', oi.line_total
+                )), '[]')
+                FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.order_id = o.id
+              ) AS items
+       FROM orders o
+       WHERE ${where}
+       ORDER BY o.created_at DESC`,
+      params
+    )
+    const orders = rows.map(o => ({
+      id: o.id,
+      orderNumber: o.order_number,
+      tableNumber: o.table_number,
+      status: o.status,
+      source: o.source,
+      total: Number(o.total_amount || 0),
+      items: o.items || [],
+      createdAt: o.created_at,
+    }))
+    const { rows: refundRows } = await query(
+      `SELECT COALESCE(SUM(r.amount), 0) AS total FROM refunds r WHERE ${refundWhere}`,
+      refundParams
+    )
+    const totalRevenue = orders.reduce((s, o) => s + o.total, 0) - (Number(refundRows[0]?.total) || 0)
+    const bySource = { qr: 0, waiter: 0, other: 0 }
+    orders.forEach(o => { const src = o.source === 'qr' || o.source === 'waiter' ? o.source : 'other'; bySource[src] += o.total })
+    res.json({ orders, totalRevenue, bySource, totalOrders: orders.length })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+export default router

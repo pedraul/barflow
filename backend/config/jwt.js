@@ -1,0 +1,21 @@
+import crypto from 'crypto'
+
+const SECRET = process.env.JWT_SECRET || 'barflow-dev-secret'
+
+export function sign(payload) {
+  const body = Buffer.from(JSON.stringify(payload)).toString('base64url')
+  const signature = crypto.createHmac('sha256', SECRET).update(body).digest('base64url')
+  return `${body}.${signature}`
+}
+
+export function verify(token) {
+  if (!token || !token.includes('.')) return null
+  const [body, signature] = token.split('.')
+  const expected = crypto.createHmac('sha256', SECRET).update(body).digest('base64url')
+  if (signature !== expected) return null
+  try {
+    return JSON.parse(Buffer.from(body, 'base64url').toString())
+  } catch {
+    return null
+  }
+}

@@ -1,0 +1,5 @@
+ALTER TABLE payments
+  ADD COLUMN IF NOT EXISTS provider VARCHAR(64),
+  ADD COLUMN IF NOT EXISTS provider_txn_id VARCHAR(128),
+  ADD COLUMN IF NOT EXISTS provider_status VARCHAR(64),
+  ADD COLUMN IF NOT EXISTS provider_payload JSONB;

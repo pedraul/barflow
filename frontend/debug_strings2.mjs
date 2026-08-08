@@ -1,0 +1,9 @@
+const a = '))}';
+const b = '))}';
+const c = ')}';
+console.log('a length:', a.length, 'chars:', [...a].map(x => x.charCodeAt(0)));
+console.log('b length:', b.length, 'chars:', [...b].map(x => x.charCodeAt(0)));
+console.log('c length:', c.length, 'chars:', [...c].map(x => x.charCodeAt(0)));
+console.log('a===b:', a===b);
+console.log('a===c:', a===c);
+console.log('b===c:', b===c);
