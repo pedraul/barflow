@@ -43,7 +43,7 @@ async function start() {
   }
 
   const server = app.listen(port, () => {
-    console.log(`Server listening on http://localhost:${port}`)
+   console.log(`Server listening on port ${port}`)
   })
 
   server.on('error', (error) => {
