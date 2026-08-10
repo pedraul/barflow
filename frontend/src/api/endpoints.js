@@ -660,6 +660,11 @@ export async function refundPayment(id, reason) {
   return data
 }
 
+export async function settlePayment(id) {
+  const { data } = await api.post(`/platform/payments/${id}/settle`)
+  return data
+}
+
 // ===== PLATFORM: ADMINS (Users) =====
 export async function fetchAdmins() {
   const { data } = await api.get('/platform/admins')

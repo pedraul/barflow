@@ -1450,6 +1450,14 @@ export async function verifySubscriptionPayment(req, res) {
       await query('UPDATE businesses SET is_verified = TRUE WHERE id = $1', [sub.business_id])
     }
 
+    // Record the payment in platform_payments for platform admin control
+    const transactionId = 'SUB-' + Date.now().toString(36).toUpperCase() + '-' + crypto.randomBytes(3).toString('hex').toUpperCase()
+    await query(
+      `INSERT INTO platform_payments (business_id, subscription_id, plan, billing_cycle, amount, payment_method, transaction_id, status, paid_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'paid', NOW())`,
+      [sub.business_id, sub.id, sub.plan, sub.billing_cycle, sub.amount_paid, sub.payment_method, transactionId]
+    )
+
     // Send subscription activation emails after successful verification
     try {
       const { rows: bizData } = await query(

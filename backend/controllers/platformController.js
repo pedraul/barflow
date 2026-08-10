@@ -295,13 +295,25 @@ export async function toggleBusinessStatus(req, res) {
       )
 
       if (action === 'verify' && bizData.length) {
-        await query(
+        const { rows: subRows } = await query(
           `UPDATE subscriptions SET status = 'active', is_active = TRUE, payment_status = 'verified',
            receipt_number = 'ADMIN-' || UPPER(SUBSTR(MD5(RANDOM()::text), 1, 8)),
            receipt_generated = 1
-           WHERE business_id = $1 AND is_active = FALSE`,
+           WHERE business_id = $1 AND is_active = FALSE
+           RETURNING id, plan, billing_cycle, amount_paid, payment_method`,
           [id]
         )
+
+        // Record the payment in platform_payments for platform admin control
+        if (subRows.length) {
+          const sub = subRows[0]
+          const transactionId = 'ADMIN-' + Date.now().toString(36).toUpperCase() + '-' + crypto.randomBytes(3).toString('hex').toUpperCase()
+          await query(
+            `INSERT INTO platform_payments (business_id, subscription_id, plan, billing_cycle, amount, payment_method, transaction_id, status, paid_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, 'paid', NOW())`,
+            [id, sub.id, sub.plan, sub.billing_cycle, sub.amount_paid, sub.payment_method || 'admin', transactionId]
+          )
+        }
 
         const b = bizData[0]
         sendSubscriptionActivation({
@@ -724,14 +736,15 @@ export async function paymentStats(req, res) {
   try {
     const { rows } = await query(
       `SELECT
-         COALESCE(SUM(amount) FILTER (WHERE status = 'paid'), 0)::numeric AS collected,
+         COALESCE(SUM(amount) FILTER (WHERE status IN ('paid', 'settled')), 0)::numeric AS collected,
          COUNT(*) FILTER (WHERE status = 'pending')::int AS pending,
          COUNT(*) FILTER (WHERE status = 'failed')::int AS failed,
-         COUNT(*) FILTER (WHERE status = 'refunded')::int AS refunded
+         COUNT(*) FILTER (WHERE status = 'refunded')::int AS refunded,
+         COUNT(*) FILTER (WHERE status = 'settled')::int AS settled
        FROM platform_payments`
     )
     const r = rows[0]
-    res.json({ collected: Number(r.collected) || 0, pending: r.pending, failed: r.failed, refunded: r.refunded })
+    res.json({ collected: Number(r.collected) || 0, pending: r.pending, failed: r.failed, refunded: r.refunded, settled: r.settled })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
@@ -751,6 +764,21 @@ export async function refundPayment(req, res) {
       [id, p.business_id, p.amount, reason || 'Refund issued by admin', req.user?.name || 'Platform Admin']
     )
     await logPlatformActivity({ req, actorName: req.user?.name, action: `Refunded payment ${p.transaction_id || id}`, module: 'Payments' })
+    res.json({ success: true })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+}
+
+export async function settlePayment(req, res) {
+  const { id } = req.params
+  try {
+    const { rows: pay } = await query('SELECT * FROM platform_payments WHERE id = $1', [id])
+    if (!pay.length) return res.status(404).json({ error: 'Payment not found.' })
+    const p = pay[0]
+    if (p.status === 'settled') return res.status(400).json({ error: 'Payment is already settled.' })
+    await query('UPDATE platform_payments SET status = \'settled\', paid_at = COALESCE(paid_at, NOW()) WHERE id = $1', [id])
+    await logPlatformActivity({ req, actorName: req.user?.name, action: `Settled payment ${p.transaction_id || id}`, module: 'Payments' })
     res.json({ success: true })
   } catch (error) {
     res.status(500).json({ error: error.message })
