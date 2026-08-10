@@ -1,6 +1,5 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
 import Layout from '../components/Layout'
 import {
   LayoutDashboard, ShoppingBag, ChefHat, CheckCircle2, BarChart3,
@@ -8,6 +7,7 @@ import {
   FileSpreadsheet, Bell, User, ArrowLeftRight, TrendingUp, Settings, LogOut, Wallet
 } from 'lucide-react'
 import { SidebarLink } from '../components/ui/SharedComponents'
+import { useAuth } from '../context/AuthContext'
 
 const MANAGER_LINKS = [
   { section: 'Manager', items: [

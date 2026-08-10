@@ -1,9 +1,10 @@
 import axios from 'axios'
 
+const rawApiUrl = import.meta.env.VITE_API_URL || 'https://barflow-backend-tezw.onrender.com'
+const baseURL = `${rawApiUrl.replace(/\/+$/, '')}/api`
+
 const api = axios.create({
-  baseURL:
-    import.meta.env.VITE_API_URL ||
-    'https://barflow-backend-tezw.onrender.com/api',
+  baseURL,
   headers: {
     'Content-Type': 'application/json',
   },

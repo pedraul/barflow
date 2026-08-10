@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useOwner } from '../context/OwnerContext'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
@@ -43,6 +43,7 @@ export default function OwnerLayout({ children }) {
   const { fetchSubscription } = useOwner()
   const { pathname } = useLocation()
   const navigate = useNavigate()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const [hasActiveSubscription, setHasActiveSubscription] = useState(true)
   const [blocked, setBlocked] = useState(false)
@@ -111,6 +112,7 @@ export default function OwnerLayout({ children }) {
                         window.open(window.location.origin + item.path, '_blank', 'noopener,noreferrer')
                       } else {
                         navigate(item.path)
+                        setMobileMenuOpen(false)
                       }
                     }}
                   />
@@ -131,14 +133,51 @@ export default function OwnerLayout({ children }) {
     )
   }
 
-  const dashboardPaths = new Set(['/dashboard/owner', '/dashboard'])
-  const showSidebar = dashboardPaths.has(pathname)
+  const isOwnerPath = pathname.startsWith('/owner') || pathname.startsWith('/dashboard/owner') || pathname.startsWith('/settings')
 
   return (
     <div className="flex flex-col min-h-screen">
+      {isOwnerPath && (
+        <>
+          {/* Mobile overlay */}
+          {mobileMenuOpen && (
+            <div
+              className="sidebar-overlay"
+              onClick={() => setMobileMenuOpen(false)}
+            />
+          )}
+
+          {/* Mobile top bar */}
+          <header className="mobile-topbar">
+            <button
+              type="button"
+              className="mobile-menu-button"
+              onClick={() => setMobileMenuOpen((prev) => !prev)}
+              aria-label="Toggle navigation"
+            >
+              {mobileMenuOpen ? '✕' : '☰'}
+            </button>
+            <div className="mobile-brand">BarFlow</div>
+          </header>
+        </>
+      )}
+
       <div className="flex flex-1">
-        {showSidebar && (
-          <aside className="w-64 bg-[#0B132B] text-slate-400 flex flex-col shrink-0 sticky top-0 h-screen">
+        {/* Desktop sidebar */}
+        {isOwnerPath && (
+          <aside className="w-64 bg-[#0B132B] text-slate-400 flex flex-col shrink-0 sticky top-0 h-screen sidebar-desktop">
+            <div className="flex-1">
+              <div className="p-4 flex items-center justify-between">
+                <span className="text-sm font-bold text-white">BarFlow</span>
+              </div>
+              {navLinks}
+            </div>
+          </aside>
+        )}
+
+        {/* Mobile sidebar drawer */}
+        {isOwnerPath && (
+          <aside className={`owner-sidebar-mobile ${mobileMenuOpen ? 'owner-sidebar-open' : ''}`}>
             <div className="flex-1">
               <div className="p-4 flex items-center justify-between">
                 <span className="text-sm font-bold text-white">BarFlow</span>

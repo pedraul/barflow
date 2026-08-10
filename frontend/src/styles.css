@@ -5135,3 +5135,261 @@ label {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* ============================================================
+   RESPONSIVE LAYOUT & SIDEBAR (Layout.jsx + OwnerLayout.jsx)
+   ============================================================ */
+
+.layout-root {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.layout-body {
+  display: flex;
+  flex: 1;
+  min-height: 100vh;
+}
+
+/* Desktop sidebar */
+.sidebar-desktop {
+  width: 250px;
+  min-width: 250px;
+  min-height: 100vh;
+  background: #ffffff;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+/* Mobile top bar */
+.mobile-topbar {
+  display: none;
+}
+
+.mobile-menu-button {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  font-size: 27px;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.mobile-brand {
+  margin-left: 8px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* Sidebar overlay */
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+/* Mobile sidebar drawer */
+.sidebar-mobile {
+  display: none;
+}
+
+/* Owner mobile sidebar */
+.owner-sidebar-mobile {
+  display: none;
+}
+
+.owner-sidebar-open {
+  left: 0;
+}
+
+
+/* ============================================================
+   PHONE
+   ============================================================ */
+
+@media (max-width: 768px) {
+  .layout-root {
+    display: block;
+    width: 100%;
+    min-height: 100vh;
+  }
+
+  .layout-body {
+    width: 100%;
+    min-height: calc(100vh - 60px);
+  }
+
+  .app-content {
+    width: 100%;
+    min-height: calc(100vh - 60px);
+  }
+
+  .mobile-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    width: 100%;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    padding: 0 15px;
+    box-sizing: border-box;
+    background: #ffffff;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-desktop {
+    display: none;
+  }
+
+  .sidebar-mobile {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    width: 270px;
+    min-width: 270px;
+    height: 100vh;
+    z-index: 2000;
+    background: #ffffff;
+    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.12);
+    transition: left 0.25s ease;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar-mobile.sidebar-open {
+    left: 0;
+  }
+
+  .owner-sidebar-mobile {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    width: 270px;
+    min-width: 270px;
+    height: 100vh;
+    z-index: 2000;
+    background: #0B132B;
+    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.12);
+    transition: left 0.25s ease;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .owner-sidebar-mobile.owner-sidebar-open {
+    left: 0;
+  }
+
+  .page-nav-wrapper {
+    display: none;
+  }
+}
+
+
+/* ============================================================
+   SMALL PHONES
+   ============================================================ */
+
+@media (max-width: 480px) {
+  .mobile-topbar {
+    height: 56px;
+  }
+
+  .dashboard-page-container {
+    padding: 10px;
+  }
+}
+
+
+/* ============================================================
+   GLOBAL MOBILE RULES
+   ============================================================ */
+
+@media (max-width: 768px) {
+  h1 { font-size: 24px; }
+  h2 { font-size: 21px; }
+  h3 { font-size: 18px; }
+  p { font-size: 15px; }
+
+  input,
+  select,
+  textarea {
+    width: 100%;
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  button {
+    min-height: 44px;
+  }
+
+  table {
+    max-width: 100%;
+  }
+
+  .responsive-modal {
+    width: min(600px, calc(100vw - 30px));
+    max-height: calc(100vh - 30px);
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .responsive-modal {
+    width: calc(100vw - 20px);
+    max-height: calc(100vh - 20px);
+    margin: 10px;
+  }
+}
+
+
+/* ============================================================
+   WAITER PAGES — MOBILE FIXES
+   ============================================================ */
+
+.waiter-cart-summary-mobile {
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .waiter-new-order-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .waiter-cart-table {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .waiter-cart-table table {
+    min-width: 650px;
+    width: 100%;
+  }
+
+  .waiter-cart-aside {
+    width: 100% !important;
+    margin-top: 16px;
+  }
+
+  .waiter-checkout-actions {
+    flex-direction: column;
+  }
+
+  .waiter-checkout-actions button {
+    width: 100%;
+  }
+}

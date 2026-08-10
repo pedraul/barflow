@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from 'react'
 import { useAuth } from './AuthContext'
-
-const API_BASE = '/api/v1/owner'
+import api from '../api/axios'
 
 const OwnerContext = createContext(null)
 
@@ -10,457 +9,336 @@ export function OwnerProvider({ children }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  const headers = useCallback(() => ({
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  }), [token])
+  const handleError = useCallback((e) => {
+    const msg = e.response?.data?.error || e.message || 'Request failed'
+    setError(msg)
+    throw new Error(msg)
+  }, [])
 
-  const handleResponse = async (res) => {
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      throw new Error(data.error || `Request failed with status ${res.status}`)
+  const withLoading = useCallback(async (fn) => {
+    setLoading(true)
+    setError(null)
+    try {
+      return await fn()
+    } catch (e) {
+      handleError(e)
+    } finally {
+      setLoading(false)
     }
-    return res.json()
-  }
+  }, [handleError])
 
   // ── Users ──
   const fetchUsers = useCallback(async (params = {}) => {
-    setLoading(true); setError(null)
-    try {
+    return withLoading(async () => {
       const qs = new URLSearchParams(params).toString()
-      const res = await fetch(`${API_BASE}/users${qs ? `?${qs}` : ''}`, { headers: headers() })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+      const { data } = await api.get(`/v1/owner/users${qs ? `?${qs}` : ''}`)
+      return data
+    })
+  }, [withLoading])
 
   const createUser = useCallback(async (userData) => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/users`, {
-        method: 'POST', headers: headers(), body: JSON.stringify(userData),
-      })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const { data } = await api.post('/v1/owner/users', userData)
+      return data
+    })
+  }, [withLoading])
 
   const updateUser = useCallback(async (id, data) => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/users/${id}`, {
-        method: 'PUT', headers: headers(), body: JSON.stringify(data),
-      })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const { data: res } = await api.put(`/v1/owner/users/${id}`, data)
+      return res
+    })
+  }, [withLoading])
 
   const deleteUser = useCallback(async (id) => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/users/${id}`, {
-        method: 'DELETE', headers: headers(),
-      })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      await api.delete(`/v1/owner/users/${id}`)
+    })
+  }, [withLoading])
 
   const resetUserPassword = useCallback(async (id, newPassword) => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/users/${id}/reset-password`, {
-        method: 'PUT', headers: headers(), body: JSON.stringify({ newPassword }),
-      })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const { data } = await api.put(`/v1/owner/users/${id}/reset-password`, { newPassword })
+      return data
+    })
+  }, [withLoading])
 
   // ── Salaries / Payroll ──
   const fetchSalaries = useCallback(async () => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/salaries`, { headers: headers() })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const { data } = await api.get('/v1/owner/salaries')
+      return data
+    })
+  }, [withLoading])
 
   const processPayout = useCallback(async (payPeriod) => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/salaries/payout`, {
-        method: 'POST', headers: headers(), body: JSON.stringify(payPeriod || {}),
-      })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const { data } = await api.post('/v1/owner/salaries/payout', payPeriod || {})
+      return data
+    })
+  }, [withLoading])
 
   // ── Withdrawals ──
   const createWithdrawal = useCallback(async (data) => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/withdraw`, {
-        method: 'POST', headers: headers(), body: JSON.stringify(data),
-      })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const res = await api.post('/v1/owner/withdraw', data)
+      return res.data
+    })
+  }, [withLoading])
 
   const fetchWithdrawalLogs = useCallback(async (params = {}) => {
-    setLoading(true); setError(null)
-    try {
+    return withLoading(async () => {
       const qs = new URLSearchParams(params).toString()
-      const res = await fetch(`${API_BASE}/withdraw/logs${qs ? `?${qs}` : ''}`, { headers: headers() })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+      const { data } = await api.get(`/v1/owner/withdraw/logs${qs ? `?${qs}` : ''}`)
+      return data
+    })
+  }, [withLoading])
 
   // ── Transfers ──
   const createTransfer = useCallback(async (data) => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/transfer`, {
-        method: 'POST', headers: headers(), body: JSON.stringify(data),
-      })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const { data: res } = await api.post('/v1/owner/transfer', data)
+      return res
+    })
+  }, [withLoading])
 
   const approveTransfer = useCallback(async (id, action) => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/transfer/${id}/approve`, {
-        method: 'PUT', headers: headers(), body: JSON.stringify({ action }),
-      })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const { data } = await api.put(`/v1/owner/transfer/${id}/approve`, { action })
+      return data
+    })
+  }, [withLoading])
 
   const fetchTransferLogs = useCallback(async (params = {}) => {
-    setLoading(true); setError(null)
-    try {
+    return withLoading(async () => {
       const qs = new URLSearchParams(params).toString()
-      const res = await fetch(`${API_BASE}/transfer/logs${qs ? `?${qs}` : ''}`, { headers: headers() })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+      const { data } = await api.get(`/v1/owner/transfer/logs${qs ? `?${qs}` : ''}`)
+      return data
+    })
+  }, [withLoading])
 
   // ── Revenue ──
   const fetchRevenue = useCallback(async () => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/revenue`, { headers: headers() })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const { data } = await api.get('/v1/owner/revenue')
+      return data
+    })
+  }, [withLoading])
 
   const fetchRevenueLogs = useCallback(async (params = {}) => {
-    setLoading(true); setError(null)
-    try {
+    return withLoading(async () => {
       const qs = new URLSearchParams(params).toString()
-      const res = await fetch(`${API_BASE}/revenue/logs${qs ? `?${qs}` : ''}`, { headers: headers() })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+      const { data } = await api.get(`/v1/owner/revenue/logs${qs ? `?${qs}` : ''}`)
+      return data
+    })
+  }, [withLoading])
 
   // ── Orders Oversight ──
   const fetchQROrders = useCallback(async (params = {}) => {
-    setLoading(true); setError(null)
-    try {
+    return withLoading(async () => {
       const qs = new URLSearchParams(params).toString()
-      const res = await fetch(`${API_BASE}/orders/qr${qs ? `?${qs}` : ''}`, { headers: headers() })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+      const { data } = await api.get(`/v1/owner/orders/qr${qs ? `?${qs}` : ''}`)
+      return data
+    })
+  }, [withLoading])
 
   const fetchWaiters = useCallback(async () => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/waiters`, { headers: headers() })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const { data } = await api.get('/v1/owner/waiters')
+      return data
+    })
+  }, [withLoading])
 
   const fetchWaiterOrders = useCallback(async (userId, params = {}) => {
-    setLoading(true); setError(null)
-    try {
+    return withLoading(async () => {
       const qs = new URLSearchParams(params).toString()
-      const res = await fetch(`${API_BASE}/orders/waiter/${userId}${qs ? `?${qs}` : ''}`, { headers: headers() })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+      const { data } = await api.get(`/v1/owner/orders/waiter/${userId}${qs ? `?${qs}` : ''}`)
+      return data
+    })
+  }, [withLoading])
 
   const fetchOrderHistory = useCallback(async (orderId) => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/orders/${orderId}/history`, { headers: headers() })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const { data } = await api.get(`/v1/owner/orders/${orderId}/history`)
+      return data
+    })
+  }, [withLoading])
 
   // ── Reports ──
   const fetchReportSummary = useCallback(async () => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/reports/summary`, { headers: headers() })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const { data } = await api.get('/v1/owner/reports/summary')
+      return data
+    })
+  }, [withLoading])
 
   const exportReport = useCallback(async (format = 'csv') => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/reports/export?format=${format}`, { headers: headers() })
-      if (format === 'csv') return res.blob()
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const { data } = await api.get(`/v1/owner/reports/export?format=${format}`)
+      return data
+    })
+  }, [withLoading])
 
   // ── Audit Logs ──
   const fetchAuditLogs = useCallback(async (params = {}) => {
-    setLoading(true); setError(null)
-    try {
+    return withLoading(async () => {
       const qs = new URLSearchParams(params).toString()
-      const res = await fetch(`${API_BASE}/audit-logs${qs ? `?${qs}` : ''}`, { headers: headers() })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+      const { data } = await api.get(`/v1/owner/audit-logs${qs ? `?${qs}` : ''}`)
+      return data
+    })
+  }, [withLoading])
 
   const fetchAuditLogsExport = useCallback(async (params = {}, format = 'csv') => {
-    setLoading(true); setError(null)
-    try {
+    return withLoading(async () => {
       const qs = new URLSearchParams({ ...params, format }).toString()
-      const res = await fetch(`${API_BASE}/audit-logs/export?${qs}`, { headers: headers() })
-      if (!res.ok) throw new Error('Export failed')
-      const blob = await res.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `audit-logs-${new Date().toISOString().slice(0, 10)}.${format === 'xls' ? 'xls' : 'csv'}`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      window.URL.revokeObjectURL(url)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+      const { data } = await api.get(`/v1/owner/audit-logs/export?${qs}`)
+      return data
+    })
+  }, [withLoading])
 
   // ── Subscription ──
   const fetchSubscription = useCallback(async () => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/subscription`, { headers: headers() })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const { data } = await api.get('/v1/owner/subscription')
+      return data
+    })
+  }, [withLoading])
 
   const fetchAvailableSubscriptionPlans = useCallback(async () => {
-    const res = await fetch(`${API_BASE}/subscription/plans`, { headers: headers() })
-    return handleResponse(res)
-  }, [headers])
+    return withLoading(async () => {
+      const { data } = await api.get('/v1/owner/subscription/plans')
+      return data
+    })
+  }, [withLoading])
 
   const selectSubscriptionPlan = useCallback(async (data) => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/subscription/select-plan`, {
-        method: 'POST', headers: headers(), body: JSON.stringify(data),
-      })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const res = await api.post('/v1/owner/subscription/select-plan', data)
+      return res.data
+    })
+  }, [withLoading])
 
   const verifySubscriptionPayment = useCallback(async (ussdCode) => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/subscription/verify-payment`, {
-        method: 'POST', headers: headers(), body: JSON.stringify({ ussdCode }),
-      })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const { data } = await api.post('/v1/owner/subscription/verify-payment', { ussdCode })
+      return data
+    })
+  }, [withLoading])
 
   const fetchReceipt = useCallback(async () => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/subscription/receipt`, { headers: headers() })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const { data } = await api.get('/v1/owner/subscription/receipt')
+      return data
+    })
+  }, [withLoading])
 
   const renewSubscription = useCallback(async (plan) => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/subscription/renew`, {
-        method: 'POST', headers: headers(), body: JSON.stringify({ plan }),
-      })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const { data } = await api.post('/v1/owner/subscription/renew', { plan })
+      return data
+    })
+  }, [withLoading])
 
   // ── Inventory ──
   const fetchGlobalInventory = useCallback(async () => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/inventory`, { headers: headers() })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const { data } = await api.get('/v1/owner/inventory')
+      return data
+    })
+  }, [withLoading])
 
   const fetchStockMovements = useCallback(async () => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/inventory/movements`, { headers: headers() })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const { data } = await api.get('/v1/owner/inventory/movements')
+      return data
+    })
+  }, [withLoading])
 
   // ── Settings ──
   const fetchSystemSettings = useCallback(async () => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/settings`, { headers: headers() })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const { data } = await api.get('/v1/owner/settings')
+      return data
+    })
+  }, [withLoading])
 
   const updateSystemSettings = useCallback(async (data) => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/settings`, {
-        method: 'PUT', headers: headers(), body: JSON.stringify(data),
-      })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const { data: res } = await api.put('/v1/owner/settings', data)
+      return res
+    })
+  }, [withLoading])
 
   const triggerBackup = useCallback(async (data) => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/settings/backup`, {
-        method: 'POST', headers: headers(), body: JSON.stringify(data || {}),
-      })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const { data: res } = await api.post('/v1/owner/settings/backup', data || {})
+      return res
+    })
+  }, [withLoading])
 
   const fetchBackups = useCallback(async () => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/settings/backups`, { headers: headers() })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const { data } = await api.get('/v1/owner/settings/backups')
+      return data
+    })
+  }, [withLoading])
 
   const restoreBackup = useCallback(async (backupId) => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/settings/restore-backup`, {
-        method: 'POST', headers: headers(), body: JSON.stringify({ backupId }),
-      })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const { data } = await api.post('/v1/owner/settings/restore-backup', { backupId })
+      return data
+    })
+  }, [withLoading])
 
   const updatePermissions = useCallback(async (role, permissions) => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/settings/permissions`, {
-        method: 'PUT', headers: headers(), body: JSON.stringify({ role, permissions }),
-      })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const { data } = await api.put('/v1/owner/settings/permissions', { role, permissions })
+      return data
+    })
+  }, [withLoading])
 
   const importRolePermissions = useCallback(async () => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/settings/permissions/import`, {
-        method: 'POST', headers: headers(),
-      })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const { data } = await api.post('/v1/owner/settings/permissions/import')
+      return data
+    })
+  }, [withLoading])
 
+  // ── Payment Settings & QR Payments ──
   const fetchPaymentSettings = useCallback(async () => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/payment-settings`, { headers: headers() })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const { data } = await api.get('/v1/owner/payment-settings')
+      return data
+    })
+  }, [withLoading])
 
   const updatePaymentSettings = useCallback(async (payload) => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/payment-settings`, {
-        method: 'PUT', headers: headers(), body: JSON.stringify(payload),
-      })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const { data } = await api.put('/v1/owner/payment-settings', payload)
+      return data
+    })
+  }, [withLoading])
 
   const generateQRPayment = useCallback(async (orderId) => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/qr-payment/${encodeURIComponent(orderId)}`, { headers: headers() })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const { data } = await api.get(`/v1/owner/qr-payment/${encodeURIComponent(orderId)}`)
+      return data
+    })
+  }, [withLoading])
 
   const generateMerchantQRPayment = useCallback(async () => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/qr-payment/merchant`, { headers: headers() })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const { data } = await api.get('/v1/owner/qr-payment/merchant')
+      return data
+    })
+  }, [withLoading])
 
   const verifyQRPayment = useCallback(async (payload) => {
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/qr-payment/verify`, {
-        method: 'POST', headers: headers(), body: JSON.stringify(payload),
-      })
-      return await handleResponse(res)
-    } catch (e) { setError(e.message); throw e }
-    finally { setLoading(false) }
-  }, [headers])
+    return withLoading(async () => {
+      const { data } = await api.post('/v1/owner/qr-payment/verify', payload)
+      return data
+    })
+  }, [withLoading])
 
   const value = {
     loading, error,

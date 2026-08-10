@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { fetchOperatorOrders } from '../../api/endpoints'
+import api from '../../api/axios'
 import {
   LayoutDashboard, ShoppingBag, ChefHat, CheckCircle2, BarChart3,
   Clock, FileText, Printer, GlassWater,
@@ -37,11 +38,8 @@ export default function OperatorReceipts() {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch('/api/operator/orders', {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        const data = await res.json()
-        setReceipts(data || [])
+        const res = await api.get('/operator/orders')
+        setReceipts(res.data || [])
       } catch (e) {
         console.error(e)
       } finally {

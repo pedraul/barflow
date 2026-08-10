@@ -1,6 +1,5 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
 import Layout from '../components/Layout'
 import {
   LayoutDashboard, ShoppingBag, CheckCircle2, BarChart3,
@@ -8,6 +7,7 @@ import {
   Scale, Receipt, RotateCcw, DollarSign, Settings, LogOut, MessageSquare, QrCode
 } from 'lucide-react'
 import { SidebarLink } from '../components/ui/SharedComponents'
+import { useAuth } from '../context/AuthContext'
 
 const ACCOUNTANT_LINKS = [
   { section: 'Main', items: [

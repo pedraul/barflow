@@ -1,11 +1,11 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
 import Layout from '../components/Layout'
 import {
   GlassWater, User, MessageSquare, LogOut
 } from 'lucide-react'
 import { SidebarLink } from '../components/ui/SharedComponents'
+import { useAuth } from '../context/AuthContext'
 
 const BAR_LINKS = [
   { section: 'Bar', items: [

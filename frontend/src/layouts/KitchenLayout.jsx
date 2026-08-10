@@ -1,11 +1,11 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
 import Layout from '../components/Layout'
 import {
   ChefHat, User, MessageSquare, LogOut
 } from 'lucide-react'
 import { SidebarLink } from '../components/ui/SharedComponents'
+import { useAuth } from '../context/AuthContext'
 
 const KITCHEN_LINKS = [
   { section: 'Kitchen', items: [

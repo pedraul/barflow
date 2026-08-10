@@ -165,69 +165,74 @@ export default function WaiterCart() {
           onChange={(e) => setTable(e.target.value)}
           placeholder="e.g. 5"
           aria-label="Table number"
+          className="waiter-cart-table-input"
           style={{
             padding: '10px 14px',
             borderRadius: 8,
             border: '1px solid var(--border)',
             fontSize: 16,
-            width: 160,
             marginBottom: 16,
+            boxSizing: 'border-box',
+            width: '100%',
+            maxWidth: 160,
           }}
         />
 
-        <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ display: 'flex', gap: 12, padding: 12, fontSize: 13, color: '#6c757d', background: 'white', borderRadius: 8, marginBottom: 8 }}>
-              <div style={{ flex: 4 }}>Item</div>
-              <div style={{ flex: 2 }}>Unit Price</div>
-              <div style={{ width: 120, textAlign: 'center' }}>Qty</div>
-              <div style={{ width: 120, textAlign: 'right' }}>Total</div>
-            </div>
+        <div className="waiter-cart-layout" style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="waiter-cart-table">
+              <div style={{ display: 'flex', gap: 12, padding: 12, fontSize: 13, color: '#6c757d', background: 'white', borderRadius: 8, marginBottom: 8 }}>
+                <div style={{ flex: 4 }}>Item</div>
+                <div style={{ flex: 2 }}>Unit Price</div>
+                <div style={{ width: 120, textAlign: 'center' }}>Qty</div>
+                <div style={{ width: 120, textAlign: 'right' }}>Total</div>
+              </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {cart.map((i) => (
-                <div key={i.productId} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, background: 'white', borderRadius: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 4, minWidth: 0 }}>
-                    <div style={{ width: 50, height: 50, borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
-                      {i.imageUrl ? <img src={i.imageUrl} alt={i.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ width: 50, height: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, background: '#f0f0f0' }}>🍽</div>}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {cart.map((i) => (
+                  <div key={i.productId} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, background: 'white', borderRadius: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 4, minWidth: 0 }}>
+                      <div style={{ width: 50, height: 50, borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
+                        {i.imageUrl ? <img src={i.imageUrl} alt={i.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ width: 50, height: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, background: '#f0f0f0' }}>🍽</div>}
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 700 }}>{i.name}</div>
+                        <div style={{ color: '#6c757d', fontSize: 13 }}>{i.category || ''}</div>
+                      </div>
                     </div>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 700 }}>{i.name}</div>
-                      <div style={{ color: '#6c757d', fontSize: 13 }}>{i.category || ''}</div>
+
+                    <div style={{ flex: 2, alignSelf: 'center' }}>{money(i.price)}</div>
+
+                    <div style={{ width: 120, textAlign: 'center' }}>
+                      <button type="button" onClick={() => changeQty(i.productId, -1)} style={qtyBtn}>−</button>
+                      <span style={{ margin: '0 8px', fontWeight: 700 }}>{i.quantity}</span>
+                      <button type="button" onClick={() => changeQty(i.productId, 1)} style={qtyBtn}>+</button>
+                    </div>
+
+                    <div style={{ width: 120, textAlign: 'right' }}>
+                      <div style={{ fontWeight: 700, color: '#e63946' }}>{money(i.price * i.quantity)}</div>
+                      <button type="button" onClick={() => removeItem(i.productId)} style={{ background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer', padding: 2 }}>✕</button>
                     </div>
                   </div>
+                ))}
+              </div>
 
-                  <div style={{ flex: 2, alignSelf: 'center' }}>{money(i.price)}</div>
-
-                  <div style={{ width: 120, textAlign: 'center' }}>
-                    <button type="button" onClick={() => changeQty(i.productId, -1)} style={qtyBtn}>−</button>
-                    <span style={{ margin: '0 8px', fontWeight: 700 }}>{i.quantity}</span>
-                    <button type="button" onClick={() => changeQty(i.productId, 1)} style={qtyBtn}>+</button>
-                  </div>
-
-                  <div style={{ width: 120, textAlign: 'right' }}>
-                    <div style={{ fontWeight: 700, color: '#e63946' }}>{money(i.price * i.quantity)}</div>
-                    <button type="button" onClick={() => removeItem(i.productId)} style={{ background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer', padding: 2 }}>✕</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ marginTop: 12 }}>
-              <Row label="Total" value={money(cartTotal)} strong />
+              <div style={{ marginTop: 12 }}>
+                <Row label="Total" value={money(cartTotal)} strong />
+              </div>
             </div>
           </div>
 
-          <aside style={{ width: 320, background: 'white', borderRadius: 12, padding: 16 }}>
+          <aside className="waiter-cart-aside" style={{ width: 320, background: 'white', borderRadius: 12, padding: 16 }}>
             <div style={{ fontWeight: 700, marginBottom: 12 }}>Order Summary</div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', color: '#6c757d' }}><span>Subtotal</span><span>{money(cartTotal)}</span></div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', color: '#6c757d' }}><span>Discount</span><span>{money(0)}</span></div>
             <div style={{ height: 1, background: '#e9ecef', margin: '12px 0' }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: 18 }}><span>Total</span><span>{money(cartTotal)}</span></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: 18 }}><span>Total</span><span className="waiter-cart-total-mobile">{money(cartTotal)}</span></div>
 
             <div style={{ marginTop: 18, display: 'flex', gap: 12, flexDirection: 'column' }}>
               <button type="button" className="secondary-action" style={{ width: '100%' }} onClick={() => navigate('/waiter/new-order')}>Add Items</button>
-              <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+              <div className="waiter-checkout-actions" style={{ display: 'flex', gap: 12, marginTop: 8 }}>
                 <button type="button" className="secondary-action" style={{ flex: 1 }} onClick={() => navigate('/waiter/new-order')}>Back to menu</button>
                 <button type="button" className="pay-action" style={{ flex: 2, padding: '12px' }} disabled={submitting} onClick={handleSubmit}>{submitting ? 'Placing order…' : 'Place Order'}</button>
               </div>
