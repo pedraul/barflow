@@ -89,36 +89,36 @@ export default function OperatorReports() {
           </div>
 
           <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
+            <table className="w-full text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider">
-                  <th className="p-3 border-b border-slate-200 text-left">Item</th>
-                  <th className="p-3 border-b border-slate-200 text-left">Order</th>
-                  <th className="p-3 border-b border-slate-200 text-left">Sent To</th>
-                  <th className="p-3 border-b border-slate-200 text-right">Item #</th>
-                  <th className="p-3 border-b border-slate-200 text-right">Unit</th>
-                  <th className="p-3 border-b border-slate-200 text-right">Amount</th>
-                  <th className="p-3 border-b border-slate-200 text-left">Time Sent</th>
+                  <th className="p-2 border-b border-slate-200 text-left">Item</th>
+                  <th className="p-2 border-b border-slate-200 text-left">Order</th>
+                  <th className="p-2 border-b border-slate-200 text-left">Sent To</th>
+                  <th className="p-2 border-b border-slate-200 text-right">Item #</th>
+                  <th className="p-2 border-b border-slate-200 text-right">Unit</th>
+                  <th className="p-2 border-b border-slate-200 text-right">Amount</th>
+                  <th className="p-2 border-b border-slate-200 text-left">Time Sent</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {loading ? (
-                  <tr><td colSpan={7} className="p-4 text-center text-slate-400">Loading report…</td></tr>
+                  <tr><td colSpan={7} className="p-2 text-center text-slate-400">Loading report…</td></tr>
                 ) : events.length === 0 ? (
-                  <tr><td colSpan={7} className="p-4 text-center text-slate-400">No routed orders yet.</td></tr>
+                  <tr><td colSpan={7} className="p-2 text-center text-slate-400">No routed orders yet.</td></tr>
                 ) : events.map((e, i) => (
                   <tr key={e.eventId + '-' + i} className="hover:bg-slate-50">
-                    <td className="p-3 font-medium text-slate-800">{e.itemName}</td>
-                    <td className="p-3">{e.orderNumber}</td>
-                    <td className="p-3">
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold border ${e.destination === 'kitchen' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-purple-100 text-purple-800 border-purple-300'}`}>
+                    <td className="p-2 font-medium text-slate-800">{e.itemName}</td>
+                    <td className="p-2">{e.orderNumber}</td>
+                    <td className="p-2">
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${e.destination === 'kitchen' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-purple-100 text-purple-800 border-purple-300'}`}>
                         {e.destination === 'kitchen' ? 'Kitchen' : 'Bar'}
                       </span>
                     </td>
-                    <td className="p-3 text-right text-slate-600">x{e.itemNumber}</td>
-                    <td className="p-3 text-right text-slate-600">{MONEY(e.unitPrice)}</td>
-                    <td className="p-3 text-right font-semibold text-slate-900">{MONEY(e.lineTotal)}</td>
-                    <td className="p-3 text-slate-500">{e.timeSent}</td>
+                    <td className="p-2 text-right text-slate-600">x{e.itemNumber}</td>
+                    <td className="p-2 text-right text-slate-600">{MONEY(e.unitPrice)}</td>
+                    <td className="p-2 text-right font-semibold text-slate-900">{MONEY(e.lineTotal)}</td>
+                    <td className="p-2 text-slate-500">{e.timeSent}</td>
                   </tr>
                 ))}
               </tbody>

@@ -482,12 +482,12 @@ function Overview({ metrics, recentBusinesses, chartData, pendingVerification, e
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
-                    <th className="p-4 pl-6">Business Name</th>
-                    <th className="p-4">Owner</th>
-                    <th className="p-4">Plan</th>
-                    <th className="p-4">Status</th>
-                    <th className="p-4">Created Date</th>
-                    <th className="p-4 pr-6 text-right">Actions</th>
+                    <th className="p-2 pl-6">Business Name</th>
+                    <th className="p-2">Owner</th>
+                    <th className="p-2">Plan</th>
+                    <th className="p-2">Status</th>
+                    <th className="p-2">Created Date</th>
+                    <th className="p-2 pr-6 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -500,26 +500,26 @@ function Overview({ metrics, recentBusinesses, chartData, pendingVerification, e
                   )}
                   {recentBusinesses.map((b, idx) => (
                     <tr key={idx} className="hover:bg-slate-50/50 transition">
-                      <td className="p-4 pl-6 font-bold text-slate-900 flex items-center gap-2">
+                      <td className="p-2 pl-6 font-bold text-slate-900 flex items-center gap-2">
                         <span className={`w-5 h-5 rounded flex items-center justify-center text-[10px] ${
                           b.status === 'Active' ? 'bg-emerald-50 text-emerald-600' : b.status === 'Expired' ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-600'
                         }`}><Building2 size={10} /></span>
                         {b.name}
                       </td>
-                      <td className="p-4 text-slate-500">{b.owner}</td>
-                      <td className="p-4">
+                      <td className="p-2 text-slate-500">{b.owner}</td>
+                      <td className="p-2">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${b.planBg}`}>
                           {b.plan}
                         </span>
                       </td>
-                      <td className="p-4">
+                      <td className="p-2">
                         <span className="flex items-center gap-1.5">
                           <span className={`w-1.5 h-1.5 rounded-full ${b.statusColor}`}></span>
                           {b.status}
                         </span>
                       </td>
-                      <td className="p-4 text-slate-400">{b.date}</td>
-                      <td className="p-4 pr-6 text-right">
+                      <td className="p-2 text-slate-400">{b.date}</td>
+                      <td className="p-2 pr-6 text-right">
                         <button
                           onClick={() => {
                             const full = businesses.find((x) => x.name === b.name || x.contactEmail === b.owner)

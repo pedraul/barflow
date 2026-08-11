@@ -28,10 +28,10 @@ export default function QRCodeDisplay() {
         />
       </div>
       <div className="min-w-0">
-        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-violet-700"><QrCode size={15} /> CUSTOMER MENU</span>
+        <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-violet-700"><QrCode size={15} /> CUSTOMER MENU</span>
         <h2 className="font-bold text-slate-900 mt-1">Scan to order</h2>
         <p className="text-xs leading-5 text-slate-500 mt-1">Customers scan this code to browse the menu and submit their own order.</p>
-        <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 mt-2"><Smartphone size={14} /> Ready to scan</span>
+        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 mt-2"><Smartphone size={14} /> Ready to scan</span>
       </div>
     </aside>
   )

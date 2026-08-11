@@ -795,6 +795,26 @@ a:active { color: var(--brand); }
 .user-table tbody tr { transition: background var(--dur) var(--ease); }
 .user-table tbody tr:hover td { background: var(--brand-subtle); }
 
+/* ============================================================
+   GLOBAL COMPACT TABLES (mobile-friendly)
+   ============================================================ */
+table {
+  font-size: 0.75rem;
+}
+table th,
+table td {
+  padding: 0.5rem 0.75rem;
+}
+table thead th {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+table tbody tr:hover {
+  background: var(--brand-subtle);
+}
+
 .invoice-table {
   display: grid;
   gap: 0.4rem;

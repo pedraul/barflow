@@ -13,16 +13,10 @@ const router = Router()
  */
 router.get('/menu', async (req, res) => {
   const tableNumber = req.query.table || '1'
-  let businessId = req.query.businessId || req.user?.businessId
+  const businessId = req.query.businessId || req.user?.businessId
   try {
     if (!businessId) {
-      // Auto-resolve business for backward compatibility with old QR codes
-      const { rows: bizRows } = await query('SELECT id FROM businesses LIMIT 1')
-      if (bizRows.length) {
-        businessId = bizRows[0].id
-      } else {
-        return res.json({ tableNumber, categories: [] })
-      }
+      return res.json({ tableNumber, categories: [] })
     }
 
     const { rows } = await query(

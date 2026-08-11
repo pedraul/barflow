@@ -110,15 +110,15 @@ export default function OwnerWaiterOrders() {
               <p className="text-center text-slate-400 mt-8">No orders found for this waiter.</p>
             ) : (
               <div className="border border-slate-200 rounded-lg overflow-x-auto">
-                <table className="w-full text-sm border-collapse">
+                <table className="w-full text-xs border-collapse">
                   <thead>
                     <tr>
-                      <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Order</th>
-                      <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Table</th>
-                      <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Status</th>
-                      <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Source</th>
-                      <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-right">Total</th>
-                      <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-right">Date</th>
+                      <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Order</th>
+                      <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Table</th>
+                      <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Status</th>
+                      <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Source</th>
+                      <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-right">Total</th>
+                      <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-right">Date</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -126,17 +126,17 @@ export default function OwnerWaiterOrders() {
                       const canRestock = ['Open', 'Preparing'].includes(o.status)
                     return (
                     <tr key={o.id} className="hover:bg-indigo-50">
-                      <td className="p-3 font-semibold text-slate-900">{o.orderNumber || o.id.slice(0, 8)}</td>
-                      <td className="p-3 text-slate-700">{o.tableNumber || '—'}</td>
-                      <td className="p-3">
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold border ${o.status === 'Paid' || o.status === 'Served' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : o.status === 'Cancelled' ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-amber-100 text-amber-800 border-amber-300'}`}>
+                      <td className="p-2 font-semibold text-slate-900">{o.orderNumber || o.id.slice(0, 8)}</td>
+                      <td className="p-2 text-slate-700">{o.tableNumber || '—'}</td>
+                      <td className="p-2">
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${o.status === 'Paid' || o.status === 'Served' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : o.status === 'Cancelled' ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-amber-100 text-amber-800 border-amber-300'}`}>
                           {o.status}
                         </span>
                       </td>
-                      <td className="p-3 text-slate-700 capitalize">{o.source || 'waiter'}</td>
-                      <td className="p-3 text-right font-semibold text-slate-900">{money(o.total)}</td>
-                      <td className="p-3 text-right text-slate-400">{new Date(o.createdAt).toLocaleDateString()}</td>
-                      <td className="p-3 text-right">
+                      <td className="p-2 text-slate-700 capitalize">{o.source || 'waiter'}</td>
+                      <td className="p-2 text-right font-semibold text-slate-900">{money(o.total)}</td>
+                      <td className="p-2 text-right text-slate-400">{new Date(o.createdAt).toLocaleDateString()}</td>
+                      <td className="p-2 text-right">
                         {canRestock && (
                           <button
                             type="button"

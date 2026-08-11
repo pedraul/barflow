@@ -91,16 +91,16 @@ export default function OwnerQRWorkspace() {
           <p className="text-center text-slate-400 mt-8">No QR orders found.</p>
         ) : (
           <div className="border border-slate-200 rounded-lg overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
+            <table className="w-full text-xs border-collapse">
               <thead>
                 <tr>
-                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Order</th>
-                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Table</th>
-                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Type</th>
-                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Status</th>
-                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-right">Total</th>
-                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-right">Date</th>
-                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-right"></th>
+                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Order</th>
+                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Table</th>
+                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Type</th>
+                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Status</th>
+                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-right">Total</th>
+                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-right">Date</th>
+                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-right"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -108,15 +108,15 @@ export default function OwnerQRWorkspace() {
                   const canRestock = ['Open', 'Preparing'].includes(o.status)
                   return (
                     <tr key={o.id} className="hover:bg-indigo-50">
-                      <td className="p-3 font-semibold text-slate-900">{o.orderNumber}</td>
-                      <td className="p-3 text-slate-700">Table {o.tableNumber}</td>
-                      <td className="p-3 text-slate-700 capitalize">{o.orderType}</td>
-                      <td className="p-3">
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold border ${statusClass(o.status)}`}>{o.status}</span>
+                      <td className="p-2 font-semibold text-slate-900">{o.orderNumber}</td>
+                      <td className="p-2 text-slate-700">Table {o.tableNumber}</td>
+                      <td className="p-2 text-slate-700 capitalize">{o.orderType}</td>
+                      <td className="p-2">
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusClass(o.status)}`}>{o.status}</span>
                       </td>
-                      <td className="p-3 text-right font-semibold text-slate-900">{money(o.total)}</td>
-                      <td className="p-3 text-right text-slate-400">{new Date(o.createdAt).toLocaleDateString()}</td>
-                      <td className="p-3 text-right">
+                      <td className="p-2 text-right font-semibold text-slate-900">{money(o.total)}</td>
+                      <td className="p-2 text-right text-slate-400">{new Date(o.createdAt).toLocaleDateString()}</td>
+                      <td className="p-2 text-right">
                         <button type="button" className="inline-flex items-center gap-1 text-indigo-600 hover:underline font-medium mr-3" onClick={() => toggleExpand(o.id)}>
                           <Eye size={15} />
                           {expandedId === o.id ? 'Hide' : 'View'}
@@ -152,28 +152,28 @@ export default function OwnerQRWorkspace() {
               <div key={o.id} className="bg-slate-50 p-4 rounded-lg border border-slate-200">
                 <div className="flex justify-between flex-wrap gap-3 mb-3">
                   <h3 className="m-0 text-base font-bold text-slate-900">Order {o.orderNumber} — Table {o.tableNumber}</h3>
-                  <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold border ${statusClass(o.status)}`}>{o.status}</span>
+                  <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusClass(o.status)}`}>{o.status}</span>
                 </div>
 
                 {o.items.length === 0 ? (
                   <p className="text-slate-400">No items recorded.</p>
                 ) : (
-                  <table className="w-full text-sm border-collapse mb-4">
+                  <table className="w-full text-xs border-collapse mb-4">
                     <thead>
                       <tr>
-                        <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Item</th>
-                        <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-right">Qty</th>
-                        <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-right">Price</th>
-                        <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-right">Line Total</th>
+                        <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Item</th>
+                        <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-right">Qty</th>
+                        <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-right">Price</th>
+                        <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-right">Line Total</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
                       {o.items.map((item, idx) => (
                         <tr key={idx}>
-                          <td className="p-3 text-slate-700">{item.name}</td>
-                          <td className="p-3 text-right text-slate-700">{item.quantity}</td>
-                          <td className="p-3 text-right text-slate-700">{money(item.price)}</td>
-                          <td className="p-3 text-right font-semibold text-slate-900">{money(item.lineTotal)}</td>
+                          <td className="p-2 text-slate-700">{item.name}</td>
+                          <td className="p-2 text-right text-slate-700">{item.quantity}</td>
+                          <td className="p-2 text-right text-slate-700">{money(item.price)}</td>
+                          <td className="p-2 text-right font-semibold text-slate-900">{money(item.lineTotal)}</td>
                         </tr>
                       ))}
                     </tbody>

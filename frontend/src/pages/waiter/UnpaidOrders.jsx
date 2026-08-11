@@ -95,7 +95,7 @@ export default function WaiterUnpaidOrders() {
                   <p className="text-sm text-slate-500">Order {formatOrderNumber(order.orderNumber)}</p>
                   <h2 className="text-lg font-bold text-slate-900">Table {order.tableNumber || order.customer || 'Walk-in'}</h2>
                 </div>
-                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${statusStyle(order.status)}`}>
+                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold ${statusStyle(order.status)}`}>
                   {order.status}
                 </span>
               </div>

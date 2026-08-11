@@ -123,29 +123,29 @@ export default function OwnerTransfer() {
         {viewLogs && (
           logs.length === 0 ? <p className="text-slate-400 mt-4">No transfers recorded.</p> : (
             <div className="border border-slate-200 rounded-lg overflow-x-auto mt-4">
-              <table className="w-full text-sm border-collapse">
+              <table className="w-full text-xs border-collapse">
                 <thead>
                   <tr>
-                    <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">From</th>
-                    <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">To / Phone</th>
-                    <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-right">Amount</th>
-                    <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-center">Status</th>
-                    <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Approved By</th>
-                    <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-right">Date</th>
+                    <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">From</th>
+                    <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">To / Phone</th>
+                    <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-right">Amount</th>
+                    <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-center">Status</th>
+                    <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Approved By</th>
+                    <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-right">Date</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {logs.map((log) => (
                     <tr key={log.id} className="hover:bg-indigo-50">
-                      <td className="p-3 text-slate-700">{log.fromUser}</td>
-                      <td className="p-3 text-slate-700">
+                      <td className="p-2 text-slate-700">{log.fromUser}</td>
+                      <td className="p-2 text-slate-700">
                         <div>{log.toUser || 'System'}</div>
                         {log.toPhone && <small className="text-slate-400 text-xs">{log.toPhone}</small>}
                       </td>
-                      <td className="p-3 text-right font-semibold text-slate-900">{fmt(log.amount)}</td>
-                      <td className="p-3 text-center"><span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold border ${statusClass(log.status)}`}>{log.status}</span></td>
-                      <td className="p-3 text-slate-700">{log.approvedBy || '—'}</td>
-                      <td className="p-3 text-right text-slate-400">{new Date(log.createdAt).toLocaleDateString()}</td>
+                      <td className="p-2 text-right font-semibold text-slate-900">{fmt(log.amount)}</td>
+                      <td className="p-2 text-center"><span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusClass(log.status)}`}>{log.status}</span></td>
+                      <td className="p-2 text-slate-700">{log.approvedBy || '—'}</td>
+                      <td className="p-2 text-right text-slate-400">{new Date(log.createdAt).toLocaleDateString()}</td>
                     </tr>
                   ))}
                 </tbody>

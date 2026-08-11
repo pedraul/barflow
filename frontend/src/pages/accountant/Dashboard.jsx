@@ -312,22 +312,22 @@ export default function AccountantDashboard() {
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 font-semibold uppercase tracking-wider">
                     <tr>
-                      <th className="p-3.5 pl-5">Date</th>
-                      <th className="p-3.5">Description</th>
-                      <th className="p-3.5">Type</th>
-                      <th className="p-3.5 text-right">Amount</th>
-                      <th className="p-3.5 text-center">Status</th>
+                      <th className="p-2 pl-5">Date</th>
+                      <th className="p-2">Description</th>
+                      <th className="p-2">Type</th>
+                      <th className="p-2 text-right">Amount</th>
+                      <th className="p-2 text-center">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
                     {data.recentTransactions && data.recentTransactions.length > 0 ? (
                       data.recentTransactions.map((tx, idx) => (
                         <tr key={idx}>
-                          <td className="p-3.5 pl-5 text-slate-500">{tx.date ? new Date(tx.date).toLocaleDateString() : '—'}</td>
-                          <td className="p-3.5 text-slate-900 font-semibold">{tx.orderNumber || 'Order'}</td>
-                          <td className="p-3.5 text-emerald-600">{tx.source === 'qr' ? 'QR Order' : tx.source === 'waiter' ? 'Waiter Order' : 'Order'}</td>
-                          <td className="p-3.5 text-right">{money(tx.total)}</td>
-                          <td className="p-3.5 text-center">
+                          <td className="p-2 pl-5 text-slate-500">{tx.date ? new Date(tx.date).toLocaleDateString() : '—'}</td>
+                          <td className="p-2 text-slate-900 font-semibold">{tx.orderNumber || 'Order'}</td>
+                          <td className="p-2 text-emerald-600">{tx.source === 'qr' ? 'QR Order' : tx.source === 'waiter' ? 'Waiter Order' : 'Order'}</td>
+                          <td className="p-2 text-right">{money(tx.total)}</td>
+                          <td className="p-2 text-center">
                             <span className={`px-2.5 py-1 rounded-full text-[10px] font-semibold ${tx.status === 'Paid' || tx.status === 'Served' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                               {tx.status}
                             </span>
@@ -335,7 +335,7 @@ export default function AccountantDashboard() {
                         </tr>
                       ))
                     ) : (
-                      <tr><td colSpan={5} className="p-4 text-center text-slate-400">No recent transactions.</td></tr>
+                      <tr><td colSpan={5} className="p-2 text-center text-slate-400">No recent transactions.</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -372,7 +372,7 @@ export default function AccountantDashboard() {
                   </div>
                   <span className="font-medium text-slate-700">Unmatched Bank Transactions</span>
                 </div>
-                <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-700">{data.unreconciled?.unmatchedBank || 0}</span>
+                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700">{data.unreconciled?.unmatchedBank || 0}</span>
               </div>
 
               <div className="flex items-center justify-between p-3 bg-amber-50/50 rounded-xl border border-amber-100">
@@ -382,7 +382,7 @@ export default function AccountantDashboard() {
                   </div>
                   <span className="font-medium text-slate-700">In System Only</span>
                 </div>
-                <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700">{data.unreconciled?.inSystemOnly || 0}</span>
+                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">{data.unreconciled?.inSystemOnly || 0}</span>
               </div>
 
               <div className="flex items-center justify-between p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
@@ -392,7 +392,7 @@ export default function AccountantDashboard() {
                   </div>
                   <span className="font-medium text-slate-700">In Statement Only</span>
                 </div>
-                <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700">{data.unreconciled?.inStatementOnly || 0}</span>
+                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700">{data.unreconciled?.inStatementOnly || 0}</span>
               </div>
             </div>
 

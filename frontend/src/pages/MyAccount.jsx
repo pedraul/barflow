@@ -238,7 +238,7 @@ export default function MyAccount() {
               <h2>Customer menu QR code</h2>
               <p className="text-sm">Print this code or let customers scan it to open your menu and place an order.</p>
             </div>
-            <MenuQRWidget embedded />
+            <MenuQRWidget embedded businessId={user?.businessId} />
           </div>
         </section>
       )}

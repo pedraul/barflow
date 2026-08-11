@@ -241,7 +241,7 @@ export default function SubscriptionPlans() {
                     <p className="text-sm text-slate-500 mt-1">{plan.description}</p>
                   </div>
                   {!plan.isActive && (
-                    <span className="px-2 py-0.5 text-xs font-semibold bg-slate-100 text-slate-500 rounded-full">Inactive</span>
+                    <span className="px-2 py-0.5 text-[10px] font-semibold bg-slate-100 text-slate-500 rounded-full">Inactive</span>
                   )}
                 </div>
 

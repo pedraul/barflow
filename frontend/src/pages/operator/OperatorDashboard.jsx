@@ -469,7 +469,7 @@ export default function OperatorDashboard() {
             <section className="col-span-1 lg:col-span-4 bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-4">
               <div className="flex items-center gap-2">
                 <h2 className="font-bold text-slate-900">New Orders</h2>
-                <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{currentStats.newOrders}</span>
+                <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{currentStats.newOrders}</span>
               </div>
 
               <div className="space-y-4">
@@ -504,7 +504,7 @@ export default function OperatorDashboard() {
                   <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-5">
                     <div className="flex items-center gap-2">
                       <h2 className="font-bold text-slate-900 text-lg">Process Order <span className="text-blue-600">{selectedOrder.orderNumber}</span></h2>
-                      <span className="bg-blue-100 text-blue-600 text-xs font-bold px-1.5 py-0.5 rounded">{selectedOrder.source === 'qr' ? 'QR' : 'WAITER'}</span>
+                      <span className="bg-blue-100 text-blue-600 text-[10px] font-bold px-1.5 py-0.5 rounded">{selectedOrder.source === 'qr' ? 'QR' : 'WAITER'}</span>
                     </div>
 
                     {(() => {

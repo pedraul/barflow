@@ -434,22 +434,22 @@ export default function SystemSettings() {
                   <p className="text-slate-400">No backups recorded yet.</p>
                 ) : (
                   <div className="border border-slate-200 rounded-lg overflow-x-auto">
-                    <table className="w-full text-sm border-collapse">
+                    <table className="w-full text-xs border-collapse">
                       <thead>
                         <tr>
-                          <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Name</th>
-                          <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Type</th>
-                          <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Status</th>
-                          <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-right">Created</th>
+                          <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Name</th>
+                          <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Type</th>
+                          <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Status</th>
+                          <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-right">Created</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {backups.map((b) => (
                           <tr key={b.id} className="hover:bg-slate-50">
-                            <td className="p-3 text-slate-700">{b.backupName}</td>
-                            <td className="p-3 text-slate-700">{b.backupType}</td>
-                            <td className="p-3"><span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold border bg-emerald-100 text-emerald-800 border-emerald-300">{b.status}</span></td>
-                            <td className="p-3 text-right text-slate-400">{new Date(b.createdAt).toLocaleString()}</td>
+                            <td className="p-2 text-slate-700">{b.backupName}</td>
+                            <td className="p-2 text-slate-700">{b.backupType}</td>
+                            <td className="p-2"><span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border bg-emerald-100 text-emerald-800 border-emerald-300">{b.status}</span></td>
+                            <td className="p-2 text-right text-slate-400">{new Date(b.createdAt).toLocaleString()}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -486,26 +486,26 @@ export default function SystemSettings() {
                 <SectionTitle title="ROLE PERMISSIONS" subtitle="Toggle what each role can do across the system." />
                 <div className="border-t border-slate-100"></div>
                 <div className="border border-slate-200 rounded-lg overflow-x-auto">
-                  <table className="w-full text-sm border-collapse">
+                  <table className="w-full text-xs border-collapse">
                     <thead>
                       <tr>
-                        <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Role</th>
-                        {PERMISSION_LABELS.map(([k, lbl]) => <th key={k} className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-center">{lbl}</th>)}
+                        <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Role</th>
+                        {PERMISSION_LABELS.map(([k, lbl]) => <th key={k} className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-center">{lbl}</th>)}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {permDraft.map((p) => (
                         <tr key={p.role}>
-                          <td className="p-3"><span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold border bg-slate-100 text-slate-500 border-slate-200">{p.role}</span></td>
+                          <td className="p-2"><span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border bg-slate-100 text-slate-500 border-slate-200">{p.role}</span></td>
                           {PERMISSION_LABELS.map(([k]) => (
-                            <td key={k} className="p-3 text-center">
+                            <td key={k} className="p-2 text-center">
                               <input type="checkbox" checked={!!p[k]} onChange={() => togglePerm(p.role, k)} />
                             </td>
                           ))}
                         </tr>
                       ))}
                       {!permDraft.length && (
-                        <tr><td colSpan={PERMISSION_LABELS.length + 1} className="p-3 text-center text-slate-400">No roles configured.</td></tr>
+                        <tr><td colSpan={PERMISSION_LABELS.length + 1} className="p-2 text-center text-slate-400">No roles configured.</td></tr>
                       )}
                     </tbody>
                   </table>

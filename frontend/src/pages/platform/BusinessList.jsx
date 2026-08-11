@@ -96,7 +96,7 @@ export default function BusinessList() {
   const badge = (b) => {
     const s = getStatus(b)
     const map = { Active: 'bg-emerald-100 text-emerald-700', Pending: 'bg-amber-100 text-amber-700', 'Renewal pending': 'bg-amber-100 text-amber-700', Suspended: 'bg-red-100 text-red-700' }
-    return <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${map[s]}`}>{s}</span>
+    return <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${map[s]}`}>{s}</span>
   }
 
   if (loading) {
@@ -136,40 +136,40 @@ export default function BusinessList() {
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-xs">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-600">
-                <th className="text-left px-4 py-3 font-semibold">Business</th>
-                <th className="text-left px-4 py-3 font-semibold">Code</th>
-                <th className="text-left px-4 py-3 font-semibold">Contact</th>
-                <th className="text-left px-4 py-3 font-semibold">Type</th>
-                <th className="text-left px-4 py-3 font-semibold">Plan</th>
-                <th className="text-left px-4 py-3 font-semibold">Registered</th>
-                <th className="text-left px-4 py-3 font-semibold">Status</th>
-                <th className="text-right px-4 py-3 font-semibold">Actions</th>
+                <th className="text-left px-3 py-2 font-semibold">Business</th>
+                <th className="text-left px-3 py-2 font-semibold">Code</th>
+                <th className="text-left px-3 py-2 font-semibold">Contact</th>
+                <th className="text-left px-3 py-2 font-semibold">Type</th>
+                <th className="text-left px-3 py-2 font-semibold">Plan</th>
+                <th className="text-left px-3 py-2 font-semibold">Registered</th>
+                <th className="text-left px-3 py-2 font-semibold">Status</th>
+                <th className="text-right px-3 py-2 font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 && <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400">No businesses found.</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={8} className="px-3 py-3 text-center text-slate-400">No businesses found.</td></tr>}
               {filtered.map((b) => (
                 <tr key={b.id} className="border-b border-slate-100 hover:bg-slate-50">
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2">
                     <div className="font-semibold text-slate-900">{b.name}</div>
                     <div className="text-xs text-slate-400">{b.city || 'N/A'} · {b.country || ''}</div>
                   </td>
-                  <td className="px-4 py-3 text-slate-600 font-mono text-xs">{b.registrationCode || '—'}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2 text-slate-600 font-mono text-xs">{b.registrationCode || '—'}</td>
+                  <td className="px-3 py-2">
                     <div className="text-slate-700">{b.contactEmail || 'N/A'}</div>
                     <div className="text-xs text-slate-400">{b.contactPhone || ''}</div>
                   </td>
-                  <td className="px-4 py-3 text-slate-700 capitalize">{b.businessType || 'N/A'}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2 text-slate-700 capitalize">{b.businessType || 'N/A'}</td>
+                  <td className="px-3 py-2">
                     <span className="font-medium text-slate-700">{b.plan}</span>
                     <div className="text-xs text-slate-400 capitalize">{b.subStatus}</div>
                   </td>
-                  <td className="px-4 py-3 text-slate-400">{b.createdAt ? new Date(b.createdAt).toLocaleDateString() : 'N/A'}</td>
-                  <td className="px-4 py-3">{badge(b)}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2 text-slate-400">{b.createdAt ? new Date(b.createdAt).toLocaleDateString() : 'N/A'}</td>
+                  <td className="px-3 py-2">{badge(b)}</td>
+                  <td className="px-3 py-2">
                     <div className="flex justify-end gap-1.5">
                       <IconBtn title="View" onClick={() => setViewing(b)} color="text-slate-600 hover:bg-slate-100"><Eye size={15} /></IconBtn>
                       <IconBtn title="Edit" onClick={() => openEdit(b)} color="text-blue-600 hover:bg-blue-50"><Pencil size={15} /></IconBtn>

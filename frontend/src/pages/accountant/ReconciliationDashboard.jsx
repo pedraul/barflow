@@ -108,13 +108,13 @@ export default function ReconciliationDashboard() {
   const renderStatusBadge = (status) => {
     switch (status) {
       case 'Matched':
-        return <span className="px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">Matched</span>
+        return <span className="px-3 py-1 rounded-full text-[10px] font-medium bg-emerald-100 text-emerald-700">Matched</span>
       case 'Unmatched':
-        return <span className="px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">Unmatched</span>
+        return <span className="px-3 py-1 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">Unmatched</span>
       case 'In System Only':
-        return <span className="px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-600">In System Only</span>
+        return <span className="px-3 py-1 rounded-full text-[10px] font-medium bg-red-100 text-red-600">In System Only</span>
       case 'In Statement Only':
-        return <span className="px-3 py-1 rounded-full text-xs font-medium bg-rose-100 text-rose-600">In Statement Only</span>
+        return <span className="px-3 py-1 rounded-full text-[10px] font-medium bg-rose-100 text-rose-600">In Statement Only</span>
       default:
         return null
     }
@@ -352,10 +352,10 @@ export default function ReconciliationDashboard() {
 
               {/* Data Table */}
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
+                <table className="w-full text-left text-xs">
                   <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold text-xs uppercase tracking-wider">
                     <tr>
-                      <th className="p-4 w-10 text-center">
+                      <th className="p-2 w-10 text-center">
                         <input
                           type="checkbox"
                           className="rounded text-indigo-600 focus:ring-indigo-500"
@@ -363,15 +363,15 @@ export default function ReconciliationDashboard() {
                           onChange={toggleSelectAll}
                         />
                       </th>
-                      <th className="p-4">Date</th>
-                      <th className="p-4">Description</th>
-                      <th className="p-4">Reference</th>
-                      <th className="p-4">Type</th>
-                      <th className="p-4 text-right">Statement Amount</th>
-                      <th className="p-4 text-right">System Amount</th>
-                      <th className="p-4 text-right">Difference</th>
-                      <th className="p-4 text-center">Status</th>
-                      <th className="p-4 text-center">Action</th>
+                      <th className="p-2">Date</th>
+                      <th className="p-2">Description</th>
+                      <th className="p-2">Reference</th>
+                      <th className="p-2">Type</th>
+                      <th className="p-2 text-right">Statement Amount</th>
+                      <th className="p-2 text-right">System Amount</th>
+                      <th className="p-2 text-right">Difference</th>
+                      <th className="p-2 text-center">Status</th>
+                      <th className="p-2 text-center">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700">
@@ -384,7 +384,7 @@ export default function ReconciliationDashboard() {
                         const isSelected = selectedRows.includes(item.id)
                         return (
                           <tr key={item.id} className={`hover:bg-slate-50/80 transition ${isSelected ? 'bg-indigo-50/30' : ''}`}>
-                            <td className="p-4 text-center">
+                            <td className="p-2 text-center">
                               <input
                                 type="checkbox"
                                 className="rounded text-indigo-600 focus:ring-indigo-500"
@@ -392,19 +392,19 @@ export default function ReconciliationDashboard() {
                                 onChange={() => toggleSelectRow(item.id)}
                               />
                             </td>
-                            <td className="p-4 whitespace-nowrap text-xs font-medium text-slate-600">{item.date}</td>
-                            <td className="p-4 font-semibold text-slate-900">{item.description}</td>
-                            <td className="p-4 text-xs font-mono text-slate-500">{item.ref}</td>
-                            <td className="p-4 whitespace-nowrap">
+                            <td className="p-2 whitespace-nowrap text-xs font-medium text-slate-600">{item.date}</td>
+                            <td className="p-2 font-semibold text-slate-900">{item.description}</td>
+                            <td className="p-2 text-xs font-mono text-slate-500">{item.ref}</td>
+                            <td className="p-2 whitespace-nowrap">
                               <div className="flex items-center gap-1.5 text-xs">
                                 <span>{item.type}</span>
                               </div>
                             </td>
-                            <td className="p-4 text-right font-medium">{formatRWF(item.statementAmount)}</td>
-                            <td className="p-4 text-right font-medium">{formatRWF(item.systemAmount)}</td>
-                            <td className="p-4 text-right font-medium">{formatRWF(item.difference)}</td>
-                            <td className="p-4 text-center">{renderStatusBadge(item.status)}</td>
-                            <td className="p-4 text-center">
+                            <td className="p-2 text-right font-medium">{formatRWF(item.statementAmount)}</td>
+                            <td className="p-2 text-right font-medium">{formatRWF(item.systemAmount)}</td>
+                            <td className="p-2 text-right font-medium">{formatRWF(item.difference)}</td>
+                            <td className="p-2 text-center">{renderStatusBadge(item.status)}</td>
+                            <td className="p-2 text-center">
                               <div className="flex items-center justify-center gap-2 text-slate-400">
                                 <button onClick={() => handleViewDetails(item)} className="hover:text-indigo-600 transition" title="View Details">
                                   <Eye className="w-4 h-4" />

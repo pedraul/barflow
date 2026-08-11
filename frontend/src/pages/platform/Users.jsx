@@ -113,36 +113,36 @@ export default function Users() {
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-xs">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-600">
-                <th className="text-left px-4 py-3 font-semibold">Administrator</th>
-                <th className="text-left px-4 py-3 font-semibold">Role</th>
-                <th className="text-left px-4 py-3 font-semibold">Permissions</th>
-                <th className="text-left px-4 py-3 font-semibold">Last Login</th>
-                <th className="text-left px-4 py-3 font-semibold">Status</th>
-                <th className="text-right px-4 py-3 font-semibold">Actions</th>
+                <th className="text-left px-3 py-2 font-semibold">Administrator</th>
+                <th className="text-left px-3 py-2 font-semibold">Role</th>
+                <th className="text-left px-3 py-2 font-semibold">Permissions</th>
+                <th className="text-left px-3 py-2 font-semibold">Last Login</th>
+                <th className="text-left px-3 py-2 font-semibold">Status</th>
+                <th className="text-right px-3 py-2 font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-400">No admins found.</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={6} className="px-3 py-3 text-center text-slate-400">No admins found.</td></tr>}
               {filtered.map((a) => (
                 <tr key={a.id} className="border-b border-slate-100 hover:bg-slate-50">
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2">
                     <div className="font-semibold text-slate-900">{a.name}</div>
                     <div className="text-xs text-slate-400">{a.email}{a.phone ? ` · ${a.phone}` : ''}</div>
                   </td>
-                  <td className="px-4 py-3">
-                    <span className="px-2 py-0.5 text-xs font-semibold bg-purple-50 text-purple-600 border border-purple-200 rounded-full capitalize">{(a.role || '').replace('_', ' ')}</span>
+                  <td className="px-3 py-2">
+                    <span className="px-2 py-0.5 text-[10px] font-semibold bg-purple-50 text-purple-600 border border-purple-200 rounded-full capitalize">{(a.role || '').replace('_', ' ')}</span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2">
                     <span className="text-xs text-slate-500">{a.role === 'super_admin' ? 'Full access' : `${(a.permissions || []).length} module(s)`}</span>
                   </td>
-                  <td className="px-4 py-3 text-slate-400 text-xs">{a.lastLogin ? new Date(a.lastLogin).toLocaleString() : 'Never'}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${a.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>{a.isActive ? 'Active' : 'Inactive'}</span>
+                  <td className="px-3 py-2 text-slate-400 text-xs">{a.lastLogin ? new Date(a.lastLogin).toLocaleString() : 'Never'}</td>
+                  <td className="px-3 py-2">
+                    <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${a.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>{a.isActive ? 'Active' : 'Inactive'}</span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2">
                     <div className="flex justify-end gap-1.5">
                       <button title="Edit" onClick={() => openEdit(a)} className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50"><Pencil size={15} /></button>
                       <button title="Reset password" onClick={() => resetPw(a)} disabled={busy === `${a.id}-pw`} className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 disabled:opacity-40"><KeyRound size={15} /></button>

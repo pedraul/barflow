@@ -254,7 +254,7 @@ export default function TwoFactorVerify() {
 
         <div className="relative w-full flex items-center justify-center mb-6">
           <div className="border-t border-gray-100 w-full"></div>
-          <span className="bg-white px-3 text-xs text-gray-400 font-medium absolute">
+          <span className="bg-white px-3 text-[10px] text-gray-400 font-medium absolute">
             or
           </span>
         </div>

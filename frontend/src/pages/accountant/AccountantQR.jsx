@@ -95,30 +95,30 @@ export default function AccountantQR() {
           <div className="text-center text-slate-400 py-12">No QR orders found.</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold text-xs uppercase tracking-wider">
                 <tr>
-                  <th className="p-3">Order</th>
-                  <th className="p-3">Table</th>
-                  <th className="p-3">Status</th>
-                  <th className="p-3 text-right">Total</th>
-                  <th className="p-3">Date</th>
-                  <th className="p-3 text-center">Action</th>
+                  <th className="p-2">Order</th>
+                  <th className="p-2">Table</th>
+                  <th className="p-2">Status</th>
+                  <th className="p-2 text-right">Total</th>
+                  <th className="p-2">Date</th>
+                  <th className="p-2 text-center">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {orders.map((order) => (
                   <tr key={order.id} className="hover:bg-slate-50/80">
-                    <td className="p-3 font-semibold text-slate-900">{String(order.orderNumber || order.id).padStart(3, '0')}</td>
-                    <td className="p-3">Table {order.tableNumber}</td>
-                    <td className="p-3">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${statusClass(order.status)}`}>
+                    <td className="p-2 font-semibold text-slate-900">{String(order.orderNumber || order.id).padStart(3, '0')}</td>
+                    <td className="p-2">Table {order.tableNumber}</td>
+                    <td className="p-2">
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-medium border ${statusClass(order.status)}`}>
                         {order.status}
                       </span>
                     </td>
-                    <td className="p-3 text-right font-semibold">{money(order.total)}</td>
-                    <td className="p-3 text-slate-500">{new Date(order.createdAt).toLocaleDateString()}</td>
-                    <td className="p-3 text-center">
+                    <td className="p-2 text-right font-semibold">{money(order.total)}</td>
+                    <td className="p-2 text-slate-500">{new Date(order.createdAt).toLocaleDateString()}</td>
+                    <td className="p-2 text-center">
                       <button className="text-indigo-600 hover:text-indigo-800" title="View details">
                         <Eye size={16} />
                       </button>

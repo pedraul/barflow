@@ -84,7 +84,7 @@ export default function AuditLogViewer() {
           <thead>
             <tr className="bg-slate-50 border-b-2 border-slate-200">
               {['Timestamp', 'User ID', 'Actor', 'Action', 'Target Module', 'IP Address'].map((h) => (
-                <th key={h} className="text-left p-3 text-xs text-slate-500 uppercase font-bold">{h}</th>
+                <th key={h} className="text-left p-2 text-xs text-slate-500 uppercase font-bold">{h}</th>
               ))}
             </tr>
           </thead>

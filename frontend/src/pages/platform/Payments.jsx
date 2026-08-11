@@ -65,7 +65,7 @@ export default function Payments() {
 
   const badge = (status) => {
     const map = { paid: 'bg-emerald-100 text-emerald-700', settled: 'bg-blue-100 text-blue-700', pending: 'bg-amber-100 text-amber-700', failed: 'bg-red-100 text-red-700', refunded: 'bg-slate-200 text-slate-600' }
-    return <span className={`px-2 py-0.5 text-xs font-semibold rounded-full capitalize ${map[status] || 'bg-slate-100 text-slate-600'}`}>{status}</span>
+    return <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full capitalize ${map[status] || 'bg-slate-100 text-slate-600'}`}>{status}</span>
   }
 
   const exportCsv = () => {
@@ -140,31 +140,31 @@ export default function Payments() {
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-xs">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-600">
-                <th className="text-left px-4 py-3 font-semibold">Business</th>
-                <th className="text-left px-4 py-3 font-semibold">Plan</th>
-                <th className="text-left px-4 py-3 font-semibold">Amount</th>
-                <th className="text-left px-4 py-3 font-semibold">Method</th>
-                <th className="text-left px-4 py-3 font-semibold">Transaction</th>
-                <th className="text-left px-4 py-3 font-semibold">Status</th>
-                <th className="text-left px-4 py-3 font-semibold">Date</th>
-                <th className="text-right px-4 py-3 font-semibold">Actions</th>
+                <th className="text-left px-3 py-2 font-semibold">Business</th>
+                <th className="text-left px-3 py-2 font-semibold">Plan</th>
+                <th className="text-left px-3 py-2 font-semibold">Amount</th>
+                <th className="text-left px-3 py-2 font-semibold">Method</th>
+                <th className="text-left px-3 py-2 font-semibold">Transaction</th>
+                <th className="text-left px-3 py-2 font-semibold">Status</th>
+                <th className="text-left px-3 py-2 font-semibold">Date</th>
+                <th className="text-right px-3 py-2 font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 && <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400">No payments found.</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={8} className="px-3 py-3 text-center text-slate-400">No payments found.</td></tr>}
               {filtered.map((p) => (
                 <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50">
-                  <td className="px-4 py-3 font-semibold text-slate-900">{p.business}</td>
-                  <td className="px-4 py-3 text-slate-700">{p.plan}</td>
-                  <td className="px-4 py-3 font-medium text-slate-900">{formatCurr(p.amount)}</td>
-                  <td className="px-4 py-3 text-slate-700">{METHOD_LABEL[p.method] || p.method}</td>
-                  <td className="px-4 py-3 text-slate-500 font-mono text-xs">{p.transactionId || '—'}</td>
-                  <td className="px-4 py-3">{badge(p.status)}</td>
-                  <td className="px-4 py-3 text-slate-400">{p.date ? new Date(p.date).toLocaleDateString() : '—'}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2 font-semibold text-slate-900">{p.business}</td>
+                  <td className="px-3 py-2 text-slate-700">{p.plan}</td>
+                  <td className="px-3 py-2 font-medium text-slate-900">{formatCurr(p.amount)}</td>
+                  <td className="px-3 py-2 text-slate-700">{METHOD_LABEL[p.method] || p.method}</td>
+                  <td className="px-3 py-2 text-slate-500 font-mono text-xs">{p.transactionId || '—'}</td>
+                  <td className="px-3 py-2">{badge(p.status)}</td>
+                  <td className="px-3 py-2 text-slate-400">{p.date ? new Date(p.date).toLocaleDateString() : '—'}</td>
+                  <td className="px-3 py-2">
                     <div className="flex justify-end gap-1.5">
                       <button title="Receipt" onClick={() => downloadReceipt(p)} className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100"><Receipt size={15} /></button>
                       {p.status === 'paid' && (

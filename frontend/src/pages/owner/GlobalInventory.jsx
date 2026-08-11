@@ -61,7 +61,7 @@ export default function GlobalInventory() {
               <thead>
                 <tr className="bg-slate-50 border-b-2 border-slate-200">
                   {['Name', 'SKU', 'Branch', 'Qty', 'Cost Price', 'Sell Price', 'Min Stock', 'Status'].map((h) => (
-                    <th key={h} className="text-left p-3 text-xs text-slate-500 uppercase font-bold">{h}</th>
+                    <th key={h} className="text-left p-2 text-xs text-slate-500 uppercase font-bold">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -77,9 +77,9 @@ export default function GlobalInventory() {
                     <td className="p-2.5 text-[13px] text-slate-700">{item.minStockLevel}</td>
                     <td className="p-2.5 text-[13px]">
                       {item.lowStock ? (
-                        <span className="bg-red-100 text-red-800 px-2.5 py-0.5 rounded-full text-xs font-medium">⚠ Low Stock</span>
+                        <span className="bg-red-100 text-red-800 px-2.5 py-0.5 rounded-full text-[10px] font-medium">⚠ Low Stock</span>
                       ) : (
-                        <span className="bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full text-xs font-medium">In Stock</span>
+                        <span className="bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full text-[10px] font-medium">In Stock</span>
                       )}
                     </td>
                   </tr>
@@ -100,7 +100,7 @@ export default function GlobalInventory() {
             <thead>
               <tr className="bg-slate-50 border-b-2 border-slate-200">
                 {['Item', 'Type', 'Qty', 'Reason', 'Adjusted By', 'Branch', 'Date'].map((h) => (
-                  <th key={h} className="text-left p-3 text-xs text-slate-500 uppercase font-bold">{h}</th>
+                  <th key={h} className="text-left p-2 text-xs text-slate-500 uppercase font-bold">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -109,7 +109,7 @@ export default function GlobalInventory() {
                 <tr key={m.id} className="hover:bg-slate-50">
                   <td className="p-2.5 text-[13px] text-slate-700">{m.itemName}</td>
                   <td className="p-2.5 text-[13px]">
-                    <span className={`px-2 py-0.5 rounded-lg text-xs font-medium ${m.adjustmentType === 'addition' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>{m.adjustmentType}</span>
+                    <span className={`px-2 py-0.5 rounded-lg text-[10px] font-medium ${m.adjustmentType === 'addition' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>{m.adjustmentType}</span>
                   </td>
                   <td className="p-2.5 text-[13px] text-slate-700">{m.quantity}</td>
                   <td className="p-2.5 text-[13px] text-slate-700">{m.reason || '—'}</td>
