@@ -131,6 +131,17 @@ export default function AppRoutes() {
       />
 
       <Route
+        path="/dashboard/owner"
+        element={
+          <ProtectedRoute checkSubscription allow={['Owner']}>
+            <OwnerLayout>
+              <OwnerOverview />
+            </OwnerLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
         path="/owner/subscription"
         element={
           <ProtectedRoute allow={['Owner']}>
@@ -189,6 +200,17 @@ export default function AppRoutes() {
           <ProtectedRoute checkSubscription allow={['Owner']}>
             <OwnerLayout>
               <OwnerWaiterOrders />
+            </OwnerLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/owner/users"
+        element={
+          <ProtectedRoute checkSubscription allow={['Owner']}>
+            <OwnerLayout>
+              <OwnerUserManagement />
             </OwnerLayout>
           </ProtectedRoute>
         }
