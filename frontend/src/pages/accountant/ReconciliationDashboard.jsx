@@ -660,7 +660,7 @@ export default function ReconciliationDashboard() {
                   )}
                 </div>
                 {uploadPreview.length > 0 && (
-                  <div className="bg-slate-50 rounded-lg p-3 max-h-48 overflow-y-auto">
+                   <div className="bg-slate-50 rounded-lg p-3 max-h-48 overflow-x-auto">
                     <p className="text-xs font-semibold text-slate-600 mb-2">Preview ({uploadPreview.length} rows)</p>
                     <table className="w-full text-xs text-left">
                       <thead>

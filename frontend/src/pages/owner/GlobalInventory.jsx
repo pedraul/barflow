@@ -56,7 +56,7 @@ export default function GlobalInventory() {
             </select>
           </div>
 
-          <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-slate-200">
+          <div className="bg-white rounded-xl overflow-x-auto shadow-sm border border-slate-200">
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b-2 border-slate-200">
@@ -92,7 +92,7 @@ export default function GlobalInventory() {
       )}
 
       {view === 'movements' && (
-        <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-slate-200">
+        <div className="bg-white rounded-xl overflow-x-auto shadow-sm border border-slate-200">
           <div className="px-4 py-3 border-b border-slate-200 text-sm text-slate-500">
             Stock Adjustment History — Last 100 entries
           </div>

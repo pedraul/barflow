@@ -158,7 +158,8 @@ export default function OwnerQRWorkspace() {
                 {o.items.length === 0 ? (
                   <p className="text-slate-400">No items recorded.</p>
                 ) : (
-                  <table className="w-full text-xs border-collapse mb-4">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs border-collapse mb-4">
                     <thead>
                       <tr>
                         <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Item</th>
@@ -176,9 +177,10 @@ export default function OwnerQRWorkspace() {
                           <td className="p-2 text-right font-semibold text-slate-900">{money(item.lineTotal)}</td>
                         </tr>
                       ))}
-                    </tbody>
-                  </table>
-                )}
+                     </tbody>
+                   </table>
+                   </div>
+                 )}
 
                 <div className="flex justify-between text-sm text-slate-400 mb-1">
                   <span>Total (VAT included)</span><span>{money(o.subtotal ?? 0)}</span>

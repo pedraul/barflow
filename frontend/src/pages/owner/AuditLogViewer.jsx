@@ -79,7 +79,7 @@ export default function AuditLogViewer() {
       </div>
 
       {/* Logs Table */}
-      <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-slate-200">
+      <div className="bg-white rounded-xl overflow-x-auto shadow-sm border border-slate-200">
         <table className="w-full border-collapse">
           <thead>
             <tr className="bg-slate-50 border-b-2 border-slate-200">

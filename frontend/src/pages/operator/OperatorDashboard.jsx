@@ -603,7 +603,7 @@ export default function OperatorDashboard() {
             {/* Column C: Receipt & Utilities */}
             <section className="col-span-1 lg:col-span-3 space-y-4">
               {selectedOrder && (
-                <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4 relative overflow-hidden">
+                <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4 relative overflow-x-auto">
                   <div className="flex justify-between items-center text-xs font-semibold">
                     <span className="text-slate-900">Receipt Preview</span>
                     <span className="text-blue-600">{selectedOrder.orderNumber}</span>

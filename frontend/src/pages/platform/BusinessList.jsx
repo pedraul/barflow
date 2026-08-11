@@ -134,9 +134,9 @@ export default function BusinessList() {
         </select>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-xs">
+          <table className="w-full text-xs min-w-[640px]">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-600">
                 <th className="text-left px-3 py-2 font-semibold">Business</th>

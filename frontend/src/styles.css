@@ -800,10 +800,13 @@ a:active { color: var(--brand); }
    ============================================================ */
 table {
   font-size: 0.75rem;
+  display: table;
 }
 table th,
 table td {
   padding: 0.5rem 0.75rem;
+  display: table-cell;
+  white-space: nowrap;
 }
 table thead th {
   font-size: 0.7rem;

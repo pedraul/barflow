@@ -86,27 +86,27 @@ export default function MenuPage() {
           </button>
           <h2 className="text-2xl font-extrabold">{selectedCategory}</h2>
           <p className="text-slate-500 text-sm mt-1">Choose your favorite from our menu</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 mt-4">
+          <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4 mt-4">
             {categoryItems.map((item) => {
               const inCart = cartItem(item.id)
               const soldOut = Number(item.quantity) <= 0
               return (
                   <article key={item.id} className="overflow-hidden border border-slate-200 rounded-xl shadow-sm bg-white w-full">
-                  <div className="relative h-44 bg-slate-100 flex items-center justify-center overflow-hidden">
-                    <div className="absolute inset-0 grid place-items-center text-slate-400"><UtensilsCrossed size={30} /><span className="text-xs mt-1">No image</span></div>
+                  <div className="relative h-28 sm:h-36 bg-slate-100 flex items-center justify-center overflow-hidden">
+                    <div className="absolute inset-0 grid place-items-center text-slate-400"><UtensilsCrossed size={24} /><span className="text-[10px] mt-1">No image</span></div>
                     {item.imageUrl && <img src={item.imageUrl} alt={item.name} className="relative z-10 w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} />}
                   </div>
-                    <div className="p-2.5">
-                      <h3 className="font-bold text-sm text-slate-900 leading-tight line-clamp-1">{item.name}</h3>
-                      <p className="font-bold text-sm mt-1 text-slate-900">{money(item.price)}</p>
-                      <button disabled={soldOut} onClick={() => addToCart(item)} className="mt-2 w-full border border-slate-300 rounded-md py-1.5 flex justify-between px-2 font-semibold text-xs hover:border-amber-500 disabled:opacity-50">
-                        {soldOut ? 'Sold out' : 'Add'} <Plus className="rounded bg-amber-600 text-white p-0.5" size={16} />
+                    <div className="p-2 sm:p-2.5">
+                      <h3 className="font-bold text-[11px] sm:text-sm text-slate-900 leading-tight line-clamp-1">{item.name}</h3>
+                      <p className="font-bold text-xs sm:text-sm mt-0.5 text-slate-900">{money(item.price)}</p>
+                      <button disabled={soldOut} onClick={() => addToCart(item)} className="mt-1.5 w-full border border-slate-300 rounded-md py-1 flex justify-between px-1.5 font-semibold text-[11px] hover:border-amber-500 disabled:opacity-50">
+                        {soldOut ? 'Sold out' : 'Add'} <Plus className="rounded bg-amber-600 text-white p-0.5" size={14} />
                       </button>
                       {inCart && (
-                        <div className="mt-2 flex items-center justify-between border border-slate-200 rounded-md px-2 py-1">
-                          <button onClick={() => updateQuantity(item.id, inCart.quantity - 1)} className="text-slate-600 hover:text-red-600 font-bold text-sm leading-none">−</button>
-                          <span className="text-xs font-semibold">{inCart.quantity}</span>
-                          <button onClick={() => updateQuantity(item.id, inCart.quantity + 1)} className="text-slate-600 hover:text-emerald-700 font-bold text-sm leading-none">+</button>
+                        <div className="mt-1.5 flex items-center justify-between border border-slate-200 rounded-md px-1.5 py-0.5">
+                          <button onClick={() => updateQuantity(item.id, inCart.quantity - 1)} className="text-slate-600 hover:text-red-600 font-bold text-xs leading-none">−</button>
+                          <span className="text-[11px] font-semibold">{inCart.quantity}</span>
+                          <button onClick={() => updateQuantity(item.id, inCart.quantity + 1)} className="text-slate-600 hover:text-emerald-700 font-bold text-xs leading-none">+</button>
                         </div>
                       )}
                     </div>
@@ -137,7 +137,7 @@ export default function MenuPage() {
           </button>
           <h2 className="text-3xl font-extrabold mb-2">{selectedSection === 'bar' ? 'Bar menu' : 'Food menu'} — Categories</h2>
           <p className="text-slate-500 mt-1">Select a category to browse items</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-5">
+          <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4 mt-5">
             {(selectedSection === 'bar' ? barCategories : foodCategories).map((group) => (
               <button key={group.name} onClick={() => setSelectedCategory(group.name)} className="border border-slate-200 rounded-xl shadow-sm bg-white p-5 text-left hover:border-amber-500 hover:shadow-md transition">
                 <div className="text-xl font-bold text-slate-900">{group.name}</div>
@@ -154,27 +154,27 @@ export default function MenuPage() {
           {searchItems.length === 0 ? (
             <p className="text-slate-500">No items found matching "{search}"</p>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
               {searchItems.map((item) => {
                 const inCart = cartItem(item.id)
                 const soldOut = Number(item.quantity) <= 0
                 return (
                 <article key={item.id} className="overflow-hidden border border-slate-200 rounded-xl shadow-sm bg-white w-full">
-                  <div className="relative h-44 bg-slate-100 flex items-center justify-center overflow-hidden">
-                    <div className="absolute inset-0 grid place-items-center text-slate-400"><UtensilsCrossed size={30} /><span className="text-xs mt-1">No image</span></div>
+                  <div className="relative h-28 sm:h-36 bg-slate-100 flex items-center justify-center overflow-hidden">
+                    <div className="absolute inset-0 grid place-items-center text-slate-400"><UtensilsCrossed size={24} /><span className="text-[10px] mt-1">No image</span></div>
                     {item.imageUrl && <img src={item.imageUrl} alt={item.name} className="relative z-10 w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} />}
                   </div>
-                    <div className="p-2.5">
-                      <h3 className="font-bold text-sm text-slate-900 leading-tight line-clamp-1">{item.name}</h3>
-                      <p className="font-bold text-sm mt-1 text-slate-900">{money(item.price)}</p>
-                      <button disabled={soldOut} onClick={() => addToCart(item)} className="mt-2 w-full border border-slate-300 rounded-md py-1.5 flex justify-between px-2 font-semibold text-xs hover:border-amber-500 disabled:opacity-50">
-                        {soldOut ? 'Sold out' : 'Add'} <Plus className="rounded bg-amber-600 text-white p-0.5" size={16} />
+                    <div className="p-2 sm:p-2.5">
+                      <h3 className="font-bold text-[11px] sm:text-sm text-slate-900 leading-tight line-clamp-1">{item.name}</h3>
+                      <p className="font-bold text-xs sm:text-sm mt-0.5 text-slate-900">{money(item.price)}</p>
+                      <button disabled={soldOut} onClick={() => addToCart(item)} className="mt-1.5 w-full border border-slate-300 rounded-md py-1 flex justify-between px-1.5 font-semibold text-[11px] hover:border-amber-500 disabled:opacity-50">
+                        {soldOut ? 'Sold out' : 'Add'} <Plus className="rounded bg-amber-600 text-white p-0.5" size={14} />
                       </button>
                       {inCart && (
-                        <div className="mt-2 flex items-center justify-between border border-slate-200 rounded-md px-2 py-1">
-                          <button onClick={() => updateQuantity(item.id, inCart.quantity - 1)} className="text-slate-600 hover:text-red-600 font-bold text-sm leading-none">−</button>
-                          <span className="text-xs font-semibold">{inCart.quantity}</span>
-                          <button onClick={() => updateQuantity(item.id, inCart.quantity + 1)} className="text-slate-600 hover:text-emerald-700 font-bold text-sm leading-none">+</button>
+                        <div className="mt-1.5 flex items-center justify-between border border-slate-200 rounded-md px-1.5 py-0.5">
+                          <button onClick={() => updateQuantity(item.id, inCart.quantity - 1)} className="text-slate-600 hover:text-red-600 font-bold text-xs leading-none">−</button>
+                          <span className="text-[11px] font-semibold">{inCart.quantity}</span>
+                          <button onClick={() => updateQuantity(item.id, inCart.quantity + 1)} className="text-slate-600 hover:text-emerald-700 font-bold text-xs leading-none">+</button>
                         </div>
                       )}
                     </div>
