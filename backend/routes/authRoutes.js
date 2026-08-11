@@ -301,7 +301,7 @@ router.post('/register-business', async (req, res) => {
       return res.status(400).json({ error: 'Selected subscription plan is not available.' })
     }
 
-    const cycle = String(billingCycle || 'monthly').toLowerCase()
+    const cycle = String(billingCycle || 'annually').toLowerCase()
     let amount = Number(selectedPlan.price_monthly) || 0
     let monthsToAdd = 1
     let discountPercent = 0

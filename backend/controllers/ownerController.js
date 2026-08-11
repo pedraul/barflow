@@ -1573,13 +1573,29 @@ export async function renewSubscription(req, res) {
       const { rows } = await query('SELECT * FROM subscription_plans WHERE id = $1 AND is_active = TRUE', [planId])
       selectedPlan = rows[0]
     } else if (plan) {
-      const { rows } = await query('SELECT * FROM subscription_plans WHERE LOWER(name) = $1 AND is_active = TRUE', [String(plan).toLowerCase()])
-      selectedPlan = rows[0]
+      const normalized = String(plan).toLowerCase()
+      if (['monthly', 'quarterly', 'annually', 'yearly'].includes(normalized)) {
+        const { rows: current } = await query(
+          `SELECT s.plan_id, sp.name AS plan_name
+           FROM subscriptions s
+           LEFT JOIN subscription_plans sp ON sp.id = s.plan_id
+           WHERE s.business_id = $1 AND s.is_active = TRUE AND s.payment_status = 'verified'
+           ORDER BY s.created_at DESC
+           LIMIT 1`,
+          [businessId]
+        )
+        if (current.length) {
+          selectedPlan = current[0].plan_id ? { id: current[0].plan_id, name: current[0].plan_name } : null
+        }
+      } else {
+        const { rows } = await query('SELECT * FROM subscription_plans WHERE LOWER(name) = $1 AND is_active = TRUE', [normalized])
+        selectedPlan = rows[0]
+      }
     }
 
     let amount, monthsToAdd, cycle, discountPercent
     if (selectedPlan) {
-      cycle = String(billingCycle || 'monthly').toLowerCase()
+      cycle = String(billingCycle || 'annually').toLowerCase()
       const monthlyPrice = Number(selectedPlan.price_monthly) || 0
       if (cycle === 'quarterly') {
         monthsToAdd = 3

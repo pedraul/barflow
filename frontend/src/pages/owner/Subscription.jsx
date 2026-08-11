@@ -4,8 +4,6 @@ import { useOwner } from '../../context/OwnerContext'
 import { AlertTriangle, Download, ArrowLeft, CalendarDays, CheckCircle2, ShieldCheck } from 'lucide-react'
 
 const PLANS = [
-  { id: 'monthly', label: 'Monthly', months: 1, hint: 'Full features, billed every month' },
-  { id: 'quarterly', label: 'Quarterly', months: 3, hint: 'Full features, billed every 3 months' },
   { id: 'annually', label: 'Annually', months: 12, hint: 'Full features, billed every 12 months' },
 ]
 

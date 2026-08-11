@@ -7,13 +7,11 @@ export default function SubscriptionPlans() {
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState(null)
   
-  // Single base price state (Monthly Price)
+  // Single base price state (Annual Price)
   const [form, setForm] = useState({
     name: '',
     description: '',
-    priceMonthly: '',
-    discountQuarterly: '8',
-    discountAnnually: '14',
+    priceYearly: '',
     features: ''
   })
   
@@ -37,9 +35,7 @@ export default function SubscriptionPlans() {
     setForm({
       name: '',
       description: '',
-      priceMonthly: '',
-      discountQuarterly: '8',
-      discountAnnually: '14',
+      priceYearly: '',
       features: ''
     })
     setEditing(null)
@@ -50,9 +46,7 @@ export default function SubscriptionPlans() {
     setForm({
       name: plan.name,
       description: plan.description || '',
-      priceMonthly: String(plan.priceMonthly || ''),
-      discountQuarterly: String(plan.discountQuarterly ?? 8),
-      discountAnnually: String(plan.discountAnnually ?? 14),
+      priceYearly: String(plan.priceYearly || ''),
       features: (plan.features || []).join('\n'),
     })
     setEditing(plan.id)
@@ -60,37 +54,18 @@ export default function SubscriptionPlans() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  // Calculate annual rate automatically from monthly price & annual discount
-  const getCalculatedYearlyPrice = () => {
-    const monthly = Number(form.priceMonthly) || 0
-    const discount = Number(form.discountAnnually) || 0
-    const fullYear = monthly * 12
-    return Math.round(fullYear * (1 - discount / 100))
-  }
-
-  // Calculate quarterly total automatically
-  const getCalculatedQuarterlyPrice = () => {
-    const monthly = Number(form.priceMonthly) || 0
-    const discount = Number(form.discountQuarterly) || 0
-    const fullQuarter = monthly * 3
-    return Math.round(fullQuarter * (1 - discount / 100))
-  }
-
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSaving(true)
     
-    // Automatically derive priceYearly from base monthly price & annual discount
-    const calculatedPriceYearly = getCalculatedYearlyPrice()
-
     try {
       const payload = {
         name: form.name,
         description: form.description,
-        priceMonthly: Number(form.priceMonthly) || 0,
-        priceYearly: calculatedPriceYearly,
-        discountQuarterly: Number(form.discountQuarterly ?? 8),
-        discountAnnually: Number(form.discountAnnually ?? 14),
+        priceMonthly: Number(form.priceYearly) / 12 || 0,
+        priceYearly: Number(form.priceYearly) || 0,
+        discountQuarterly: 0,
+        discountAnnually: 0,
         features: form.features.split('\n').filter(Boolean).map(f => f.trim()),
       }
       
@@ -160,44 +135,18 @@ export default function SubscriptionPlans() {
               />
             </div>
 
-            {/* Single Base Monthly Price Field */}
-            <div className="sm:col-span-2 bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Annual Price Field */}
+            <div className="sm:col-span-2 bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
               <div>
-                <label className="block text-sm font-bold text-indigo-950 mb-1">Base Monthly Price (RWF)</label>
+                <label className="block text-sm font-bold text-indigo-950 mb-1">Annual Price (RWF)</label>
                 <input
                   type="number"
-                  value={form.priceMonthly}
-                  onChange={(e) => setForm({ ...form, priceMonthly: e.target.value })}
+                  value={form.priceYearly}
+                  onChange={(e) => setForm({ ...form, priceYearly: e.target.value })}
                   className="w-full px-3 py-2 border border-indigo-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-semibold"
-                  placeholder="e.g. 50000"
+                  placeholder="e.g. 480000"
                   required
                 />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Quarterly Discount (%)</label>
-                <input
-                  type="number"
-                  value={form.discountQuarterly}
-                  onChange={(e) => setForm({ ...form, discountQuarterly: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
-                />
-                <p className="text-[11px] text-slate-500 mt-1">
-                  Est. Quarterly: <span className="font-bold text-slate-800">{getCalculatedQuarterlyPrice().toLocaleString()} RWF</span> / 3 months
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Annually Discount (%)</label>
-                <input
-                  type="number"
-                  value={form.discountAnnually}
-                  onChange={(e) => setForm({ ...form, discountAnnually: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
-                />
-                <p className="text-[11px] text-slate-500 mt-1">
-                  Est. Annual: <span className="font-bold text-slate-800">{getCalculatedYearlyPrice().toLocaleString()} RWF</span> / year
-                </p>
               </div>
             </div>
 
@@ -225,12 +174,7 @@ export default function SubscriptionPlans() {
       {/* Plans Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {plans.map((plan) => {
-          const monthly = plan.priceMonthly || 0
-          const quarterlyDiscount = plan.discountQuarterly ?? 8
-          const annualDiscount = plan.discountAnnually ?? 14
-          
-          const quarterlyPrice = Math.round((monthly * 3) * (1 - quarterlyDiscount / 100))
-          const annualPrice = plan.priceYearly || Math.round((monthly * 12) * (1 - annualDiscount / 100))
+          const annualPrice = plan.priceYearly || 0
 
           return (
             <div key={plan.id} className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm flex flex-col justify-between">
@@ -246,12 +190,7 @@ export default function SubscriptionPlans() {
                 </div>
 
                 <div className="mb-4 space-y-1">
-                  <p className="text-2xl font-bold text-slate-900">{monthly.toLocaleString()} RWF <span className="text-xs font-normal text-slate-500">/ month</span></p>
-                  
-                  <div className="pt-2 text-xs space-y-1 text-slate-600">
-                    <p>• <strong>Quarterly:</strong> {quarterlyPrice.toLocaleString()} RWF <span className="text-emerald-600 font-semibold">({quarterlyDiscount}% off)</span></p>
-                    <p>• <strong>Annually:</strong> {annualPrice.toLocaleString()} RWF <span className="text-emerald-600 font-semibold">({annualDiscount}% off)</span></p>
-                  </div>
+                  <p className="text-2xl font-bold text-slate-900">{annualPrice.toLocaleString()} RWF <span className="text-xs font-normal text-slate-500">/ year</span></p>
                 </div>
 
                 <ul className="space-y-2 mb-6">

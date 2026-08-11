@@ -136,22 +136,13 @@ export async function seed() {
   if (!existingPlans.length) {
     await query(
       `INSERT INTO subscription_plans (name, description, price_monthly, price_yearly, features, discount_quarterly, discount_annually, is_active, sort_order)
-       VALUES
-         ($1, $2, $3, $4, $5, $6, $7, $8, $9),
-         ($10, $11, $12, $13, $14, $15, $16, $17, $18),
-         ($19, $20, $21, $22, $23, $24, $25, $26, $27)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
       [
-        'Starter', 'Essential tools for small bars', 25000, 240000,
-        JSON.stringify(['Up to 2 branches', 'Up to 5 users', 'Basic inventory', 'Email support']),
-        8, 14, true, 1,
-        'Pro', 'Advanced features for growing businesses', 50000, 480000,
-        JSON.stringify(['Up to 10 branches', 'Up to 25 users', 'Advanced inventory', 'Priority support', 'Analytics dashboard']),
-        8, 14, true, 2,
-        'Enterprise', 'Full platform for large operations', 120000, 1152000,
-        JSON.stringify(['Unlimited branches', 'Unlimited users', 'Full inventory suite', '24/7 dedicated support', 'Custom integrations', 'SLA guarantee']),
-        8, 14, true, 3,
+        'Annually', 'Full platform access billed annually', 48000, 460800,
+        JSON.stringify(['Unlimited branches', 'Unlimited users', 'Full inventory suite', 'Priority support', 'Analytics dashboard', 'Custom integrations']),
+        0, 0, true, 1,
       ]
     )
-    console.log('Subscription plans seeded.')
+    console.log('Subscription plan seeded.')
   }
 }
