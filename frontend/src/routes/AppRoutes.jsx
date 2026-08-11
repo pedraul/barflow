@@ -113,23 +113,19 @@ export default function AppRoutes() {
 
       {/* Owner Routes */}
       <Route
-        path="/dashboard/owner"
+        path="/settings/*"
         element={
           <ProtectedRoute checkSubscription allow={['Owner']}>
-            <OwnerLayout>
-              <OwnerOverview />
-            </OwnerLayout>
+            <Settings />
           </ProtectedRoute>
         }
       />
 
       <Route
-        path="/owner/users"
+        path="/settings/*"
         element={
           <ProtectedRoute checkSubscription allow={['Owner']}>
-            <OwnerLayout>
-              <OwnerUserManagement />
-            </OwnerLayout>
+            <Settings />
           </ProtectedRoute>
         }
       />
@@ -138,9 +134,7 @@ export default function AppRoutes() {
         path="/owner/subscription"
         element={
           <ProtectedRoute allow={['Owner']}>
-            <OwnerLayout>
-              <OwnerSubscription />
-            </OwnerLayout>
+            <OwnerSubscription />
           </ProtectedRoute>
         }
       />
@@ -215,9 +209,7 @@ export default function AppRoutes() {
         path="/settings/*"
         element={
           <ProtectedRoute checkSubscription allow={['Owner']}>
-            <OwnerLayout>
-              <Settings />
-            </OwnerLayout>
+            <Settings />
           </ProtectedRoute>
         }
       />
@@ -869,9 +861,7 @@ export default function AppRoutes() {
         path="/settings/*"
         element={
           <ProtectedRoute checkSubscription allow={['Owner']}>
-            <OwnerLayout>
-              <Settings />
-            </OwnerLayout>
+            <Settings />
           </ProtectedRoute>
         }
       />

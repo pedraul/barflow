@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { fetchOperatorRoutedReport } from '../../api/endpoints'
 import { FileSpreadsheet, Printer, MessageSquare } from 'lucide-react'
@@ -14,6 +14,12 @@ export default function OperatorReports() {
   const [count, setCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { pathname } = useLocation()
+
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [pathname])
 
   useEffect(() => {
     const load = async () => {
@@ -34,7 +40,26 @@ export default function OperatorReports() {
 
   return (
     <div className="flex min-h-screen bg-slate-50 text-slate-800 font-sans antialiased">
-      <aside className="w-64 bg-[#0B132B] text-slate-400 flex flex-col justify-between shrink-0">
+      {/* Mobile overlay */}
+      {mobileMenuOpen && (
+        <div className="sidebar-overlay" onClick={() => setMobileMenuOpen(false)} />
+      )}
+
+      {/* Mobile topbar */}
+      <header className="mobile-topbar">
+        <button
+          type="button"
+          className="mobile-menu-button"
+          onClick={() => setMobileMenuOpen((prev) => !prev)}
+          aria-label="Toggle navigation"
+        >
+          {mobileMenuOpen ? '✕' : '☰'}
+        </button>
+        <div className="mobile-brand">BarFlow</div>
+      </header>
+
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex w-64 bg-[#0B132B] text-slate-400 flex flex-col justify-between shrink-0">
         <div>
           <div className="h-16 flex items-center gap-2 px-6 border-b border-slate-800 text-white font-bold text-xl">
             <div className="p-1.5 bg-blue-600 rounded-lg text-white">
@@ -64,6 +89,41 @@ export default function OperatorReports() {
         </div>
       </aside>
 
+      {/* Mobile sidebar drawer */}
+      <aside
+        className={`operator-sidebar-mobile ${mobileMenuOpen ? 'operator-sidebar-open' : ''}`}
+        onClick={() => setMobileMenuOpen(false)}
+      >
+        <div>
+          <div className="h-16 flex items-center gap-2 px-6 border-b border-slate-800 text-white font-bold text-xl">
+            <div className="p-1.5 bg-blue-600 rounded-lg text-white">
+              <FileSpreadsheet size={20} />
+            </div>
+            <span>BarFlow</span>
+          </div>
+          <nav className="p-4 space-y-6 text-sm">
+            <div>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Order Management</p>
+              <a href="#" onClick={(e) => { e.preventDefault(); navigate('/operator/orders') }} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-700 hover:text-white transition text-slate-300"><span className="text-slate-500">📋</span><span className="font-medium">All Orders</span></a>
+            </div>
+            <div>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Receipts</p>
+              <a href="#" onClick={(e) => { e.preventDefault(); navigate('/operator/receipts/printed') }} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-700 hover:text-white transition text-slate-300"><span className="text-slate-500">🖨</span><span className="font-medium">Printed Receipts</span></a>
+            </div>
+            <div>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Other</p>
+              <a href="#" onClick={(e) => { e.preventDefault(); }} className="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-300 transition"><span>📊</span><span className="font-medium">Reports</span></a>
+              <a href="#" onClick={(e) => { e.preventDefault(); navigate('/notifications') }} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-700 hover:text-white transition text-slate-300"><span className="text-slate-500">💬</span><span className="font-medium">Chats</span></a>
+              <a href="#" onClick={(e) => { e.preventDefault(); navigate('/account') }} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-700 hover:text-white transition text-slate-300"><span className="text-slate-500">👤</span><span className="font-medium">My Account</span></a>
+            </div>
+          </nav>
+        </div>
+        <div className="p-4 border-t border-slate-800">
+          <button onClick={() => { logout(); navigate('/login') }} className="flex items-center gap-3 px-3 py-2.5 text-red-400 hover:bg-red-950/30 rounded-lg font-medium transition w-full">⎋ Logout</button>
+        </div>
+      </aside>
+
+      {/* MAIN CONTENT */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
           <h1 className="text-lg font-semibold text-slate-900">Routed Orders Report</h1>

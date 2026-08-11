@@ -820,7 +820,7 @@ table tbody tr:hover {
 
 @media (max-width: 768px) {
   table {
-    min-width: 600px;
+    min-width: 640px !important;
   }
 }
 
@@ -5270,6 +5270,15 @@ label {
   left: 0;
 }
 
+/* Operator mobile sidebar */
+.operator-sidebar-mobile {
+  display: none;
+}
+
+.operator-sidebar-open {
+  left: 0;
+}
+
 
 /* ============================================================
    PHONE
@@ -5349,6 +5358,27 @@ label {
   }
 
   .owner-sidebar-mobile.owner-sidebar-open {
+    left: 0;
+  }
+
+  .operator-sidebar-mobile {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    width: 270px;
+    min-width: 270px;
+    height: 100vh;
+    z-index: 2000;
+    background: #0B132B;
+    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.12);
+    transition: left 0.25s ease;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .operator-sidebar-mobile.operator-sidebar-open {
     left: 0;
   }
 

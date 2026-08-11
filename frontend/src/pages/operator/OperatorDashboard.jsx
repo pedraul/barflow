@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { fetchOperatorDashboard, routeOrder, updateOperatorOrderStatus, fetchQRCodes, fetchKitchenOrders, fetchBarOrders } from '../../api/endpoints'
 import QRCode from '../../components/QRCode'
@@ -34,6 +34,12 @@ export default function OperatorDashboard() {
   const [kitchenOrders, setKitchenOrders] = useState([])
   const [barOrders, setBarOrders] = useState([])
   const [routingNotice, setRoutingNotice] = useState(null)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { pathname } = useLocation()
+
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [pathname])
 
   const loadStations = async () => {
     try {
@@ -209,8 +215,75 @@ export default function OperatorDashboard() {
 
   return (
     <div className="flex min-h-screen bg-slate-50 text-slate-800 font-sans antialiased">
-      {/* SIDEBAR */}
-      <aside className="w-64 bg-[#0B132B] text-slate-400 flex flex-col justify-between shrink-0">
+      {/* Mobile overlay */}
+      {mobileMenuOpen && (
+        <div className="sidebar-overlay" onClick={() => setMobileMenuOpen(false)} />
+      )}
+
+      {/* Mobile topbar */}
+      <header className="mobile-topbar">
+        <button
+          type="button"
+          className="mobile-menu-button"
+          onClick={() => setMobileMenuOpen((prev) => !prev)}
+          aria-label="Toggle navigation"
+        >
+          {mobileMenuOpen ? '✕' : '☰'}
+        </button>
+        <div className="mobile-brand">BarFlow</div>
+      </header>
+
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex w-64 bg-[#0B132B] text-slate-400 flex flex-col justify-between shrink-0">
+        <div>
+          <div className="h-16 flex items-center gap-2 px-6 border-b border-slate-800 text-white font-bold text-xl">
+            <div className="p-1.5 bg-blue-600 rounded-lg text-white">
+              <GlassWater size={20} className="transform rotate-180" />
+            </div>
+            <span>BarFlow</span>
+          </div>
+
+          <nav className="p-4 space-y-6 text-sm">
+            <div>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Order Management</p>
+              <div className="space-y-1">
+                <SidebarLink icon={<FileText size={18} />} label="New Orders" badge={currentStats.newOrders} badgeColor="bg-red-500 text-white" onClick={() => navigate('/operator/orders?tab=new')} />
+                <SidebarLink icon={<ChefHat size={18} />} label="Preparing" badge={currentStats.preparing} badgeColor="bg-amber-500 text-white" onClick={() => navigate('/operator/orders?tab=preparing')} />
+                <SidebarLink icon={<CheckCircle2 size={18} />} label="Ready" badge={currentStats.ready} badgeColor="bg-emerald-500 text-white" onClick={() => navigate('/operator/orders?tab=ready')} />
+                <SidebarLink icon={<FileText size={18} />} label="All Orders" onClick={() => navigate('/operator/orders')} />
+              </div>
+            </div>
+
+            <div>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Receipts</p>
+              <div className="space-y-1">
+                <SidebarLink icon={<Printer size={18} />} label="Printed Receipts" onClick={() => navigate('/operator/receipts/printed')} />
+              </div>
+            </div>
+
+            <div>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Other</p>
+              <div className="space-y-1">
+                <SidebarLink icon={<FileSpreadsheet size={18} />} label="Reports" onClick={() => navigate('/operator/reports')} />
+                <SidebarLink icon={<MessageSquare size={18} />} label="Chats" onClick={() => navigate('/notifications')} />
+                <SidebarLink icon={<User size={18} />} label="My Account" onClick={() => navigate('/account')} />
+              </div>
+            </div>
+          </nav>
+        </div>
+
+        <div className="p-4 border-t border-slate-800">
+          <button onClick={handleLogout} className="flex items-center gap-3 px-3 py-2.5 text-red-400 hover:bg-red-950/30 rounded-lg font-medium transition w-full">
+            <LogOut size={18} /> Logout
+          </button>
+        </div>
+      </aside>
+
+      {/* Mobile sidebar drawer */}
+      <aside
+        className={`operator-sidebar-mobile ${mobileMenuOpen ? 'operator-sidebar-open' : ''}`}
+        onClick={() => setMobileMenuOpen(false)}
+      >
         <div>
           <div className="h-16 flex items-center gap-2 px-6 border-b border-slate-800 text-white font-bold text-xl">
             <div className="p-1.5 bg-blue-600 rounded-lg text-white">
@@ -260,9 +333,6 @@ export default function OperatorDashboard() {
         {/* TOP NAVBAR */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
           <div className="flex items-center gap-4">
-            <button className="text-slate-500 hover:text-slate-700">
-              <Menu size={20} />
-            </button>
             <h1 className="text-lg font-semibold text-slate-900">Operator Dashboard</h1>
           </div>
 

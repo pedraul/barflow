@@ -80,7 +80,7 @@ export default function PayrollManagement() {
 
       {/* Payroll Table */}
       <div style={{ background: '#fff', borderRadius: 12, overflow: 'auto', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <table style={{ borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
               {['Employee', 'Email', 'Phone', 'Role', 'Branch', 'Gross', 'Tax', 'Insurance', 'Net Paid', 'Status', 'Payment Date'].map((h) => (
