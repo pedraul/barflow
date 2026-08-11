@@ -148,7 +148,7 @@ export async function ownerLogin(req, res) {
       } else {
         const { rows: subs } = await query(
           `SELECT is_active, current_period_end, status, payment_status
-           FROM subscriptions WHERE business_id = $1 AND is_active = TRUE ORDER BY created_at DESC LIMIT 1`,
+           FROM subscriptions WHERE business_id = $1 ORDER BY created_at DESC LIMIT 1`,
           [user.business_id]
         )
         if (subs.length) {
@@ -1247,7 +1247,8 @@ export async function getSubscription(req, res) {
        FROM subscriptions s
        LEFT JOIN businesses b ON b.id = s.business_id
        WHERE s.business_id = $1
-       ORDER BY s.created_at DESC LIMIT 1`,
+       ORDER BY (s.is_active = TRUE AND s.payment_status = 'verified') DESC, s.created_at DESC
+       LIMIT 1`,
       [businessId]
     )
 
@@ -1360,7 +1361,6 @@ export async function selectSubscriptionPlan(req, res) {
     const ussdCode = generateUssdCode()
 
     const now = new Date()
-    const periodEnd = new Date(now)
     periodEnd.setMonth(periodEnd.getMonth() + monthsToAdd)
     const nextRenewal = new Date(periodEnd)
 
@@ -1567,7 +1567,6 @@ export async function renewSubscription(req, res) {
     }
 
     const now = new Date()
-    const periodEnd = new Date(now)
 
     let selectedPlan = null
     if (planId) {
@@ -1601,8 +1600,6 @@ export async function renewSubscription(req, res) {
       cycle = 'monthly'
       discountPercent = 0
     }
-    periodEnd.setMonth(periodEnd.getMonth() + monthsToAdd)
-
     const planName = selectedPlan ? selectedPlan.name : plan
 
     const businessId = req.user?.businessId
@@ -1610,38 +1607,29 @@ export async function renewSubscription(req, res) {
       return res.status(400).json({ error: 'No business associated with this account.' })
     }
 
-    const { rows } = await query(
-      `UPDATE subscriptions
-         SET plan = $1, billing_cycle = $4, discount_percent = $5, amount_paid = $6, status = 'pending', is_active = FALSE, payment_status = 'pending',
-            start_date = COALESCE(start_date, NOW()),
-            current_period_end = $2,
-            expiration_date = $2,
-            next_renewal_date = $2,
-            remaining_days = $3,
-            cancelled_at = NULL
-         WHERE id = (SELECT id FROM subscriptions WHERE business_id = $7 ORDER BY created_at DESC LIMIT 1)
-         RETURNING id, plan, billing_cycle, discount_percent, amount_paid, status, current_period_end, next_renewal_date`,
-      [plan, periodEnd, monthsToAdd * 30, billingCycle, discountPercent, amount, businessId]
+    const { rows: activeRows } = await query(
+      `SELECT current_period_end
+       FROM subscriptions
+       WHERE business_id = $1 AND is_active = TRUE AND payment_status = 'verified'
+       ORDER BY current_period_end DESC NULLS LAST
+       LIMIT 1`,
+      [businessId]
     )
+    const renewalStart = activeRows[0]?.current_period_end && new Date(activeRows[0].current_period_end) > now
+      ? new Date(activeRows[0].current_period_end)
+      : now
+    const periodEnd = new Date(renewalStart)
+    periodEnd.setMonth(periodEnd.getMonth() + monthsToAdd)
 
-    if (!rows.length) {
-      const { rows: newSub } = await query(
-        `INSERT INTO subscriptions (business_id, plan, billing_cycle, discount_percent, amount_paid, status, is_active, payment_status, start_date, current_period_end, expiration_date, next_renewal_date, remaining_days)
-         VALUES ($1, $2, $4, $5, $6, 'pending', FALSE, 'pending', NOW(), $3, $3, $3, 30) RETURNING id, plan, billing_cycle, discount_percent, amount_paid, status, current_period_end, next_renewal_date`,
-        [businessId, plan, periodEnd, billingCycle, discountPercent, amount]
-      )
-
-      await logAudit({
-        userId: req.user.id,
-        actorName: req.user.full_name || req.user.email,
-        action: `Renewed subscription to ${plan} plan for ${amount} (${discountPercent}% off)`,
-        targetModule: 'Subscription',
-        ipAddress: getClientIp(req),
-        businessId: req.user?.businessId,
-      })
-
-      return res.status(201).json(newSub[0])
-    }
+    // Keep the verified subscription live until the pending renewal is approved.
+    const { rows } = await query(
+      `INSERT INTO subscriptions (business_id, plan_id, plan, billing_cycle, discount_percent, amount_paid,
+                                  status, is_active, payment_status, start_date, current_period_end,
+                                  expiration_date, next_renewal_date, remaining_days)
+       VALUES ($1, $2, $3, $4, $5, $6, 'pending', FALSE, 'pending', $7, $8, $8, $8, $9)
+       RETURNING id, plan, billing_cycle, discount_percent, amount_paid, status, current_period_end, next_renewal_date`,
+      [businessId, selectedPlan?.id || null, planName, cycle, discountPercent, amount, renewalStart, periodEnd, monthsToAdd * 30]
+    )
 
     await logAudit({
       userId: req.user.id,
@@ -1652,7 +1640,7 @@ export async function renewSubscription(req, res) {
       businessId: req.user?.businessId,
     })
 
-    res.json(rows[0])
+    res.status(201).json(rows[0])
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

@@ -68,37 +68,37 @@ export default function ManagerDashboard() {
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm">
-        <div className="p-5 border-b border-slate-200 flex justify-between items-center">
-          <h3 className="font-bold text-slate-900">Live Order Activity</h3>
-          <button className="text-slate-400 hover:text-slate-600"><MoreHorizontal size={18} /></button>
+        <div className="p-4 border-b border-slate-200 flex justify-between items-center">
+          <h3 className="font-bold text-slate-900 text-sm">Live Order Activity</h3>
+          <button className="text-slate-400 hover:text-slate-600"><MoreHorizontal size={16} /></button>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-slate-200">
-                <th className="text-left p-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">Order</th>
-                <th className="text-left p-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">Customer</th>
-                <th className="text-left p-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">Source</th>
-                <th className="text-left p-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">Total</th>
-                <th className="text-left p-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">Status</th>
+                <th className="text-left px-3 py-2 font-semibold text-slate-500 uppercase tracking-wider">Order</th>
+                <th className="text-left px-3 py-2 font-semibold text-slate-500 uppercase tracking-wider">Customer</th>
+                <th className="text-left px-3 py-2 font-semibold text-slate-500 uppercase tracking-wider">Source</th>
+                <th className="text-left px-3 py-2 font-semibold text-slate-500 uppercase tracking-wider">Total</th>
+                <th className="text-left px-3 py-2 font-semibold text-slate-500 uppercase tracking-wider">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {orders.slice(0, 8).map((o) => (
                 <tr key={o.id} className="hover:bg-slate-50 transition">
-                  <td className="p-4 font-medium text-slate-900">{o.orderNumber ?? o.id}</td>
-                  <td className="p-4 text-slate-600">{o.customer || '—'}</td>
-                  <td className="p-4 text-slate-600">{o.source || '—'}</td>
-                  <td className="p-4 font-medium text-slate-900">{money(o.total)}</td>
-                  <td className="p-4">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${o.status === 'Paid' || o.status === 'Served' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                  <td className="px-3 py-2 font-medium text-slate-900">{o.orderNumber ?? o.id}</td>
+                  <td className="px-3 py-2 text-slate-600">{o.customer || '—'}</td>
+                  <td className="px-3 py-2 text-slate-600 capitalize">{String(o.source || '—').toLowerCase()}</td>
+                  <td className="px-3 py-2 font-medium text-slate-900">{money(o.total)}</td>
+                  <td className="px-3 py-2">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${o.status === 'Paid' || o.status === 'Served' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
                       {o.status}
                     </span>
                   </td>
                 </tr>
               ))}
               {!orders.length && (
-                <tr><td colSpan="5" className="p-8 text-center text-slate-400">No orders yet.</td></tr>
+                <tr><td colSpan="5" className="px-3 py-6 text-center text-slate-400">No orders yet.</td></tr>
               )}
             </tbody>
           </table>

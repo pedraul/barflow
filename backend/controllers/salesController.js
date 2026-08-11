@@ -2,6 +2,7 @@ import { query } from '../config/database.js'
 
 const mapOrder = (o) => ({
   id: o.id,
+  orderNumber: o.order_number,
   customer: o.table_name || 'Walk-in',
   items: (o.items || []).map((item) => ({ name: item.name, quantity: Number(item.quantity), price: Number(item.price) })),
   total: Number(o.total_amount) || 0,

@@ -5158,7 +5158,6 @@ label {
   width: 250px;
   min-width: 250px;
   min-height: 100vh;
-  background: #ffffff;
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;

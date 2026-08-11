@@ -165,6 +165,8 @@ export default function SuperAdminDashboard() {
   const getStatus = (b) => {
     if (b.isSuspended) return 'Suspended'
     if (!b.isVerified) return 'Pending'
+    // Business was verified before but its renewed subscription is still pending admin verification
+    if (b.subPaymentStatus === 'pending') return 'Pending'
     return 'Active'
   }
   const getStatusColor = (status) =>

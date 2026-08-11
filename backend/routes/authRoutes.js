@@ -69,9 +69,13 @@ router.post('/login', async (req, res) => {
       if (biz.length && !biz[0].is_verified) {
         subscriptionExpired = true
       } else {
+        // A pending renewal must not block an already verified subscription.
         const { rows: subs } = await query(
           `SELECT is_active, current_period_end, status, payment_status
-           FROM subscriptions WHERE business_id = $1 AND is_active = TRUE ORDER BY created_at DESC LIMIT 1`,
+           FROM subscriptions
+           WHERE business_id = $1
+           ORDER BY (is_active = TRUE AND payment_status = 'verified') DESC, created_at DESC
+           LIMIT 1`,
           [u.business_id]
         )
         if (subs.length) {

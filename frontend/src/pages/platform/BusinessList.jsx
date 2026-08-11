@@ -82,7 +82,8 @@ export default function BusinessList() {
     }
   }
 
-  const getStatus = (b) => b.isSuspended ? 'Suspended' : (b.isVerified ? 'Active' : 'Pending')
+  const hasPendingRenewal = (b) => b.isVerified && b.subPaymentStatus === 'pending'
+  const getStatus = (b) => b.isSuspended ? 'Suspended' : (hasPendingRenewal(b) ? 'Renewal pending' : (b.isVerified ? 'Active' : 'Pending'))
 
   const filtered = useMemo(() => businesses.filter((b) => {
     const s = getStatus(b)
@@ -94,7 +95,7 @@ export default function BusinessList() {
 
   const badge = (b) => {
     const s = getStatus(b)
-    const map = { Active: 'bg-emerald-100 text-emerald-700', Pending: 'bg-amber-100 text-amber-700', Suspended: 'bg-red-100 text-red-700' }
+    const map = { Active: 'bg-emerald-100 text-emerald-700', Pending: 'bg-amber-100 text-amber-700', 'Renewal pending': 'bg-amber-100 text-amber-700', Suspended: 'bg-red-100 text-red-700' }
     return <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${map[s]}`}>{s}</span>
   }
 
@@ -172,8 +173,13 @@ export default function BusinessList() {
                     <div className="flex justify-end gap-1.5">
                       <IconBtn title="View" onClick={() => setViewing(b)} color="text-slate-600 hover:bg-slate-100"><Eye size={15} /></IconBtn>
                       <IconBtn title="Edit" onClick={() => openEdit(b)} color="text-blue-600 hover:bg-blue-50"><Pencil size={15} /></IconBtn>
+                      {hasPendingRenewal(b) && !b.isSuspended && (
+                        <button type="button" title="Verify renewal" onClick={() => handleAction(b.id, 'verify')} disabled={actionLoading === `${b.id}-verify`} className="px-2.5 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 rounded-lg hover:bg-emerald-100 disabled:opacity-40">
+                          {actionLoading === `${b.id}-verify` ? 'Verifying...' : 'Verify renewal'}
+                        </button>
+                      )}
                       {!b.isVerified && !b.isSuspended && (
-                        <IconBtn title="Verify" onClick={() => handleAction(b.id, 'verify')} disabled={actionLoading === `${b.id}-verify`} color="text-emerald-600 hover:bg-emerald-50"><ShieldCheck size={15} /></IconBtn>
+                        <IconBtn title="Verify business" onClick={() => handleAction(b.id, 'verify')} disabled={actionLoading === `${b.id}-verify`} color="text-emerald-600 hover:bg-emerald-50"><ShieldCheck size={15} /></IconBtn>
                       )}
                       {b.isSuspended ? (
                         <IconBtn title="Activate" onClick={() => handleAction(b.id, 'activate')} disabled={actionLoading === `${b.id}-activate`} color="text-emerald-600 hover:bg-emerald-50"><Play size={15} /></IconBtn>

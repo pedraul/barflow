@@ -191,11 +191,16 @@ export async function listBusinesses(req, res) {
   try {
     const { rows } = await query(
       `SELECT b.*, 
-        s.plan, s.status AS sub_status, s.current_period_end,
+        s.plan, s.status AS sub_status, s.current_period_end, s.payment_status AS sub_payment_status,
         sp.name AS plan_name,
         (SELECT COUNT(*) FROM users u WHERE u.business_id = b.id) AS user_count
        FROM businesses b
-       LEFT JOIN subscriptions s ON s.business_id = b.id AND s.is_active = TRUE
+       LEFT JOIN LATERAL (
+         SELECT * FROM subscriptions
+         WHERE business_id = b.id
+         ORDER BY created_at DESC
+         LIMIT 1
+       ) s ON TRUE
        LEFT JOIN subscription_plans sp ON sp.id = s.plan_id
        ORDER BY b.created_at DESC`
     )
@@ -214,6 +219,7 @@ export async function listBusinesses(req, res) {
     isSuspended: r.is_suspended,
     plan: r.plan_name || r.plan || 'N/A',
     subStatus: r.sub_status || 'inactive',
+    subPaymentStatus: r.sub_payment_status || 'pending',
     userCount: Number(r.user_count) || 0,
     createdAt: r.created_at,
   }))
@@ -296,10 +302,22 @@ export async function toggleBusinessStatus(req, res) {
 
       if (action === 'verify' && bizData.length) {
         const { rows: subRows } = await query(
-          `UPDATE subscriptions SET status = 'active', is_active = TRUE, payment_status = 'verified',
-           receipt_number = 'ADMIN-' || UPPER(SUBSTR(MD5(RANDOM()::text), 1, 8)),
-           receipt_generated = 1
-           WHERE business_id = $1 AND is_active = FALSE
+          `WITH pending_subscription AS (
+             SELECT id
+             FROM subscriptions
+             WHERE business_id = $1 AND is_active = FALSE AND payment_status = 'pending'
+             ORDER BY created_at DESC
+             LIMIT 1
+           ), deactivate_previous AS (
+             UPDATE subscriptions
+             SET is_active = FALSE
+             WHERE business_id = $1 AND is_active = TRUE
+               AND id <> (SELECT id FROM pending_subscription)
+           )
+           UPDATE subscriptions SET status = 'active', is_active = TRUE, payment_status = 'verified',
+             receipt_number = 'ADMIN-' || UPPER(SUBSTR(MD5(RANDOM()::text), 1, 8)),
+             receipt_generated = 1
+           WHERE id = (SELECT id FROM pending_subscription)
            RETURNING id, plan, billing_cycle, amount_paid, payment_method`,
           [id]
         )
