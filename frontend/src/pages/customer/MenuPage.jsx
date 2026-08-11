@@ -5,8 +5,12 @@ import { useCustomer } from '../../context/CustomerContext'
 
 const money = (value) => `${Number(value || 0).toLocaleString('en-RW')} RWF`
 
-const BAR_CATEGORIES = ['Beer', 'Wine', 'Spirits', 'Cocktails', 'Mocktails', 'Soft Drinks', 'Juices', 'Water', 'Energy Drinks', 'Hot Beverages (Coffee & Tea)']
-const FOOD_CATEGORIES = ['Appetizers', 'Snacks', 'BBQ & Grills', 'Chicken Dishes', 'Beef Dishes', 'Pork Dishes', 'Fish & Seafood', 'Burgers', 'Pizza', 'Sandwiches', 'Fries & Chips', 'Main Meals', 'Local Dishes', 'Salads', 'Desserts']
+const BAR_KEYWORDS = ['beer', 'wine', 'spirits', 'cocktails', 'mocktails', 'soft drinks', 'juices', 'water', 'energy drinks', 'hot beverages', 'coffee', 'tea']
+
+function isBarCategory(name) {
+  const lower = String(name || '').toLowerCase().trim()
+  return BAR_KEYWORDS.some((kw) => lower === kw || lower.startsWith(kw))
+}
 
 
 export default function MenuPage() {
@@ -50,14 +54,16 @@ export default function MenuPage() {
 
   const barCategories = useMemo(() => {
     if (!selectedSection || selectedSection !== 'bar') return []
-    const itemsByCat = new Map(categories.map((group) => [group.name.toLowerCase().trim(), group.items || []]))
-    return BAR_CATEGORIES.map((cat) => ({ name: cat, items: itemsByCat.get(cat.toLowerCase().trim()) || [] }))
+    return categories
+      .filter((group) => isBarCategory(group.name))
+      .sort((a, b) => a.name.localeCompare(b.name))
   }, [selectedSection, categories])
 
   const foodCategories = useMemo(() => {
     if (!selectedSection || selectedSection !== 'food') return []
-    const itemsByCat = new Map(categories.map((group) => [group.name.toLowerCase().trim(), group.items || []]))
-    return FOOD_CATEGORIES.map((cat) => ({ name: cat, items: itemsByCat.get(cat.toLowerCase().trim()) || [] }))
+    return categories
+      .filter((group) => !isBarCategory(group.name))
+      .sort((a, b) => a.name.localeCompare(b.name))
   }, [selectedSection, categories])
 
   const cartItem = (id) => cart.find((item) => item.productId === id)
