@@ -1,11 +1,11 @@
 import React, { useState } from 'react'
 import QRCode from '../../components/QRCode'
 import { useAuth } from '../../context/AuthContext'
+import { PUBLIC_APP_URL } from '../../config/publicAppUrl'
 
 export default function QRCodeManager() {
   const { user } = useAuth()
   const [tableCount, setTableCount] = useState(12)
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
 
   const tables = Array.from({ length: tableCount }, (_, i) => i + 1)
 
@@ -50,7 +50,7 @@ export default function QRCodeManager() {
       <div className="qr-grid">
         {tables.map((t) => {
           const bizParam = user?.businessId ? `&businessId=${user.businessId}` : ''
-          const url = `${baseUrl}/menu?table=${t}${bizParam}`
+          const url = `${PUBLIC_APP_URL}/menu?table=${t}${bizParam}`
           return (
             <div className="qr-card" key={t}>
               <QRCode value={url} size={190} level="M" />

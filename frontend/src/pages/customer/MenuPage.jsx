@@ -66,8 +66,8 @@ export default function MenuPage() {
   if (menuError) return <div className="min-h-screen grid place-items-center text-red-600">Unable to load the menu. <button className="underline" onClick={() => loadMenu()}>Try again</button></div>
 
   return <div className="min-h-screen bg-white text-slate-900">
-    <header className="h-[90px] px-6 md:px-10 border-b border-slate-200 flex items-center gap-6 sticky top-0 bg-white z-20">
-      <div className="flex items-center gap-3 min-w-max"><UtensilsCrossed className="text-amber-500" size={38} /><div><h1 className="font-extrabold tracking-wide text-xl">{menu?.businessName || 'BARFLOW'}</h1><p className="text-[10px] tracking-[.25em] text-slate-500">RESTAURANT & BAR</p></div></div>
+    <header className="customer-menu-header h-[90px] px-6 md:px-10 border-b border-slate-200 flex items-center gap-6 sticky top-0 bg-white z-20">
+      <div className="customer-menu-brand flex items-center gap-3 min-w-max"><UtensilsCrossed className="text-amber-500" size={38} /><div><h1 className="font-extrabold tracking-wide text-xl">{menu?.businessName || 'BARFLOW'}</h1><p className="text-[10px] tracking-[.25em] text-slate-500">RESTAURANT & BAR</p></div></div>
       <div className="hidden md:flex flex-1 max-w-md ml-auto relative"><Search className="absolute left-4 top-3 text-slate-400" size={20} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search for food or drinks..." className="w-full rounded-xl border border-slate-300 py-3 pl-11 pr-4 outline-none focus:border-amber-500" /></div>
       <button onClick={() => navigate('/cart')} className="ml-auto md:ml-0 relative rounded-xl bg-slate-950 text-white px-5 py-3 flex gap-2 items-center font-semibold"><ShoppingCart size={19} /> View cart {getCartCount() > 0 && <span className="rounded-full bg-emerald-500 w-5 h-5 grid place-items-center text-xs">{getCartCount()}</span>}</button>
     </header>

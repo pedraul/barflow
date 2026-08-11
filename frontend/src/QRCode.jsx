@@ -2,12 +2,13 @@ import React from "react";
 import QRCodeSVG from "react-qr-code";
 import { useNavigate } from "react-router-dom";
 import "./QRCode.css";
+import { PUBLIC_APP_URL } from './config/publicAppUrl';
 
 export default function QRCode({ value, size = 200, fg = '#000000', bg = '#ffffff', level = 'M' }) {
   const navigate = useNavigate();
 
-  const qrValue = value || `${window.location.origin}/menu`;
-  const relativePath = qrValue.replace(window.location.origin, '') || '/menu';
+  const qrValue = value || `${PUBLIC_APP_URL}/menu`;
+  const relativePath = qrValue.replace(PUBLIC_APP_URL, '') || '/menu';
 
   return (
     <div className="qr-widget">

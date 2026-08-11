@@ -177,7 +177,10 @@ export default function OwnerLayout({ children }) {
 
         {/* Mobile sidebar drawer */}
         {isOwnerPath && (
-          <aside className={`owner-sidebar-mobile ${mobileMenuOpen ? 'owner-sidebar-open' : ''}`}>
+          <aside
+            className={`owner-sidebar-mobile ${mobileMenuOpen ? 'owner-sidebar-open' : ''}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
             <div className="flex-1">
               <div className="p-4 flex items-center justify-between">
                 <span className="text-sm font-bold text-white">BarFlow</span>

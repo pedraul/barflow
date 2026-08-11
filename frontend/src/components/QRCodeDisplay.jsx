@@ -1,13 +1,14 @@
 import React from 'react'
 import { QrCode, Smartphone } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { PUBLIC_APP_URL } from '../config/publicAppUrl'
 
 /**
  * QR Code Display Component
  * Shows a QR code that customers can scan to access the menu and place orders.
  * Uses qrserver.com API (no external library needed).
  */
-const FRONTEND_URL = window.location.origin || 'http://localhost:5173'
+const FRONTEND_URL = PUBLIC_APP_URL
 const QR_SIZE = 132
 
 export default function QRCodeDisplay() {

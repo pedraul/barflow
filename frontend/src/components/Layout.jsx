@@ -55,7 +55,10 @@ export default function Layout({ children, navLinks, sidebar }) {
 
         {/* Mobile sidebar drawer: available on all role pages */}
         {sidebar && (
-          <aside className={`sidebar sidebar-mobile ${mobileMenuOpen ? 'sidebar-open' : ''}`}>
+          <aside
+            className={`sidebar sidebar-mobile ${mobileMenuOpen ? 'sidebar-open' : ''}`}
+            onClick={closeMobileMenu}
+          >
             {sidebar}
           </aside>
         )}

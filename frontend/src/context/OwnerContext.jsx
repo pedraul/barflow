@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react'
+import React, { createContext, useContext, useState, useCallback, useRef } from 'react'
 import { useAuth } from './AuthContext'
 import api from '../api/axios'
 
@@ -8,6 +8,8 @@ export function OwnerProvider({ children }) {
   const { token } = useAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const subscriptionCacheRef = useRef(null)
+  const subscriptionRequestRef = useRef(null)
 
   const handleError = useCallback((e) => {
     const msg = e.response?.data?.error || e.message || 'Request failed'
@@ -198,11 +200,32 @@ export function OwnerProvider({ children }) {
 
   // ── Subscription ──
   const fetchSubscription = useCallback(async () => {
-    return withLoading(async () => {
+    const cacheAge = Date.now() - (subscriptionCacheRef.current?.savedAt || 0)
+    if (subscriptionCacheRef.current?.token === token && cacheAge < 30_000) {
+      return subscriptionCacheRef.current.data
+    }
+
+    if (subscriptionRequestRef.current?.token === token) {
+      return subscriptionRequestRef.current.promise
+    }
+
+    const request = withLoading(async () => {
       const { data } = await api.get('/v1/owner/subscription')
       return data
     })
-  }, [withLoading])
+      .then((data) => {
+        subscriptionCacheRef.current = { token, data, savedAt: Date.now() }
+        return data
+      })
+      .finally(() => {
+        if (subscriptionRequestRef.current?.token === token) {
+          subscriptionRequestRef.current = null
+        }
+      })
+
+    subscriptionRequestRef.current = { token, promise: request }
+    return request
+  }, [token, withLoading])
 
   const fetchAvailableSubscriptionPlans = useCallback(async () => {
     return withLoading(async () => {

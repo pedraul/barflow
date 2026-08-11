@@ -39,6 +39,7 @@ export default function SuperAdminDashboard() {
   const [exporting, setExporting] = useState(false)
   const [noticeMsg, setNoticeMsg] = useState('')
   const [adminMsg, setAdminMsg] = useState('')
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     if (!user?.isPlatformAdmin) {
@@ -202,8 +203,15 @@ export default function SuperAdminDashboard() {
   return (
     <div className="flex min-h-screen bg-[#F8FAFC] text-[#0F172A] font-sans antialiased selection:bg-indigo-500 selection:text-white">
 
+      {mobileMenuOpen && (
+        <div className="admin-sidebar-overlay" onClick={() => setMobileMenuOpen(false)} />
+      )}
+
       {/* 1. LEFT FIXED MANAGEMENT SIDEBAR */}
-      <aside className="w-64 bg-[#0A1128] text-slate-400 flex flex-col justify-between shrink-0 border-r border-slate-900">
+      <aside
+        className={`admin-sidebar w-64 bg-[#0A1128] text-slate-400 flex flex-col justify-between shrink-0 border-r border-slate-900 ${mobileMenuOpen ? 'admin-sidebar-open' : ''}`}
+        onClick={() => setMobileMenuOpen(false)}
+      >
         <div>
           {/* Platform Branding Context */}
           <div className="h-20 flex flex-col justify-center px-6 border-b border-slate-900">
@@ -262,7 +270,12 @@ export default function SuperAdminDashboard() {
           {/* TOP SYSTEM HEAD NAVBAR */}
           <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0">
             <div className="flex items-center gap-4">
-              <button className="text-slate-500 hover:text-slate-800 transition"><Menu size={20} /></button>
+              <button
+                type="button"
+                className="text-slate-500 hover:text-slate-800 transition"
+                onClick={() => setMobileMenuOpen((open) => !open)}
+                aria-label="Toggle navigation"
+              ><Menu size={20} /></button>
               <div className="flex flex-col">
                 <h1 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
                   Welcome back, Super Admin

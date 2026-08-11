@@ -307,17 +307,17 @@ export default function SystemSettings() {
         </header>
 
         {/* 3. WORKING WORKSPACE SCROLL CONTENT */}
-        <main className="flex-1 overflow-y-auto p-8 flex gap-6 items-start">
+        <main className="owner-settings-workspace flex-1 overflow-y-auto p-8 flex gap-6 items-start">
 
           {/* LEFT COLUMN: Sub-Tab Controls */}
-            <div className="w-[240px] bg-white border border-slate-200 rounded-xl p-3 shadow-xs space-y-0.5 shrink-0">
+            <div className="owner-settings-tabs w-[240px] bg-white border border-slate-200 rounded-xl p-3 shadow-xs space-y-0.5 shrink-0">
             {TABS.map((t) => (
               <SubTabButton key={t.id} id={t.id} label={t.label} icon={t.icon} active={activeSubTab === t.id} onClick={(id) => { navigate(`/settings/${id}`); }} showBar={t.id === 'account'} />
             ))}
           </div>
 
           {/* RIGHT COLUMN: Settings Viewport Canvas */}
-          <div className="flex-1 bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
+          <div className="owner-settings-panel flex-1 bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
             {message && (
               <div className={`m-6 p-3 rounded-lg text-sm font-medium border ${message.startsWith('❌') ? 'bg-red-50 border-red-300 text-red-800' : 'bg-emerald-50 border-emerald-300 text-emerald-800'}`}>{message}</div>
             )}

@@ -7,7 +7,6 @@ import {
   RefreshCw, Bell
 } from 'lucide-react'
 import { StatCard } from '../../components/ui/SharedComponents'
-import MenuQRWidget from '../../components/MenuQRWidget'
 
 const money = (value) => `${Number(value || 0).toLocaleString()} RWF`
 
@@ -106,7 +105,6 @@ export default function ManagerDashboard() {
         </div>
       </div>
 
-      <MenuQRWidget />
     </div>
   )
 }

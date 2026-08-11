@@ -4,7 +4,6 @@ import { useAuth } from '../../context/AuthContext'
 import { useOrders } from '../../context/OrdersContext'
 import { ClipboardList, Clock, CheckCircle, DollarSign, MoreHorizontal } from 'lucide-react'
 import { StatCard } from '../../components/ui/SharedComponents'
-import MenuQRWidget from '../../components/MenuQRWidget'
 
 export default function WaiterDashboard() {
   const { user } = useAuth()
@@ -71,7 +70,6 @@ export default function WaiterDashboard() {
         )}
       </div>
 
-      <MenuQRWidget />
     </div>
   )
 }

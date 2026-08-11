@@ -5393,3 +5393,296 @@ label {
     width: 100%;
   }
 }
+
+/* ============================================================
+   PHONE COMPATIBILITY LAYER
+   Keeps every application view usable from 320px-wide phones upward.
+   Tables deliberately remain scrollable inside their own containers.
+   ============================================================ */
+@media (max-width: 768px) {
+  html,
+  body,
+  #root {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .layout-body,
+  .layout-body > *,
+  .app-content,
+  .app-content > *,
+  .owner-content,
+  .owner-content > *,
+  .page,
+  .card,
+  .section-card,
+  .dashboard-card,
+  .user-section,
+  .settings-section {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .app-content > .page,
+  .owner-content,
+  .qr-manager {
+    padding: 1rem;
+  }
+
+  .card,
+  .section-card,
+  .dashboard-card,
+  .user-section,
+  .settings-section,
+  .withdraw-form,
+  .transfer-form,
+  .user-form,
+  .settings-form {
+    padding: 1rem;
+  }
+
+  .dashboard-heading,
+  .user-page-heading,
+  .page-heading,
+  .section-title-row,
+  .subscription-heading,
+  .receipt-footer,
+  .backup-actions,
+  .alert-content,
+  .action-btns,
+  .receipt-actions {
+    flex-wrap: wrap;
+  }
+
+  .dashboard-heading > *,
+  .user-page-heading > *,
+  .page-heading > *,
+  .alert-content > * {
+    min-width: 0;
+  }
+
+  .metric-grid,
+  .user-info-grid,
+  .hero-points,
+  .stock-grid,
+  .branch-card,
+  .invoice-row,
+  .operator-summary,
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .qr-grid,
+  .stock-menu-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(10rem, 100%), 1fr));
+  }
+
+  .dropdown-menu {
+    position: fixed;
+    left: 0.75rem;
+    right: 0.75rem;
+    top: auto;
+    width: auto;
+    max-width: none;
+  }
+
+  .subscription-alert,
+  .alert-content {
+    align-items: flex-start;
+  }
+
+  .btn-renew {
+    margin-left: 0;
+  }
+
+  img,
+  svg,
+  canvas,
+  video {
+    max-width: 100%;
+  }
+
+  p,
+  td,
+  th,
+  .qr-url,
+  .receipt-item-name {
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 480px) {
+  :root { --page-pad: 0.75rem; }
+
+  .mobile-topbar {
+    padding: 0 0.75rem;
+  }
+
+  .mobile-brand {
+    font-size: 1.05rem;
+  }
+
+  .sidebar-mobile,
+  .owner-sidebar-mobile {
+    width: min(84vw, 270px);
+    min-width: min(84vw, 270px);
+    left: min(-84vw, -270px);
+  }
+
+  .stats-grid {
+    gap: 0.75rem;
+  }
+}
+
+/* Platform admin uses its own dashboard shell, so it has a matching phone drawer. */
+@media (max-width: 768px) {
+  .admin-sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1500;
+    background: rgba(0, 0, 0, 0.45);
+  }
+
+  .admin-sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: -270px;
+    z-index: 2000;
+    width: 270px !important;
+    min-width: 270px !important;
+    overflow-y: auto;
+    transition: left 0.25s ease;
+  }
+
+  .admin-sidebar.admin-sidebar-open {
+    left: 0;
+  }
+
+  .admin-sidebar + div {
+    height: auto !important;
+    min-height: 100vh;
+    overflow: visible !important;
+  }
+
+  .admin-sidebar + div > header {
+    height: auto !important;
+    min-height: 3.75rem;
+    padding: 0.75rem 1rem !important;
+  }
+
+  .admin-sidebar + div > header > div:last-child {
+    display: none;
+  }
+
+  .admin-sidebar + div > main {
+    overflow: visible !important;
+    padding: 1rem !important;
+  }
+}
+
+/* Page canvases: prevent fixed utility widths and flex children from widening a phone viewport. */
+@media (max-width: 768px) {
+  main,
+  main > *,
+  .app-content > *,
+  .owner-content > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  main [class~="min-w-[220px]"],
+  main [class~="min-w-[250px]"],
+  main [class~="min-w-[270px]"],
+  main [class~="min-w-[320px]"] {
+    width: 100%;
+    min-width: 0 !important;
+  }
+
+  main form > label,
+  main form > label > input,
+  main form > label > select,
+  main form > label > textarea {
+    max-width: 100%;
+    min-width: 0 !important;
+  }
+
+  .owner-settings-workspace {
+    flex-direction: column;
+    padding: 1rem !important;
+  }
+
+  .owner-settings-tabs,
+  .owner-settings-panel {
+    width: 100% !important;
+    max-width: 100%;
+  }
+
+  .customer-menu-header {
+    height: auto;
+    min-height: 4.5rem;
+    padding: 0.75rem 1rem;
+    gap: 0.75rem;
+  }
+
+  .customer-menu-brand {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .customer-menu-brand h1,
+  .customer-menu-brand p {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .customer-menu-header button {
+    flex-shrink: 0;
+    padding: 0.65rem 0.75rem;
+  }
+}
+
+/* Customer menu QR belongs in My Account instead of floating over dashboards. */
+.account-menu-qr {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.account-menu-qr h2 {
+  margin-bottom: 0.35rem;
+}
+
+.account-menu-qr p {
+  color: var(--text-3);
+}
+
+.menu-qr-widget--embedded {
+  position: static;
+  right: auto;
+  bottom: auto;
+  animation: none;
+}
+
+.menu-qr-widget--embedded .menu-qr-card {
+  width: min(15rem, 100%);
+}
+
+@media (max-width: 640px) {
+  .account-menu-qr {
+    grid-template-columns: 1fr;
+    padding: 1rem;
+  }
+
+  .menu-qr-widget--embedded .menu-qr-card {
+    width: 100%;
+  }
+}

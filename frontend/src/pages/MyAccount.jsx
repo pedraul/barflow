@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { updateAvatar, fetchMyAuditLogs } from '../api/endpoints'
 import { useNavigate, useLocation } from 'react-router-dom'
+import MenuQRWidget from '../components/MenuQRWidget'
 
 export default function MyAccount() {
   const { user, updateUser } = useAuth()
@@ -231,6 +232,14 @@ export default function MyAccount() {
               <button className="pay-action" onClick={() => setEditing(true)}>Edit profile</button>
             </div>
           )}
+
+          <div className="account-menu-qr">
+            <div>
+              <h2>Customer menu QR code</h2>
+              <p className="text-sm">Print this code or let customers scan it to open your menu and place an order.</p>
+            </div>
+            <MenuQRWidget embedded />
+          </div>
         </section>
       )}
 

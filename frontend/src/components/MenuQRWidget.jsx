@@ -1,10 +1,10 @@
 import React from 'react'
 import QRCode from '../QRCode'
 import { Printer } from 'lucide-react'
+import { PUBLIC_APP_URL } from '../config/publicAppUrl'
 
-export default function MenuQRWidget() {
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
-  const url = `${baseUrl}/menu`
+export default function MenuQRWidget({ embedded = false }) {
+  const url = `${PUBLIC_APP_URL}/menu`
 
   const printMenuQR = () => {
     const qrMarkup = document.getElementById('menu-qr-code-for-print')?.outerHTML
@@ -43,7 +43,7 @@ export default function MenuQRWidget() {
   }
 
   return (
-    <div className="menu-qr-widget">
+    <div className={`menu-qr-widget${embedded ? ' menu-qr-widget--embedded' : ''}`}>
       <div className="menu-qr-card no-print">
         <div className="menu-qr-head">
           <span className="menu-qr-title">Menu QR</span>

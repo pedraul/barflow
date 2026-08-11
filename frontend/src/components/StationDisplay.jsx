@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react'
 import * as api from '../api/endpoints'
-import MenuQRWidget from './MenuQRWidget'
 
 function formatCurrency(amount) {
   return 'RWF ' + Number(amount).toLocaleString('en-US', {
@@ -149,10 +148,6 @@ export default function StationDisplay({
           <span style={styles.stat}>Preparing: {preparingOrders.length}</span>
           <span style={styles.stat}>Ready: {readyOrders.length}</span>
         </div>
-      </div>
-
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
-        <MenuQRWidget />
       </div>
 
       {error && <div style={styles.errorBox}>Error: {error}</div>}

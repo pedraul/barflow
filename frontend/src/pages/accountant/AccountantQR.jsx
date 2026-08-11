@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import { fetchOrders } from '../../api/endpoints'
 import { QrCode, Eye } from 'lucide-react'
-import MenuQRWidget from '../../components/MenuQRWidget'
 
 const STATUS_OPTIONS = ['', 'Open', 'Preparing', 'Ready', 'Served', 'Paid', 'Cancelled']
 const money = (v) =>
@@ -132,7 +131,6 @@ export default function AccountantQR() {
         )}
       </section>
 
-      <MenuQRWidget />
     </div>
   )
 }
