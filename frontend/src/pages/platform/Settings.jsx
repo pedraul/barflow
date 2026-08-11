@@ -20,14 +20,26 @@ const TABS = [
   { id: 'qr', label: 'QR Code', icon: QrCode },
 ]
 
+function getTabFromHash() {
+  if (typeof window === 'undefined') return 'general'
+  const hash = window.location.hash.replace('#', '')
+  return TABS.some((t) => t.id === hash) ? hash : 'general'
+}
+
 export default function Settings() {
   const [settings, setSettings] = useState({})
-  const [activeTab, setActiveTab] = useState('general')
+  const [activeTab, setActiveTab] = useState(getTabFromHash)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
 
   useEffect(() => { load() }, [])
+
+  useEffect(() => {
+    const onHashChange = () => setActiveTab(getTabFromHash())
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, [])
 
   const load = async () => {
     setLoading(true)
@@ -39,6 +51,11 @@ export default function Settings() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const switchTab = (id) => {
+    setActiveTab(id)
+    window.location.hash = id
   }
 
   const set = (key, value) => setSettings((prev) => ({ ...prev, [key]: value }))
@@ -75,22 +92,24 @@ export default function Settings() {
 
       {message && <div className={`p-3 rounded-lg text-sm font-medium border ${message.startsWith('❌') ? 'bg-red-50 border-red-200 text-red-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>{message}</div>}
 
-      <div className="flex gap-6 items-start">
+      <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-start">
         {/* Tab nav */}
-        <div className="w-56 shrink-0 bg-white border border-slate-200 rounded-xl p-2 sticky top-4">
-          {TABS.map((t) => {
-            const Icon = t.icon
-            return (
-              <button key={t.id} onClick={() => setActiveTab(t.id)}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold transition mb-0.5 ${activeTab === t.id ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}>
-                <Icon size={16} /> {t.label}
-              </button>
-            )
-          })}
+        <div className="w-full md:w-56 shrink-0 bg-white border border-slate-200 rounded-xl p-2 md:sticky md:top-4">
+          <div className="flex md:flex-col gap-2 overflow-x-auto md:overflow-visible">
+            {TABS.map((t) => {
+              const Icon = t.icon
+              return (
+                <button key={t.id} onClick={() => switchTab(t.id)}
+                  className={`whitespace-nowrap flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold transition ${activeTab === t.id ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}>
+                  <Icon size={16} /> {t.label}
+                </button>
+              )
+            })}
+          </div>
         </div>
 
         {/* Tab content */}
-        <div className="flex-1 bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+        <div className="flex-1 bg-white border border-slate-200 rounded-xl p-4 md:p-6 shadow-sm min-w-0">
           {activeTab === 'general' && (
             <TabBody title="General Settings" desc="Platform name, language, timezone and currency.">
               <Field label="Platform Name" v="platform_name" settings={settings} set={set} />
@@ -109,7 +128,7 @@ export default function Settings() {
             </TabBody>
           )}
           {activeTab === 'subscription' && (
-            <TabBody title="Subscription Settings" desc="Plan prices, discounts and renewal reminders. Monthly has no discount.">
+            <TabBody title="Subscription Settings" desc="Plan prices, discounts and renewal reminders.">
               <Field label="Monthly Price (RWF)" v="subscription_monthly_price" settings={settings} set={set} type="number" />
               <Field label="Quarterly Price (RWF)" v="subscription_quarterly_price" settings={settings} set={set} type="number" />
               <Field label="Annually Price (RWF)" v="subscription_annually_price" settings={settings} set={set} type="number" />

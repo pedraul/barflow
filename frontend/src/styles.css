@@ -4096,6 +4096,35 @@ label {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+@media (max-width: 768px) {
+  .whatsapp-layout {
+    flex-direction: column;
+    height: calc(100vh - var(--header-h) - 20px);
+    margin: 10px auto;
+    border-radius: 12px;
+  }
+  .whatsapp-sidebar {
+    width: 100%;
+    flex: 1;
+  }
+  .whatsapp-chat {
+    width: 100%;
+    flex: 1;
+  }
+  .whatsapp-layout.mobile-show-chat .whatsapp-sidebar {
+    display: none;
+  }
+  .whatsapp-layout.mobile-show-sidebar .whatsapp-chat {
+    display: none;
+  }
+  .chat-mobile-back {
+    display: flex !important;
+  }
+}
+.chat-mobile-back {
+  display: none;
+}
 .broadcast-panel {
   display: none;
 }

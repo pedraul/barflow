@@ -34,6 +34,7 @@ export default function NotificationsPage() {
   const [menu, setMenu] = useState(null) // { msg, x, y }
   const [forwardTarget, setForwardTarget] = useState(null) // userId to forward to
   const [editing, setEditing] = useState(null) // msg being edited
+  const [mobileView, setMobileView] = useState('list') // 'list' | 'chat'
 
   useEffect(() => {
     api.fetchUsers().then((data) => {
@@ -100,6 +101,7 @@ export default function NotificationsPage() {
     setMenu(null)
     nearBottomRef.current = true
     loadConversationMessages(conv.userId)
+    setMobileView('chat')
   }
 
   const handleSelectGroup = () => {
@@ -108,6 +110,11 @@ export default function NotificationsPage() {
     nearBottomRef.current = true
     setActiveConversation('staff-group')
     loadGroupMessages()
+    setMobileView('chat')
+  }
+
+  const handleBackToList = () => {
+    setMobileView('list')
   }
 
   const handleSend = async (e) => {
@@ -448,7 +455,7 @@ export default function NotificationsPage() {
   return (
     <div className="page notifications-page">
 
-      <div className="whatsapp-layout" style={{ height: 'calc(100vh - var(--header-h) - 40px)', maxWidth: '1800px', margin: '20px auto', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.12)' }}>
+      <div className={`whatsapp-layout${mobileView === 'chat' ? ' mobile-show-chat' : ' mobile-show-sidebar'}`} style={{ height: 'calc(100vh - var(--header-h) - 40px)', maxWidth: '1800px', margin: '20px auto', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.12)' }}>
         {/* Left Sidebar */}
         <div className="whatsapp-sidebar" style={{ ...sidebarStyle, flex: '0 0 auto' }}>
           <div className="whatsapp-sidebar-header" style={{ padding: '24px', borderBottom: '1px solid var(--border)', background: '#fff' }}>
@@ -536,6 +543,9 @@ export default function NotificationsPage() {
               {/* Group Chat Header */}
               <div className="chat-header" style={chatHeaderStyle}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <button type="button" onClick={handleBackToList} className="chat-mobile-back" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', borderRadius: '50%', display: 'none', alignItems: 'center', justifyContent: 'center', color: 'var(--text)' }} title="Back">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+                  </button>
                   <div className="chat-header-avatar" style={{ width: '52px', height: '52px', borderRadius: '50%', background: '#e3f2fd', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: '18px' }}>
                     👥
                   </div>
@@ -619,6 +629,9 @@ export default function NotificationsPage() {
               {/* 1-on-1 Chat Header */}
               <div className="chat-header" style={chatHeaderStyle}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <button type="button" onClick={handleBackToList} className="chat-mobile-back" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', borderRadius: '50%', display: 'none', alignItems: 'center', justifyContent: 'center', color: 'var(--text)' }} title="Back">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+                  </button>
                   <div className="chat-header-avatar" style={{ width: '52px', height: '52px', borderRadius: '50%', background: '#dfe5e7', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: '18px' }}>
                     {getInitials(activeChat?.userName)}
                   </div>
