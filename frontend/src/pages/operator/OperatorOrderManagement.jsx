@@ -274,7 +274,7 @@ export default function OperatorOrderManagement() {
               <button onClick={() => setSelectedOrder(null)} className="text-slate-400 hover:text-slate-600 text-2xl">×</button>
             </div>
             <div className="p-6 space-y-5">
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 <div className="border border-slate-100 rounded-lg p-3">
                   <p className="text-xs text-slate-500 font-medium">Order Number</p>
                   <p className="font-bold text-slate-900 mt-0.5">{selectedOrder.orderNumber || '—'}</p>

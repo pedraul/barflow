@@ -411,7 +411,7 @@ export default function SuperAdminDashboard() {
               </h2>
               <button onClick={() => setViewing(null)} className="text-slate-400 hover:text-slate-700"><XCircle size={20} /></button>
             </div>
-            <div className="p-6 grid grid-cols-2 gap-4 text-sm">
+            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <BusinessDetail label="Name" value={viewing.name} />
               <BusinessDetail label="Registration Code" value={viewing.registrationCode || '—'} />
               <BusinessDetail label="Business Type" value={viewing.businessType || '—'} />

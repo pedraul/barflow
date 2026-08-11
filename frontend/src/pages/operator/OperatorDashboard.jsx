@@ -323,7 +323,7 @@ export default function OperatorDashboard() {
               <h3 className="font-bold text-slate-900 text-sm">Business Registration</h3>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Active</span>
             </div>
-            <div className="grid grid-cols-4 gap-3 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
               <div className="border border-slate-100 rounded-lg p-3">
                 <p className="text-slate-500 font-medium">Business Name</p>
                 <p className="font-bold text-slate-900 mt-1">{dashboard.businessName || '—'}</p>
@@ -361,7 +361,7 @@ export default function OperatorDashboard() {
           </section>
 
           {/* Order Tracking by Source & Status */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <section className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
               <h3 className="font-bold text-slate-900 text-sm mb-3">Orders by Source</h3>
               <div className="space-y-2">
@@ -418,7 +418,7 @@ export default function OperatorDashboard() {
           </div>
 
           {/* Live Kitchen & Bar integration panels */}
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <section className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-emerald-700 font-semibold">
@@ -464,9 +464,9 @@ export default function OperatorDashboard() {
             </section>
           </div>
 
-          <div className="grid grid-cols-12 gap-6 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* Column A: New Orders List */}
-            <section className="col-span-4 bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-4">
+            <section className="col-span-1 lg:col-span-4 bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-4">
               <div className="flex items-center gap-2">
                 <h2 className="font-bold text-slate-900">New Orders</h2>
                 <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{currentStats.newOrders}</span>
@@ -498,7 +498,7 @@ export default function OperatorDashboard() {
             </section>
 
             {/* Column B: Process Order Details */}
-            <section className="col-span-5 space-y-4">
+            <section className="col-span-1 lg:col-span-5 space-y-4">
               {selectedOrder ? (
                 <>
                   <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-5">
@@ -601,7 +601,7 @@ export default function OperatorDashboard() {
             </section>
 
             {/* Column C: Receipt & Utilities */}
-            <section className="col-span-3 space-y-4">
+            <section className="col-span-1 lg:col-span-3 space-y-4">
               {selectedOrder && (
                 <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4 relative overflow-hidden">
                   <div className="flex justify-between items-center text-xs font-semibold">
@@ -614,7 +614,7 @@ export default function OperatorDashboard() {
                     <p className="text-xs text-slate-500 font-medium">Kigali Bar & Lounge</p>
                   </div>
 
-                  <div className="border-t border-b border-dashed border-slate-300 py-2 grid grid-cols-2 gap-y-1 text-[11px] text-slate-600">
+                  <div className="border-t border-b border-dashed border-slate-300 py-2 grid grid-cols-1 sm:grid-cols-2 gap-y-1 text-[11px] text-slate-600">
                     <div>Order No : <span className="font-semibold text-slate-900">{selectedOrder.orderNumber}</span></div>
                     <div className="text-right">Date : <span className="font-semibold text-slate-900">{new Date().toLocaleDateString()}</span></div>
                     <div>Table : <span className="font-semibold text-slate-900">{selectedOrder.tableNumber}</span></div>
@@ -712,7 +712,7 @@ export default function OperatorDashboard() {
               <button onClick={() => setQrOpen(false)} className="text-slate-400 hover:text-slate-600 text-2xl">×</button>
             </div>
             <div className="p-6">
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {qrCodes.map((qr) => (
                   <div key={`${qr.branchName}-${qr.tableNumber}`} className="border border-slate-200 rounded-lg p-4 flex flex-col items-center gap-3">
                     <QRCode value={qr.url} size={160} level="M" />

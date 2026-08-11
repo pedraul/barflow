@@ -193,7 +193,7 @@ export default function BusinessList() {
       {/* View modal */}
       {viewing && (
         <Modal title="Business Details" onClose={() => setViewing(null)}>
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <Detail label="Name" value={viewing.name} />
             <Detail label="Registration Code" value={viewing.registrationCode || '—'} />
             <Detail label="Type" value={viewing.businessType} />
