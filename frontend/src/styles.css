@@ -818,6 +818,12 @@ table tbody tr:hover {
   background: var(--brand-subtle);
 }
 
+@media (max-width: 768px) {
+  table {
+    min-width: 600px;
+  }
+}
+
 .invoice-table {
   display: grid;
   gap: 0.4rem;

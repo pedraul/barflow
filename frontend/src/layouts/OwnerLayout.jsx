@@ -45,6 +45,10 @@ export default function OwnerLayout({ children }) {
   const navigate = useNavigate()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [pathname])
+
   const [hasActiveSubscription, setHasActiveSubscription] = useState(true)
   const [blocked, setBlocked] = useState(false)
   const [checking, setChecking] = useState(true)
@@ -112,8 +116,8 @@ export default function OwnerLayout({ children }) {
                         window.open(window.location.origin + item.path, '_blank', 'noopener,noreferrer')
                       } else {
                         navigate(item.path)
-                        setMobileMenuOpen(false)
                       }
+                      setMobileMenuOpen(false)
                     }}
                   />
                 )
@@ -134,10 +138,13 @@ export default function OwnerLayout({ children }) {
   }
 
   const isOwnerPath = pathname.startsWith('/owner') || pathname.startsWith('/dashboard/owner') || pathname.startsWith('/settings')
+  const standalonePaths = ['/settings', '/owner/subscription']
+  const isStandalone = standalonePaths.some((p) => pathname.startsWith(p))
+  const showSidebar = isOwnerPath && !isStandalone
 
   return (
     <div className="flex flex-col min-h-screen">
-      {isOwnerPath && (
+      {showSidebar && (
         <>
           {/* Mobile overlay */}
           {mobileMenuOpen && (
@@ -164,7 +171,7 @@ export default function OwnerLayout({ children }) {
 
       <div className="flex flex-1">
         {/* Desktop sidebar */}
-        {isOwnerPath && (
+        {showSidebar && (
           <aside className="w-64 bg-[#0B132B] text-slate-400 flex flex-col shrink-0 sticky top-0 h-screen sidebar-desktop">
             <div className="flex-1">
               <div className="p-4 flex items-center justify-between">
@@ -176,7 +183,7 @@ export default function OwnerLayout({ children }) {
         )}
 
         {/* Mobile sidebar drawer */}
-        {isOwnerPath && (
+        {showSidebar && (
           <aside
             className={`owner-sidebar-mobile ${mobileMenuOpen ? 'owner-sidebar-open' : ''}`}
             onClick={() => setMobileMenuOpen(false)}
