@@ -3884,13 +3884,14 @@ label {
 .whatsapp-layout {
   display: flex;
   height: 100vh;
-  max-width: var(--max-w);
-  margin: 0 auto;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
   background: #fff;
-  box-shadow: var(--shadow-lg);
+  box-shadow: none;
 }
 .whatsapp-sidebar {
-  width: 380px;
+  width: 100%;
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -3921,8 +3922,8 @@ label {
 .conversation-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
+  gap: 10px;
+  padding: 10px 12px;
   cursor: pointer;
   border-bottom: 1px solid var(--border);
   transition: background var(--dur) var(--ease);
@@ -3934,8 +3935,8 @@ label {
   background: #f0f2f5;
 }
 .conversation-avatar {
-  width: 48px;
-  height: 48px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: #dfe5e7;
   color: var(--text);
@@ -3943,7 +3944,7 @@ label {
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  font-size: 16px;
+  font-size: 12px;
   flex-shrink: 0;
 }
 .conversation-meta {
@@ -3953,10 +3954,10 @@ label {
 .conversation-name {
   font-weight: 500;
   color: var(--text);
-  font-size: 16px;
+  font-size: 13px;
 }
 .conversation-time {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-4);
 }
 .conversation-unread-badge {
@@ -3983,21 +3984,21 @@ label {
   justify-content: center;
   color: var(--text-4);
   text-align: center;
-  padding: 40px;
+  padding: 24px;
   background: #f0f2f5;
 }
 .chat-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 20px;
+  padding: 10px 16px;
   background: #f0f2f5;
   border-bottom: 1px solid var(--border);
   z-index: 10;
 }
 .chat-header-avatar {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: #dfe5e7;
   color: var(--text);
