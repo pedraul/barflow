@@ -151,10 +151,10 @@ export default function RegisterBusiness() {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#F8FAFC] text-[#0F172A] font-sans antialiased">
+    <div className="flex flex-col md:flex-row min-h-screen bg-[#F8FAFC] text-[#0F172A] font-sans antialiased">
 
       {/* 1. LEFT NAVIGATION BRAND SIDEBAR */}
-      <aside className="w-64 bg-[#0A1128] text-slate-400 flex flex-col justify-between shrink-0 border-r border-slate-900">
+      <aside className="hidden md:flex w-64 bg-[#0A1128] text-slate-400 flex-col justify-between shrink-0 border-r border-slate-900">
         <div>
           {/* Platform Header Context Branding */}
           <div className="h-20 flex flex-col justify-center px-6 border-b border-slate-900">
@@ -210,7 +210,7 @@ export default function RegisterBusiness() {
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
 
         {/* TOP INTERFACE NAVBAR */}
-        <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0">
+        <header className="hidden md:flex h-20 bg-white border-b border-slate-200 items-center justify-between px-8 shrink-0">
           <div className="flex items-center gap-4">
             <button className="text-slate-500 hover:text-slate-800"><Menu size={20} /></button>
             <div className="flex flex-col">
@@ -235,7 +235,7 @@ export default function RegisterBusiness() {
         </header>
 
         {/* FORM MAIN SCROLL CONTAINER */}
-        <main className="flex-1 overflow-y-auto p-8 space-y-6">
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6">
           <form onSubmit={handleSubmit} className="max-w-7xl mx-auto space-y-6 pb-12">
 
             {error && (
@@ -338,7 +338,7 @@ export default function RegisterBusiness() {
               <div className="grid grid-cols-12 gap-5 items-start">
 
                 {/* Entry fields row */}
-                <div className="col-span-12 md:col-span-8 grid grid-cols-2 gap-5">
+                <div className="col-span-12 md:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-700">Subscription Plan <span className="text-red-500">*</span></label>
                     <select name="subscriptionPlanId" value={form.subscriptionPlanId} onChange={handleInputChange} className="w-full bg-white border border-slate-200 rounded-lg px-3.5 py-2 text-sm focus:outline-hidden focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] font-medium text-slate-700" disabled={loadingPlans}>
@@ -386,7 +386,7 @@ export default function RegisterBusiness() {
               <div className="grid grid-cols-12 gap-5 items-center">
 
                 {/* Passwords grid left block */}
-                <div className="col-span-12 md:col-span-8 grid grid-cols-2 gap-5">
+                <div className="col-span-12 md:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-5">
 
                   {/* Password Entry field */}
                   <div className="space-y-1.5 relative">

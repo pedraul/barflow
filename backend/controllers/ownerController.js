@@ -1268,7 +1268,7 @@ export async function getSubscription(req, res) {
 
     const sub = rows[0]
     const now = new Date()
-    const expiry = new Date(sub.period_end || sub.expiration_date || sub.next_renewal_date || now)
+    const expiry = new Date(sub.current_period_end || sub.expiration_date || sub.next_renewal_date || now)
     const daysRemaining = Math.max(0, Math.floor((expiry - now) / (1000 * 60 * 60 * 24)))
 
     const { rows: settings } = await query(
@@ -1285,7 +1285,7 @@ export async function getSubscription(req, res) {
       status: sub.payment_status === 'verified' ? 'active' : sub.status,
       isActive: sub.is_active && sub.payment_status === 'verified' && daysRemaining > 0,
       startDate: sub.start_date ? new Date(sub.start_date).toISOString() : null,
-      periodEnd: sub.period_end ? new Date(sub.period_end).toISOString() : null,
+      periodEnd: sub.current_period_end ? new Date(sub.current_period_end).toISOString() : null,
       expirationDate: sub.expiration_date ? new Date(sub.expiration_date).toISOString() : null,
       daysRemaining,
       remainingDays: daysRemaining,

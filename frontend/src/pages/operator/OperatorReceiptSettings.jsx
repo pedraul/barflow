@@ -129,7 +129,7 @@ export default function OperatorReceiptSettings() {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50 text-slate-800 font-sans antialiased">
+    <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 text-slate-800 font-sans antialiased">
       {/* Mobile overlay */}
       {mobileMenuOpen && (
         <div className="sidebar-overlay" onClick={() => setMobileMenuOpen(false)} />
