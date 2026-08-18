@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Search, Eye, Pencil, Trash2, ShieldCheck, Ban, Play, X, RefreshCw, Building2 } from 'lucide-react'
 import { fetchBusinesses, toggleBusinessStatus, updateBusiness, deleteBusiness } from '../../api/endpoints'
+import { PROVINCES, DISTRICTS_BY_PROVINCE } from '../../constants/locationOptions'
 
 const BUSINESS_TYPES = ['bar', 'restaurant', 'hotel', 'lounge', 'other']
 
@@ -11,6 +12,8 @@ export default function BusinessList() {
   const [q, setQ] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
+  const [provinceFilter, setProvinceFilter] = useState('all')
+  const [districtFilter, setDistrictFilter] = useState('all')
   const [viewing, setViewing] = useState(null)
   const [editing, setEditing] = useState(null)
   const [editForm, setEditForm] = useState({})
@@ -18,10 +21,20 @@ export default function BusinessList() {
 
   useEffect(() => { load() }, [])
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      load()
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [provinceFilter, districtFilter])
+
   const load = async () => {
     setLoading(true)
     try {
-      setBusinesses(await fetchBusinesses())
+      setBusinesses(await fetchBusinesses({
+        province: provinceFilter === 'all' ? null : provinceFilter,
+        district: districtFilter === 'all' ? null : districtFilter,
+      }))
     } catch (e) {
       console.error('Failed to load businesses:', e)
     } finally {
@@ -62,6 +75,9 @@ export default function BusinessList() {
       contactEmail: b.contactEmail || '',
       contactPhone: b.contactPhone || '',
       address: b.address || '',
+      province: b.province || '',
+      district: b.district || '',
+      sector: b.sector || '',
       city: b.city || '',
       country: b.country || 'Rwanda',
       businessType: b.businessType || 'bar',
@@ -90,8 +106,10 @@ export default function BusinessList() {
     const matchesQ = !q || [b.name, b.contactEmail, b.registrationCode, b.contactPhone].some((v) => (v || '').toLowerCase().includes(q.toLowerCase()))
     const matchesStatus = statusFilter === 'all' || s.toLowerCase() === statusFilter
     const matchesType = typeFilter === 'all' || b.businessType === typeFilter
-    return matchesQ && matchesStatus && matchesType
-  }), [businesses, q, statusFilter, typeFilter])
+    const matchesProvince = provinceFilter === 'all' || (b.province || '').toLowerCase() === provinceFilter.toLowerCase()
+    const matchesDistrict = districtFilter === 'all' || (b.district || '').toLowerCase() === districtFilter.toLowerCase()
+    return matchesQ && matchesStatus && matchesType && matchesProvince && matchesDistrict
+  }), [businesses, q, statusFilter, typeFilter, provinceFilter, districtFilter])
 
   const badge = (b) => {
     const s = getStatus(b)
@@ -132,25 +150,34 @@ export default function BusinessList() {
           <option value="all">All types</option>
           {BUSINESS_TYPES.map((t) => <option key={t} value={t} className="capitalize">{t}</option>)}
         </select>
+        <select value={provinceFilter} onChange={(e) => { setProvinceFilter(e.target.value); setDistrictFilter('all') }} className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
+          <option value="all">All provinces</option>
+          {PROVINCES.map((p) => <option key={p} value={p}>{p}</option>)}
+        </select>
+        <select value={districtFilter} onChange={(e) => setDistrictFilter(e.target.value)} className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
+          <option value="all">All districts</option>
+          {(DISTRICTS_BY_PROVINCE[provinceFilter] || Object.values(DISTRICTS_BY_PROVINCE).flat()).sort().map((d) => <option key={d} value={d}>{d}</option>)}
+        </select>
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-xs min-w-[640px]">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-slate-600">
-                <th className="text-left px-3 py-2 font-semibold">Business</th>
-                <th className="text-left px-3 py-2 font-semibold">Code</th>
-                <th className="text-left px-3 py-2 font-semibold">Contact</th>
-                <th className="text-left px-3 py-2 font-semibold">Type</th>
-                <th className="text-left px-3 py-2 font-semibold">Plan</th>
-                <th className="text-left px-3 py-2 font-semibold">Registered</th>
-                <th className="text-left px-3 py-2 font-semibold">Status</th>
-                <th className="text-right px-3 py-2 font-semibold">Actions</th>
-              </tr>
-            </thead>
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200 text-slate-600">
+                  <th className="text-left px-3 py-2 font-semibold">Business</th>
+                  <th className="text-left px-3 py-2 font-semibold">Code</th>
+                  <th className="text-left px-3 py-2 font-semibold">Contact</th>
+                  <th className="text-left px-3 py-2 font-semibold">Type</th>
+                  <th className="text-left px-3 py-2 font-semibold">Location</th>
+                  <th className="text-left px-3 py-2 font-semibold">Plan</th>
+                  <th className="text-left px-3 py-2 font-semibold">Registered</th>
+                  <th className="text-left px-3 py-2 font-semibold">Status</th>
+                  <th className="text-right px-3 py-2 font-semibold">Actions</th>
+                </tr>
+              </thead>
             <tbody>
-              {filtered.length === 0 && <tr><td colSpan={8} className="px-3 py-3 text-center text-slate-400">No businesses found.</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={9} className="px-3 py-3 text-center text-slate-400">No businesses found.</td></tr>}
               {filtered.map((b) => (
                 <tr key={b.id} className="border-b border-slate-100 hover:bg-slate-50">
                   <td className="px-3 py-2">
@@ -163,6 +190,10 @@ export default function BusinessList() {
                     <div className="text-xs text-slate-400">{b.contactPhone || ''}</div>
                   </td>
                   <td className="px-3 py-2 text-slate-700 capitalize">{b.businessType || 'N/A'}</td>
+                  <td className="px-3 py-2 text-slate-700">
+                    <div className="font-medium">{b.province || '—'}</div>
+                    <div className="text-xs text-slate-400">{b.district || ''} {b.sector ? `· ${b.sector}` : ''}</div>
+                  </td>
                   <td className="px-3 py-2">
                     <span className="font-medium text-slate-700">{b.plan}</span>
                     <div className="text-xs text-slate-400 capitalize">{b.subStatus}</div>
@@ -206,6 +237,9 @@ export default function BusinessList() {
             <Detail label="Status" value={getStatus(viewing)} />
             <Detail label="Email" value={viewing.contactEmail || '—'} />
             <Detail label="Phone" value={viewing.contactPhone || '—'} />
+            <Detail label="Province" value={viewing.province || '—'} />
+            <Detail label="District" value={viewing.district || '—'} />
+            <Detail label="Sector" value={viewing.sector || '—'} />
             <Detail label="City" value={viewing.city || '—'} />
             <Detail label="Country" value={viewing.country || '—'} />
             <Detail label="Address" value={viewing.address || '—'} />
@@ -224,6 +258,21 @@ export default function BusinessList() {
             <FormField label="Registration Code" value={editForm.registrationCode} onChange={(v) => setEditForm({ ...editForm, registrationCode: v })} />
             <FormField label="Email" value={editForm.contactEmail} onChange={(v) => setEditForm({ ...editForm, contactEmail: v })} />
             <FormField label="Phone" value={editForm.contactPhone} onChange={(v) => setEditForm({ ...editForm, contactPhone: v })} />
+            <div className="space-y-1.5">
+              <label className="block text-sm font-semibold text-slate-700">Province</label>
+              <select value={editForm.province} onChange={(e) => setEditForm({ ...editForm, province: e.target.value, district: '', sector: '' })} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                <option value="">Select province</option>
+                {PROVINCES.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-semibold text-slate-700">District</label>
+              <select value={editForm.district} onChange={(e) => setEditForm({ ...editForm, district: e.target.value, sector: '' })} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none" disabled={!editForm.province}>
+                <option value="">Select district</option>
+                {(DISTRICTS_BY_PROVINCE[editForm.province] || []).map((d) => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+            <FormField label="Sector" value={editForm.sector} onChange={(v) => setEditForm({ ...editForm, sector: v })} />
             <FormField label="City" value={editForm.city} onChange={(v) => setEditForm({ ...editForm, city: v })} />
             <FormField label="Country" value={editForm.country} onChange={(v) => setEditForm({ ...editForm, country: v })} />
             <div className="space-y-1.5">

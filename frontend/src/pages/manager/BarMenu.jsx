@@ -9,7 +9,7 @@ import {
 
 const BAR_CATEGORIES = [
   'Beer', 'Wine', 'Spirits', 'Cocktails', 'Mocktails',
-  'Soft Drinks', 'Juices', 'Water', 'Energy Drinks', 'Hot Beverages (Coffee & Tea)',
+  'Soft Drinks', 'Juices', 'Water', 'Energy Drinks', 'Tea and Coffee',
 ]
 
 const emptyForm = {

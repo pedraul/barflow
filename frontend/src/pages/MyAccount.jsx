@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { updateAvatar, fetchMyAuditLogs } from '../api/endpoints'
+import { updateAvatar, fetchMySalaryStatus } from '../api/endpoints'
 import { useNavigate, useLocation } from 'react-router-dom'
 import MenuQRWidget from '../components/MenuQRWidget'
 
@@ -44,16 +44,16 @@ export default function MyAccount() {
     dailySales: false
   })
   const [twoFactor, setTwoFactor] = useState(false)
-  const [activityLog, setActivityLog] = useState([])
-  const [activityLoading, setActivityLoading] = useState(false)
+  const [salaryStatus, setSalaryStatus] = useState(null)
+  const [salaryLoading, setSalaryLoading] = useState(false)
 
   useEffect(() => {
     let active = true
-    setActivityLoading(true)
-    fetchMyAuditLogs()
-      .then((data) => { if (active) setActivityLog(Array.isArray(data) ? data.slice(0, 50) : []) })
-      .catch(() => { if (active) setActivityLog([]) })
-      .finally(() => { if (active) setActivityLoading(false) })
+    setSalaryLoading(true)
+    fetchMySalaryStatus()
+      .then((data) => { if (active) setSalaryStatus(data) })
+      .catch(() => { if (active) setSalaryStatus(null) })
+      .finally(() => { if (active) setSalaryLoading(false) })
     return () => { active = false }
   }, [])
 
@@ -115,11 +115,18 @@ export default function MyAccount() {
     fileInputRef.current?.click()
   }
 
+  const formatMonthLabel = (m) => {
+    if (!m || !/^\d{4}-\d{2}$/.test(m)) return m || '—'
+    const [y, mo] = m.split('-')
+    const names = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+    return `${names[Number(mo) - 1] || mo} ${y}`
+  }
+
   const tabs = [
     { id: 'profile', label: 'Profile' },
     { id: 'security', label: 'Security' },
     { id: 'notifications', label: 'Notifications' },
-    { id: 'activity', label: 'Activity Log' },
+    { id: 'activity', label: 'Salary Status' },
   ]
 
   return (
@@ -359,27 +366,49 @@ export default function MyAccount() {
         </section>
       )}
 
-      {/* Activity Log Tab */}
+      {/* Salary Status Tab (all users) */}
       {activeTab === 'activity' && (
         <section className="account-section">
-          <h2>Recent activity</h2>
-          {activityLoading ? (
-            <p className="text-sm text-slate-500">Loading activity log…</p>
-          ) : activityLog.length === 0 ? (
-            <p className="text-sm text-slate-500">No activity recorded yet.</p>
+          <h2>Salary Status</h2>
+          <p className="text-sm text-slate-500">Your salary payment status for the last 12 months.</p>
+
+          {salaryLoading ? (
+            <p className="text-sm text-slate-500">Loading salary status…</p>
+          ) : !salaryStatus ? (
+            <p className="text-sm text-slate-500">Unable to load salary status.</p>
           ) : (
-            <div className="activity-timeline">
-              {activityLog.map((entry, index) => (
-                <div key={entry.id || index} className="activity-item">
-                  <div className="activity-dot"></div>
-                  <div className="activity-content">
-                    <p>{entry.action}</p>
-                    <p className="text-sm">{entry.targetModule ? `Module: ${entry.targetModule}` : ''}</p>
-                    <p className="text-sm text-slate-500">{entry.time}</p>
-                  </div>
+            <>
+              <div className="salary-summary-grid">
+                <div className="salary-summary-card">
+                  <span className="salary-summary-label">Monthly Salary</span>
+                  <strong>{Number(salaryStatus.salary || 0).toLocaleString()} RWF</strong>
                 </div>
-              ))}
-            </div>
+                <div className="salary-summary-card">
+                  <span className="salary-summary-label">Paid</span>
+                  <strong className="salary-count-paid">{(salaryStatus.paidMonths || []).length} months</strong>
+                </div>
+                <div className="salary-summary-card">
+                  <span className="salary-summary-label">Not Paid</span>
+                  <strong className="salary-count-unpaid">{(salaryStatus.notPaidMonths || []).length} months</strong>
+                </div>
+                <div className="salary-summary-card">
+                  <span className="salary-summary-label">Pending</span>
+                  <strong className="salary-count-pending">{(salaryStatus.pendingMonths || []).length} months</strong>
+                </div>
+              </div>
+
+              <div className="salary-status-list">
+                {(salaryStatus.months || []).map((m) => (
+                  <div key={m.month} className={`salary-status-row status-${m.status.toLowerCase().replace(/\s+/g, '-')}`}>
+                    <div className="salary-status-month">
+                      <strong>{formatMonthLabel(m.month)}</strong>
+                      {m.amount > 0 && <span className="salary-status-amount">{Number(m.amount).toLocaleString()} RWF</span>}
+                    </div>
+                    <span className={`salary-status-pill ${m.status.toLowerCase().replace(/\s+/g, '-')}`}>{m.status}</span>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </section>
       )}

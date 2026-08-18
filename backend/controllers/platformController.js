@@ -189,6 +189,13 @@ export async function verifyPlatform2FA(req, res) {
 
 export async function listBusinesses(req, res) {
   try {
+    const { province, district } = req.query
+    const where = []
+    const params = []
+    let idx = 1
+    if (province) { where.push(`province = $${idx++}`); params.push(province) }
+    if (district) { where.push(`district = $${idx++}`); params.push(district) }
+    const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : ''
     const { rows } = await query(
       `SELECT b.*, 
         s.plan, s.status AS sub_status, s.current_period_end, s.payment_status AS sub_payment_status,
@@ -202,7 +209,9 @@ export async function listBusinesses(req, res) {
          LIMIT 1
        ) s ON TRUE
        LEFT JOIN subscription_plans sp ON sp.id = s.plan_id
-       ORDER BY b.created_at DESC`
+       ${whereSql}
+       ORDER BY b.created_at DESC`,
+      params
     )
     res.json(
   rows.map((r) => ({
@@ -212,6 +221,9 @@ export async function listBusinesses(req, res) {
     contactEmail: r.contact_email,
     contactPhone: r.contact_phone,
     address: r.address,
+    province: r.province,
+    district: r.district,
+    sector: r.sector,
     city: r.city,
     country: r.country,
     businessType: r.business_type,
@@ -550,7 +562,7 @@ export async function platformStats(req, res) {
 
 export async function updateBusiness(req, res) {
   const { id } = req.params
-  const { name, contactEmail, contactPhone, address, city, country, businessType, registrationCode } = req.body
+  const { name, contactEmail, contactPhone, address, city, country, businessType, registrationCode, province, district, sector } = req.body
   try {
     const fields = []
     const params = []
@@ -564,6 +576,9 @@ export async function updateBusiness(req, res) {
     add('country', country)
     add('business_type', businessType)
     add('registration_code', registrationCode)
+    add('province', province)
+    add('district', district)
+    add('sector', sector)
     if (!fields.length) return res.status(400).json({ error: 'No fields to update.' })
     params.push(id)
     const { rows } = await query(`UPDATE businesses SET ${fields.join(', ')} WHERE id = $${i} RETURNING id, name`, params)

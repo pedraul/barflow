@@ -488,27 +488,126 @@ router.get('/reports/transfers', ...managerOnly, async (req, res) => {
   }
 })
 
-// Payrolls approved report
-router.get('/reports/payrolls', ...managerOrOwner, async (req, res) => {
+        router.get('/reports/payrolls', ...managerOrOwner, async (req, res) => {
   try {
-    const { rows } = await query(
-      `SELECT s.id, s.amount, s.pay_period, s.status, s.approved_at, s.created_at,
-              u.full_name AS user_name
+    const businessId = req.user.businessId
+    const { month } = req.query
+
+    if (month && !/^\d{4}-\d{2}$/.test(month)) {
+      return res.status(400).json({ error: 'Month must be in YYYY-MM format (e.g. 2026-08).' })
+    }
+    const selectedMonth = month || new Date().toISOString().slice(0, 7)
+
+    // All employees (every user) in the business so the report never misses anyone
+    const { rows: employees } = await query(
+      `SELECT u.id, u.full_name, u.email, u.phone, u.role, u.salary, u.is_active, u.created_at
+       FROM users u
+       WHERE u.business_id = $1
+       ORDER BY u.full_name ASC`,
+      [businessId]
+    )
+
+    // Every salary record recorded for this business (permanent history)
+    const { rows: payments } = await query(
+      `SELECT s.id, s.user_id, s.name, s.phone, s.amount, s.gross_amount, s.net_amount,
+              s.status, s.pay_period, s.pay_period_start, s.pay_period_end, s.paid_at,
+              s.approved_at, s.created_at, u.full_name AS user_name
        FROM salary_payments s
        LEFT JOIN users u ON u.id = s.user_id
        WHERE s.business_id = $1
        ORDER BY s.created_at DESC`,
-      [req.user.businessId]
+      [businessId]
     )
-    res.json(rows.map(s => ({
-      id: s.id,
-      employee: s.user_name || s.name || 'Unknown',
-      amount: Number(s.amount || 0),
-      period: s.pay_period || '—',
-      status: s.status,
-      approvedAt: s.approved_at,
-      createdAt: s.created_at,
-    })))
+
+    const monthOf = (d) => {
+      if (!d) return null
+      const dt = new Date(d)
+      if (Number.isNaN(dt.getTime())) return null
+      return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`
+    }
+
+    const monthsBetween = (startDate, endDate) => {
+      const months = []
+      const start = new Date(startDate)
+      const end = new Date(endDate)
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return months
+      start.setDate(1)
+      start.setHours(0, 0, 0, 0)
+      const endMonth = new Date(end.getFullYear(), end.getMonth(), 1)
+      const cursor = new Date(start)
+      while (cursor <= endMonth) {
+        months.push(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`)
+        cursor.setMonth(cursor.getMonth() + 1)
+      }
+      return months
+    }
+
+    const PAID_STATUSES = new Set(['Paid', 'approved', 'completed'])
+
+    // Every month appearing in the salary history + the last 6 calendar months, for the dropdown
+    const availMonths = new Set([selectedMonth])
+    for (const p of payments) {
+      for (const d of [p.pay_period_start, p.paid_at, p.approved_at, p.created_at]) {
+        const m = monthOf(d)
+        if (m) availMonths.add(m)
+      }
+      if (p.pay_period && p.pay_period.length >= 7) availMonths.add(p.pay_period.slice(0, 7))
+    }
+    const current = new Date()
+    for (let i = 0; i < 6; i++) {
+      const d = new Date(current.getFullYear(), current.getMonth() - i, 1)
+      availMonths.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+    }
+    const months = [...availMonths].filter(Boolean).sort()
+
+    const rows = employees.map((u) => {
+      const ups = payments.filter((p) => p.user_id === u.id || (p.user_id == null && p.name && p.name.toLowerCase() === (u.full_name || '').toLowerCase()))
+      const paidMonthsSet = new Set(
+        ups
+          .filter((p) => PAID_STATUSES.has(p.status))
+          .map((p) => monthOf(p.pay_period_start || p.paid_at || p.approved_at || p.created_at))
+          .filter(Boolean)
+      )
+      const paidMonths = [...paidMonthsSet].sort()
+      const expectedMonths = monthsBetween(u.created_at || current, current)
+      const unpaidMonths = expectedMonths.filter((m) => !paidMonthsSet.has(m) && m !== selectedMonth)
+      const paidForMonth = paidMonthsSet.has(selectedMonth)
+      const sel = ups.find((p) => PAID_STATUSES.has(p.status) && monthOf(p.pay_period_start || p.paid_at || p.created_at) === selectedMonth)
+
+      return {
+        id: u.id,
+        employee: u.full_name || 'Unknown',
+        email: u.email || '',
+        phone: u.phone || '',
+        role: u.role || '',
+        salary: Number(u.salary) || 0,
+        isActive: u.is_active !== false,
+        amount: sel ? Number(sel.amount) || 0 : 0,
+        grossAmount: sel ? Number(sel.gross_amount) || 0 : 0,
+        netAmount: sel ? Number(sel.net_amount) || 0 : 0,
+        period: sel ? (sel.pay_period || monthOf(sel.pay_period_start) || '—') : '—',
+        status: paidForMonth ? 'Paid' : 'Not Paid',
+        paidMonths,
+        unpaidMonths,
+        approvedAt: sel?.approved_at || null,
+        createdAt: sel?.created_at || null,
+      }
+    })
+
+    // Legacy payments linked to a user yet still kept in the report so nothing is lost
+    const legacy = payments
+      .filter((p) => !p.user_id && p.name)
+      .map((p) => ({
+        id: p.id,
+        employee: p.name || 'Unknown',
+        amount: Number(p.amount || 0),
+        period: p.pay_period || monthOf(p.pay_period_start) || '—',
+        status: p.status || '—',
+        approvedAt: p.approved_at,
+        createdAt: p.created_at,
+      }))
+
+    res.json({ month: selectedMonth, months, employees: rows, legacy })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

@@ -23,35 +23,54 @@ export default function ManagerReports() {
   const [data, setData] = useState([])
   const [summary, setSummary] = useState(null)
   const [error, setError] = useState(null)
+  const [payrollMonth, setPayrollMonth] = useState('')
+  const [payrollMonths, setPayrollMonths] = useState([])
 
   const load = async () => {
+    console.log('[Reports] load tab:', activeTab, 'month:', payrollMonth)
     setLoading(true)
     setError(null)
     try {
       let result
       switch (activeTab) {
         case 'stock':
+          console.log('[Reports] fetching stock report...')
           result = await api.fetchManagerStockReport()
+          console.log('[Reports] stock result:', result)
           setData(result || [])
           setSummary({ totalProducts: (result || []).length, lowStock: (result || []).filter(p => Number(p.quantity) < 5).length })
           break
         case 'transfers':
+          console.log('[Reports] fetching transfers report...')
           result = await api.fetchManagerTransferReport()
+          console.log('[Reports] transfers result:', result)
           setData(result || [])
           setSummary({ total: (result || []).length, approved: (result || []).filter(t => t.status === 'approved').length, rejected: (result || []).filter(t => t.status === 'rejected').length, totalAmount: (result || []).reduce((s, t) => s + t.amount, 0) })
           break
         case 'payrolls':
-          result = await api.fetchManagerPayrollReport()
-          setData(result || [])
-          setSummary({ total: (result || []).length, approved: (result || []).filter(s => s.status === 'approved').length, rejected: (result || []).filter(s => s.status === 'rejected').length, totalAmount: (result || []).reduce((s, p) => s + p.amount, 0) })
+          console.log('[Reports] fetching payrolls report with month:', payrollMonth)
+          result = await api.fetchManagerPayrollReport({ month: payrollMonth })
+          console.log('[Reports] payrolls result:', result)
+          setPayrollMonths(result?.months || [])
+          setPayrollMonth(result?.month || payrollMonth || '')
+          const employees = result?.employees || []
+          setData(employees)
+          const paidCount = employees.filter(e => e.status === 'Paid').length
+          const notPaidCount = employees.filter(e => e.status === 'Not Paid').length
+          const totalPaidAmount = employees.filter(e => e.status === 'Paid').reduce((s, e) => s + (e.amount || 0), 0)
+          setSummary({ total: employees.length, paid: paidCount, notPaid: notPaidCount, totalAmount: totalPaidAmount })
           break
         case 'refunds':
+          console.log('[Reports] fetching refunds report...')
           result = await api.fetchManagerRefundReport()
+          console.log('[Reports] refunds result:', result)
           setData(result || [])
           setSummary({ total: (result || []).length, approved: (result || []).filter(r => r.status === 'approved').length, rejected: (result || []).filter(r => r.status === 'rejected').length, totalAmount: (result || []).reduce((s, r) => s + r.amount, 0) })
           break
         case 'revenue':
+          console.log('[Reports] fetching revenue report...')
           result = await api.fetchManagerRevenueReport({ from, to })
+          console.log('[Reports] revenue result:', result)
           setData(result.orders || [])
           setSummary({ totalRevenue: result.totalRevenue, totalOrders: result.totalOrders, bySource: result.bySource })
           break
@@ -59,13 +78,16 @@ export default function ManagerReports() {
           break
       }
     } catch (e) {
-      setError(e.message)
+      const msg = e?.response?.data?.error || e.message || 'Unknown error'
+      console.error('[Reports] load error:', msg, e)
+      setError(msg)
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => { load() }, [activeTab])
+  useEffect(() => { if (activeTab === 'payrolls') load() }, [payrollMonth])
 
   const exportPDF = () => {
     const doc = new jsPDF()
@@ -86,7 +108,7 @@ export default function ManagerReports() {
     const headers = getHeaders(activeTab)
     const rows = data.map((item, idx) => getRow(item, idx))
     const csv = Papa.unparse([headers, ...rows])
-    const blob = new Blob([csv], { type: 'text/csv;chars=utf-8;' })
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
@@ -104,11 +126,18 @@ export default function ManagerReports() {
     XLSX.writeFile(wb, `manager-report-${activeTab}.xlsx`)
   }
 
+  const formatMonthLabel = (m) => {
+    if (!m || !/^\d{4}-\d{2}$/.test(m)) return m || '—'
+    const [y, mo] = m.split('-')
+    const names = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+    return `${names[Number(mo) - 1] || mo} ${y}`
+  }
+
   const getHeaders = (tab) => {
     switch (tab) {
       case 'stock': return ['ID', 'Name', 'Category', 'Price', 'Quantity']
       case 'transfers': return ['ID', 'From', 'To', 'Amount', 'Description', 'Status', 'Approval', 'Created']
-      case 'payrolls': return ['ID', 'Employee', 'Amount', 'Period', 'Status', 'Created']
+      case 'payrolls': return ['Employee', 'Role', 'Salary', 'Status', 'Paid In', 'Not Paid In']
       case 'refunds': return ['ID', 'Order', 'Amount', 'Reason', 'Status', 'Created']
       case 'revenue': return ['Order #', 'Table', 'Status', 'Source', 'Total', 'Date']
       default: return []
@@ -119,7 +148,14 @@ export default function ManagerReports() {
     switch (activeTab) {
       case 'stock': return [index + 1, item.name, item.category, item.price, item.quantity]
       case 'transfers': return [index + 1, item.from, item.to, item.amount, item.description, item.status, item.managerApproval, item.createdAt]
-      case 'payrolls': return [index + 1, item.employee, item.amount, item.period, item.status, item.createdAt]
+      case 'payrolls': return [
+        item.employee,
+        item.role || '—',
+        item.salary,
+        item.status,
+        (item.paidMonths || []).map(formatMonthLabel).join(', ') || '—',
+        (item.unpaidMonths || []).map(formatMonthLabel).join(', ') || '—',
+      ]
       case 'refunds': return [index + 1, item.order, item.amount, item.reason, item.status, item.createdAt]
       case 'revenue': return [item.orderNumber, item.tableNumber, item.status, item.source, item.total, item.createdAt]
       default: return []
@@ -146,6 +182,23 @@ export default function ManagerReports() {
             {tab.label}
           </button>
         ))}
+        {activeTab === 'payrolls' && (
+          <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto', alignItems: 'center' }}>
+            <label style={{ fontSize: '14px', color: '#475569', fontWeight: 600 }}>Month</label>
+            <select
+              value={payrollMonth}
+              onChange={(e) => setPayrollMonth(e.target.value)}
+              style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e0', fontSize: '14px' }}
+            >
+              <option value="">All months</option>
+              {Array.from({ length: 12 }, (_, i) => {
+                const m = String(i + 1).padStart(2, '0')
+                const year = new Date().getFullYear()
+                return <option key={`${year}-${m}`} value={`${year}-${m}`}>{formatMonthLabel(`${year}-${m}`)}</option>
+              })}
+            </select>
+          </div>
+        )}
         {activeTab === 'revenue' && (
           <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
             <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e0' }} />
@@ -192,26 +245,57 @@ export default function ManagerReports() {
 
       {!loading && data.length === 0 && <p style={{ padding: '40px', textAlign: 'center', color: '#6c757d' }}>No data found.</p>}
 
+      {/* Phone view: payroll shows as clear cards */}
+      {!loading && activeTab === 'payrolls' && data.length > 0 && (
+        <div className="payroll-mobile-cards">
+          {data.map((item) => (
+            <div className="payroll-card" key={item.id}>
+              <div className="payroll-card-head">
+                <div>
+                  <div className="payroll-card-name">{item.employee}</div>
+                  <div className="payroll-card-role">{item.role || '—'}</div>
+                </div>
+                <span className={`payroll-pill ${item.status === 'Paid' ? 'paid' : 'unpaid'}`}>{item.status}</span>
+              </div>
+              <div className="payroll-card-row">
+                <span className="payroll-card-label">Salary</span>
+                <strong>{money(item.salary)}</strong>
+              </div>
+              <div className="payroll-card-row">
+                <span className="payroll-card-label">Paid In</span>
+                <span className="payroll-card-value">{(item.paidMonths || []).map(formatMonthLabel).join(', ') || '—'}</span>
+              </div>
+              <div className="payroll-card-row">
+                <span className="payroll-card-label">Not Paid In</span>
+                <span className="payroll-card-value">{(item.unpaidMonths || []).map(formatMonthLabel).join(', ') || '—'}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {!loading && data.length > 0 && (
-        <div className="user-table-wrap">
-          <table className="user-table">
-            <thead>
-              <tr>
-                {getHeaders(activeTab).map((h, i) => (
-                  <th key={i}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((item, idx) => (
-                <tr key={item.id || idx}>
+        <div className={activeTab === 'payrolls' ? 'payroll-desktop-table' : ''}>
+          <div className="user-table-wrap">
+            <table className="user-table">
+              <thead>
+                <tr>
+                  {getHeaders(activeTab).map((h, i) => (
+                    <th key={i}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {data.map((item, idx) => (
+                  <tr key={item.id || idx}>
               {getRow(item, idx).map((cell, i) => (
                 <td key={i}>{activeTab === 'stock' && i === 3 ? money(cell) : activeTab === 'revenue' && i === 4 ? money(cell) : activeTab === 'transfers' && i === 3 ? money(cell) : activeTab === 'payrolls' && i === 2 ? money(cell) : activeTab === 'refunds' && i === 2 ? money(cell) : String(cell ?? '—')}</td>
               ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

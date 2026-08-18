@@ -36,7 +36,7 @@ router.get('/', authMiddleware, async (_req, res) => {
 })
 
 router.post('/', authMiddleware, async (req, res) => {
-  const { name, phone, amount, method, actor, bonus, promotion } = req.body
+  const { name, phone, amount, method, actor, bonus, promotion, user_id, pay_period_start } = req.body
   if (!name || amount == null) {
     return res.status(400).json({ error: 'Name and amount are required.' })
   }
@@ -46,9 +46,9 @@ router.post('/', authMiddleware, async (req, res) => {
 
   try {
     const { rows } = await query(
-      `INSERT INTO salary_payments (business_id, name, phone, gross_amount, tax_amount, insurance_amount, net_amount, amount, method, actor, bonus, promotion, status)
-       VALUES ((SELECT id FROM businesses LIMIT 1), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'pending') RETURNING id`,
-      [name, phone || '', gross, tax, insurance, net, net, method, actor, bonus || 0, promotion || '']
+      `INSERT INTO salary_payments (business_id, user_id, name, phone, gross_amount, tax_amount, insurance_amount, net_amount, amount, method, actor, bonus, promotion, status, pay_period_start)
+       VALUES ((SELECT id FROM businesses LIMIT 1), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'pending', $13) RETURNING id`,
+      [user_id || null, name, phone || '', gross, tax, insurance, net, net, method, actor, bonus || 0, promotion || '', pay_period_start || null]
     )
 
     await logAudit({

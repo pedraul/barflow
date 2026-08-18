@@ -66,5 +66,9 @@ export default function ManagerLayout({ children }) {
     </div>
   )
 
-  return <Layout sidebar={sidebar}>{children}</Layout>
+  return <Layout sidebar={sidebar} logoutButton={
+    <button type="button" className="mobile-logout-btn" onClick={handleLogout} title="Logout">
+      <LogOut size={20} />
+    </button>
+  }>{children}</Layout>
 }

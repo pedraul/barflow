@@ -55,7 +55,12 @@ export async function updateAvatar(avatarUrl) {
 
 // ===== USERS =====
 export async function fetchUsers() {
-  const { data } = await api.get('/users')
+  const { data } = await api.get('/notifications/users')
+  return data
+}
+
+export async function fetchMySalaryStatus() {
+  const { data } = await api.get('/users/me/salary-status')
   return data
 }
 
@@ -494,8 +499,9 @@ export async function fetchManagerTransferReport() {
   const { data } = await api.get('/manager/reports/transfers')
   return data
 }
-export async function fetchManagerPayrollReport() {
-  const { data } = await api.get('/manager/reports/payrolls')
+export async function fetchManagerPayrollReport(params = {}) {
+  const qs = new URLSearchParams(params).toString()
+  const { data } = await api.get(`/manager/reports/payrolls${qs ? `?${qs}` : ''}`)
   return data
 }
 export async function fetchManagerRefundReport() {
@@ -577,8 +583,12 @@ export async function fetchPlatformStats() {
   return data
 }
 
-export async function fetchBusinesses() {
-  const { data } = await api.get('/platform/businesses')
+export async function fetchBusinesses({ province, district } = {}) {
+  const params = new URLSearchParams()
+  if (province) params.set('province', province)
+  if (district) params.set('district', district)
+  const qs = params.toString()
+  const { data } = await api.get(`/platform/businesses${qs ? `?${qs}` : ''}`)
   return data
 }
 

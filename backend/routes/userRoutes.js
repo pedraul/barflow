@@ -6,6 +6,93 @@ import authMiddleware from '../middleware/authMiddleware.js'
 
 const router = Router()
 
+router.get('/me/salary-status', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user?.id
+    if (!userId) return res.status(400).json({ error: 'User not identified.' })
+
+    const { rows: userRows } = await query(
+      `SELECT id, full_name, salary, is_active, created_at FROM users WHERE id = $1`,
+      [userId]
+    )
+    if (!userRows.length) return res.status(404).json({ error: 'User not found.' })
+    const user = userRows[0]
+
+    const { rows: payments } = await query(
+      `SELECT s.id, s.status, s.pay_period, s.pay_period_start, s.pay_period_end, s.paid_at, s.approved_at, s.created_at,
+              s.amount, s.net_amount, s.gross_amount
+       FROM salary_payments s
+       WHERE s.user_id = $1
+       ORDER BY s.created_at DESC`,
+      [userId]
+    )
+
+    const monthOf = (d) => {
+      if (!d) return null
+      const dt = new Date(d)
+      if (Number.isNaN(dt.getTime())) return null
+      return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`
+    }
+
+    const PAID_STATUSES = new Set(['Paid', 'approved', 'completed'])
+    const FAILED_STATUSES = new Set(['rejected', 'failed', 'cancelled'])
+
+    const monthMap = new Map()
+    for (const p of payments) {
+      const m = monthOf(p.pay_period_start || p.paid_at || p.approved_at || p.created_at)
+      if (!m) continue
+      const status = PAID_STATUSES.has(p.status) ? 'Paid' : FAILED_STATUSES.has(p.status) ? 'Failed' : 'Pending'
+      if (!monthMap.has(m) || status === 'Paid') {
+        monthMap.set(m, {
+          month: m,
+          status,
+          amount: Number(p.amount || p.net_amount || 0),
+          netAmount: Number(p.net_amount || 0),
+          grossAmount: Number(p.gross_amount || 0),
+          period: p.pay_period || m,
+          paidAt: p.paid_at || p.approved_at || null,
+        })
+      }
+    }
+
+    // Build the last 12 months list
+    const months = []
+    const now = new Date()
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const m = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      months.push(m)
+    }
+    months.reverse()
+
+    const salaryStatus = months.map((m) => {
+      const existing = monthMap.get(m)
+      if (existing) return existing
+      return { month: m, status: 'Not Paid', amount: 0, netAmount: 0, grossAmount: 0, period: m, paidAt: null }
+    })
+
+    const paidMonths = salaryStatus.filter((s) => s.status === 'Paid').map((s) => s.month)
+    const notPaidMonths = salaryStatus.filter((s) => s.status === 'Not Paid').map((s) => s.month)
+    const pendingMonths = salaryStatus.filter((s) => s.status === 'Pending').map((s) => s.month)
+    const failedMonths = salaryStatus.filter((s) => s.status === 'Failed').map((s) => s.month)
+
+    res.json({
+      userId: user.id,
+      name: user.full_name,
+      salary: Number(user.salary) || 0,
+      isActive: user.is_active !== false,
+      joinedAt: user.created_at,
+      months: salaryStatus,
+      paidMonths,
+      notPaidMonths,
+      pendingMonths,
+      failedMonths,
+    })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
 router.get('/', authMiddleware, async (req, res) => {
   try {
     let currentBusinessId = req.user.businessId

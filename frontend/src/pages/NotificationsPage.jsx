@@ -24,8 +24,8 @@ export default function NotificationsPage() {
 
   const [message, setMessage] = useState('')
   const [replyTo, setReplyTo] = useState(null)
-  const [users, setUsers] = useState([])
   const [search, setSearch] = useState('')
+  const [allUsers, setAllUsers] = useState([])
   const [mediaPreview, setMediaPreview] = useState('')
   const messagesEndRef = useRef(null)
   const chatScrollRef = useRef(null)
@@ -36,11 +36,27 @@ export default function NotificationsPage() {
   const [editing, setEditing] = useState(null) // msg being edited
   const [mobileView, setMobileView] = useState('list') // 'list' | 'chat'
 
+  const messageInputRef = useRef(null)
+
+  const autoResize = (e) => {
+    const el = e.target
+    el.style.height = 'auto'
+    el.style.height = Math.min(el.scrollHeight, 160) + 'px'
+  }
+
+  const handleInputKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSend(e)
+    }
+  }
+
   useEffect(() => {
-    api.fetchUsers().then((data) => {
-      setUsers(data.filter((u) => u.id !== user?.id))
-    }).catch(() => {})
-  }, [user])
+    const el = messageInputRef.current
+    if (el) {
+      el.style.height = 'auto'
+    }
+  }, [activeConversation, message])
 
   useEffect(() => {
     if (!autoSelectedGroup.current) {
@@ -49,6 +65,12 @@ export default function NotificationsPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    api.fetchUsers().then((data) => {
+      setAllUsers((data || []).filter((u) => u.id !== user?.id))
+    }).catch(() => {})
+  }, [user])
 
   // Only auto-scroll to the bottom when the user is already near the bottom.
   // This prevents the view from jumping down while reading older history.
@@ -72,13 +94,12 @@ export default function NotificationsPage() {
 
   const canUseMessageActions = !['admin', 'super_admin'].includes((user?.role || '').toLowerCase())
 
-  // List every created staff member (so new users appear immediately) and merge
-  // in conversation metadata (last message, unread count) where available.
+  // conversations now contains all business users from the backend
   const convMap = {}
   for (const c of conversations) {
     convMap[c.userId] = c
   }
-  const chatList = users.map((u) => {
+  const chatList = allUsers.map((u) => {
     const meta = convMap[u.id] || {}
     return {
       userId: u.id,
@@ -175,7 +196,7 @@ export default function NotificationsPage() {
     try {
       const target = forwardTarget
       setForwardTarget(null)
-      await api.sendNotification(target.text, userId, null, target.mediaUrl, target.mediaUrl ? 'image' : null)
+      await api.sendNotification(target.text, userId || null, null, target.mediaUrl, target.mediaUrl ? 'image' : null)
       alert('Message forwarded.')
     } catch (err) {
       alert(err.message || 'Could not forward message.')
@@ -282,8 +303,6 @@ export default function NotificationsPage() {
   }
 
   const sidebarStyle = {
-    width: '100%',
-    minWidth: '100%',
     flex: '0 0 auto',
   }
 
@@ -609,13 +628,16 @@ export default function NotificationsPage() {
                     style={{ display: 'none' }}
                   />
                   <button type="button" onClick={() => fileInputRef.current?.click()} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: '20px', padding: '0 8px' }} title="Attach image">+</button>
-                  <input
-                    type="text"
+                  <textarea
+                    ref={messageInputRef}
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
+                    onInput={autoResize}
+                    onKeyDown={handleInputKeyDown}
                     placeholder="Type a message to the staff group"
                     className="chat-input"
-                    style={{ ...chatInputStyle, flex: 1 }}
+                    rows={1}
+                    style={{ ...chatInputStyle, flex: 1, fontSize: '15px', minHeight: '44px', maxHeight: '160px', resize: 'none', lineHeight: '1.4', overflowY: 'auto' }}
                   />
                   <button type="submit" className="chat-send-btn" disabled={(!message.trim() && !mediaPreview) || sending} style={sendBtnStyle}>
                     <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
@@ -678,13 +700,16 @@ export default function NotificationsPage() {
                     style={{ display: 'none' }}
                   />
                   <button type="button" onClick={() => fileInputRef.current?.click()} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: '20px', padding: '0 8px' }} title="Attach image">+</button>
-                  <input
-                    type="text"
+                  <textarea
+                    ref={messageInputRef}
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
+                    onInput={autoResize}
+                    onKeyDown={handleInputKeyDown}
                     placeholder="Type a message"
                     className="chat-input"
-                    style={{ ...chatInputStyle, flex: 1 }}
+                    rows={1}
+                    style={{ ...chatInputStyle, flex: 1, fontSize: '15px', minHeight: '44px', maxHeight: '160px', resize: 'none', lineHeight: '1.4', overflowY: 'auto' }}
                   />
                   <button type="submit" className="chat-send-btn" disabled={(!message.trim() && !mediaPreview) || sending} style={sendBtnStyle}>
                     <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
@@ -765,7 +790,12 @@ export default function NotificationsPage() {
           <div style={{ background: '#fff', borderRadius: '16px', width: '100%', maxWidth: '420px', maxHeight: '80vh', overflowY: 'auto', padding: '20px' }} onClick={(e) => e.stopPropagation()}>
             <h2 style={{ marginTop: 0, fontSize: '20px' }}>Forward message to</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
-              {users.map((u) => (
+              <button key="staff-group" type="button" onClick={() => confirmForward(null)}
+                style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '10px', border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', textAlign: 'left' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#e3f2fd', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: '14px', lineHeight: 1.2 }}>chat</div>
+                <span style={{ fontWeight: 600 }}>Staff Group</span>
+              </button>
+              {allUsers.map((u) => (
                 <button key={u.id} type="button" onClick={() => confirmForward(u.id)}
                   style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '10px', border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', textAlign: 'left' }}>
                   <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#dfe5e7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600 }}>{getInitials(u.full_name || u.name)}</div>

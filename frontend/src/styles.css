@@ -824,6 +824,208 @@ table tbody tr:hover {
   }
 }
 
+/* ============================================================
+   MANAGER PAYROLL REPORT — MOBILE CARDS
+   ============================================================ */
+.payroll-mobile-cards {
+  display: none;
+}
+.payroll-desktop-table {
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .payroll-mobile-cards {
+    display: grid;
+    gap: 0.85rem;
+  }
+  .payroll-desktop-table {
+    display: none;
+  }
+  .payroll-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xs);
+    padding: 1rem 1.1rem;
+    display: grid;
+    gap: 0.6rem;
+  }
+  .payroll-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+  .payroll-card-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text);
+  }
+  .payroll-card-role {
+    font-size: 0.75rem;
+    color: var(--text-3);
+    text-transform: capitalize;
+    margin-top: 0.1rem;
+  }
+  .payroll-pill {
+    display: inline-block;
+    padding: 0.25rem 0.6rem;
+    border-radius: var(--radius-full);
+    font-size: 0.7rem;
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .payroll-pill.paid {
+    color: var(--success-text);
+    background: var(--success-bg);
+    border: 1px solid #a7f3d0;
+  }
+  .payroll-pill.unpaid {
+    color: var(--danger-text);
+    background: var(--danger-bg);
+    border: 1px solid #fecaca;
+  }
+  .payroll-card-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border);
+  }
+  .payroll-card-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-4);
+    flex-shrink: 0;
+    padding-top: 0.15rem;
+  }
+  .payroll-card-value {
+    font-size: 0.82rem;
+    color: var(--text-2);
+    text-align: right;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* ============================================================
+   WAITER SALARY STATUS (My Account)
+   ============================================================ */
+.salary-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.85rem;
+  margin: 1.25rem 0;
+}
+.salary-summary-card {
+  display: grid;
+  gap: 0.25rem;
+  padding: 1rem 1.1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-xs);
+}
+.salary-summary-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-4);
+}
+.salary-summary-card strong {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text);
+}
+.salary-count-paid { color: var(--success-text) !important; }
+.salary-count-unpaid { color: var(--danger-text) !important; }
+.salary-count-pending { color: var(--warning-text) !important; }
+
+.salary-status-list {
+  display: grid;
+  gap: 0.5rem;
+}
+.salary-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-xs);
+}
+.salary-status-month {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.salary-status-month strong {
+  font-size: 0.9rem;
+  color: var(--text);
+}
+.salary-status-amount {
+  font-size: 0.75rem;
+  color: var(--text-3);
+}
+.salary-status-pill {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-full);
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.salary-status-pill.paid {
+  color: var(--success-text);
+  background: var(--success-bg);
+  border: 1px solid #a7f3d0;
+}
+.salary-status-pill.not-paid {
+  color: var(--danger-text);
+  background: var(--danger-bg);
+  border: 1px solid #fecaca;
+}
+.salary-status-pill.pending {
+  color: var(--warning-text);
+  background: var(--warning-bg);
+  border: 1px solid #fde68a;
+}
+.salary-status-pill.failed {
+  color: var(--danger-text);
+  background: var(--danger-bg);
+  border: 1px solid #fecaca;
+}
+.salary-status-row.status-paid {
+  border-left: 3px solid var(--success);
+}
+.salary-status-row.status-not-paid {
+  border-left: 3px solid var(--danger);
+}
+.salary-status-row.status-pending {
+  border-left: 3px solid var(--warning);
+}
+.salary-status-row.status-failed {
+  border-left: 3px solid var(--danger);
+}
+
+@media (max-width: 640px) {
+  .salary-summary-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .salary-status-row {
+    padding: 0.65rem 0.85rem;
+  }
+}
+
 .invoice-table {
   display: grid;
   gap: 0.4rem;
@@ -3886,6 +4088,20 @@ label {
 .notifications-page {
   background: #f0f2f5;
   min-height: 100vh;
+  display: flex !important;
+  grid: none !important;
+  flex-direction: column;
+}
+.notifications-page .page-content,
+.notifications-page .page-screen {
+  padding: 0 !important;
+  max-width: none !important;
+}
+.notifications-page .whatsapp-layout {
+  height: 100% !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  flex: 1;
 }
 .whatsapp-layout {
   display: flex;
@@ -3897,11 +4113,13 @@ label {
   box-shadow: none;
 }
 .whatsapp-sidebar {
-  width: 100%;
+  width: 300px;
+  min-width: 300px;
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   background: #fff;
+  flex-shrink: 0;
 }
 .whatsapp-sidebar-header {
   padding: 16px;
@@ -4073,12 +4291,17 @@ label {
 }
 .chat-input {
   flex: 1;
+  min-height: 44px;
+  max-height: 160px;
   padding: 10px 14px;
   border: 1px solid var(--border);
   border-radius: 8px;
   font-size: 15px;
   outline: none;
   background: #fff;
+  resize: none;
+  line-height: 1.4;
+  overflow-y: auto;
 }
 .chat-input:focus {
   border-color: var(--brand);
@@ -4113,6 +4336,7 @@ label {
   }
   .whatsapp-sidebar {
     width: 100%;
+    min-width: 100%;
     flex: 1;
   }
   .whatsapp-chat {
@@ -5241,11 +5465,59 @@ label {
   color: var(--text);
 }
 
+.mobile-topbar .back-btn {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--text);
+  transition: background 0.2s ease;
+  margin-right: 4px;
+  padding: 0;
+}
+
+.mobile-topbar .back-btn:hover {
+  background: var(--surface-2);
+}
+
+.mobile-topbar .back-btn svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
 .mobile-brand {
   margin-left: 8px;
   font-size: 20px;
   font-weight: 700;
   color: var(--text);
+}
+
+.mobile-logout-wrapper {
+  margin-left: auto;
+}
+
+.mobile-logout-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--text);
+  transition: background 0.2s ease;
+}
+
+.mobile-logout-btn:hover {
+  background: var(--surface-2);
 }
 
 /* Sidebar overlay */

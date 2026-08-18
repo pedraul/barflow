@@ -83,7 +83,7 @@ const productsResult = await query(
     'Juices',
     'Water',
     'Energy Drinks',
-    'Hot Beverages (Coffee & Tea)',
+    'Tea and Coffee',
   ]
 
   const isKitchenCategory = (cat) => {

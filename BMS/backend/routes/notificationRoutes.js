@@ -85,76 +85,57 @@ router.get('/unread-count', authMiddleware, async (req, res) => {
   }
 })
 
-// GET /api/notifications/conversations - list conversations for current user within same business
+// GET /api/notifications/conversations - list all users in same business for chat
 router.get('/conversations', authMiddleware, async (req, res) => {
   try {
     if (!req.user) return res.status(401).json({ error: 'Unauthorized' })
     const currentUserId = req.user.id
     const currentBusinessId = await getCurrentBusinessId(req)
     if (!currentBusinessId) return res.json([])
-    const { rows } = await query(
-      `SELECT 
-         CASE 
-           WHEN n.sender_id = $1::uuid THEN n.receiver_id 
-           ELSE n.sender_id 
-         END AS other_user_id,
-         MAX(n.created_at) AS last_message_at,
-         COUNT(*) AS message_count
+
+    const { rows: allUsers } = await query(
+      `SELECT id, full_name, avatar_url FROM users WHERE business_id = $1::uuid AND id != $2::uuid AND is_active = TRUE ORDER BY full_name ASC`,
+      [currentBusinessId, currentUserId]
+    )
+
+    const { rows: allMessages } = await query(
+      `SELECT n.*, u.full_name AS sender_name
        FROM notifications n
-       WHERE (n.sender_id = $1::uuid OR n.receiver_id = $1::uuid)
+       JOIN users u ON u.id = n.sender_id
+       WHERE ((n.sender_id = $1::uuid AND n.receiver_id != $1::uuid) OR (n.receiver_id = $1::uuid AND n.sender_id != $1::uuid))
          AND n.receiver_id IS NOT NULL
          AND (
            (n.sender_id = $1::uuid AND EXISTS (SELECT 1 FROM users WHERE id = n.receiver_id AND business_id = $2::uuid))
-            OR
+           OR
            (n.receiver_id = $1::uuid AND EXISTS (SELECT 1 FROM users WHERE id = n.sender_id AND business_id = $2::uuid))
          )
-       GROUP BY other_user_id
-       ORDER BY last_message_at DESC`,
+       ORDER BY n.created_at ASC`,
       [currentUserId, currentBusinessId]
     )
-    if (!rows || rows.length === 0) return res.json([])
 
-    const conversations = await Promise.all(rows.map(async (r) => {
-      try {
-        if (!r || !r.other_user_id) return null
-        // continue below
-      } catch (mapErr) {
-        console.error('Error mapping conversation row:', mapErr, { row: r })
-        return null
-      }
-      const { rows: userRows } = await query(
-        `SELECT id, full_name, avatar_url FROM users WHERE id = $1::uuid AND business_id = $2::uuid`,
-        [r.other_user_id, currentBusinessId]
-      )
-      const otherUser = userRows[0] || { id: r.other_user_id, full_name: 'Unknown', avatar_url: '' }
-      const { rows: msgRows } = await query(
-        `SELECT n.*, u.full_name AS sender_name
-         FROM notifications n
-         JOIN users u ON u.id = n.sender_id
-         WHERE ((n.sender_id = $1::uuid AND n.receiver_id = $2::uuid) OR (n.sender_id = $2::uuid AND n.receiver_id = $1::uuid))
-           AND n.receiver_id IS NOT NULL
-           AND (
-             (n.sender_id = $1::uuid AND EXISTS (SELECT 1 FROM users WHERE id = n.receiver_id AND business_id = $3::uuid))
-             OR
-             (n.receiver_id = $1::uuid AND EXISTS (SELECT 1 FROM users WHERE id = n.sender_id AND business_id = $3::uuid))
-           )
-         ORDER BY n.created_at ASC`,
-        [currentUserId, r.other_user_id, currentBusinessId]
-      )
-      const lastMessage = msgRows[msgRows.length - 1] || null
-      const unreadCount = msgRows.filter(m => m.sender_id !== currentUserId && !m.is_read).length
+    const messagesByUser = {}
+    for (const msg of allMessages) {
+      const otherUserId = msg.sender_id === currentUserId ? msg.receiver_id : msg.sender_id
+      if (!messagesByUser[otherUserId]) messagesByUser[otherUserId] = []
+      messagesByUser[otherUserId].push(msg)
+    }
+
+    const conversations = allUsers.map((u) => {
+      const msgs = messagesByUser[u.id] || []
+      const lastMessage = msgs[msgs.length - 1] || null
+      const unreadCount = msgs.filter((m) => m.sender_id !== currentUserId && !m.is_read).length
       return {
-        userId: otherUser.id,
-        userName: otherUser.full_name,
-        userAvatar: otherUser.avatar_url || '',
+        userId: u.id,
+        userName: u.full_name || 'Unknown',
+        userAvatar: u.avatar_url || '',
         lastMessage: lastMessage ? lastMessage.message : '',
-        lastMessageTime: lastMessage ? lastMessage.created_at : r.last_message_at,
+        lastMessageTime: lastMessage ? lastMessage.created_at : null,
         unreadCount,
-        messages: msgRows,
+        messages: msgs,
       }
-    }))
-    // filter out any nulls produced from failed rows
-    res.json((conversations || []).filter(Boolean))
+    })
+
+    res.json(conversations)
   } catch (error) {
     console.error('Error in GET /api/notifications/conversations:', error)
     res.status(500).json({ error: error.message })
@@ -296,6 +277,44 @@ router.patch('/mark-all-read', authMiddleware, async (req, res) => {
     )
     res.json({ success: true })
   } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// GET /api/notifications/users - list users in the same business for chat and salary
+router.get('/users', authMiddleware, async (req, res) => {
+  try {
+    const currentUserId = req.user.id
+    const currentBusinessId = await getCurrentBusinessId(req)
+    if (!currentBusinessId) return res.json([])
+
+    const { rows } = await query(
+      `SELECT id, full_name, email, avatar_url, role, phone, salary, bonus, promotion, is_active
+       FROM users
+       WHERE business_id = $1::uuid AND id != $2::uuid
+       ORDER BY full_name ASC`,
+      [currentBusinessId, currentUserId]
+    )
+
+    res.json(
+      rows.map((u) => ({
+        id: u.id,
+        name: u.full_name || u.email,
+        full_name: u.full_name,
+        email: u.email,
+        avatar: u.avatar_url || '',
+        avatar_url: u.avatar_url || '',
+        role: u.role,
+        phone: u.phone || '',
+        salary: Number(u.salary) || 0,
+        bonus: Number(u.bonus) || 0,
+        promotion: u.promotion || '',
+        status: u.is_active ? 'Active' : 'Inactive',
+        isActive: u.is_active,
+      }))
+    )
+  } catch (error) {
+    console.error('Error fetching chat users:', error)
     res.status(500).json({ error: error.message })
   }
 })

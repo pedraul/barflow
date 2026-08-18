@@ -165,6 +165,9 @@ export default function OwnerLayout({ children }) {
               {mobileMenuOpen ? '✕' : '☰'}
             </button>
             <div className="mobile-brand">BarFlow</div>
+            <button type="button" className="mobile-logout-btn" onClick={handleLogout} title="Logout" style={{ marginLeft: 'auto' }}>
+              <LogOut size={20} />
+            </button>
           </header>
         </>
       )}
