@@ -31,7 +31,25 @@ export default function Layout({ children, navLinks, sidebar, logoutButton }) {
 
   return (
     <div className="layout-root">
-      {/* Mobile top bar + back + hamburger (visible on all role pages on mobile) */}
+      {/* Desktop top bar with back button (PC only) */}
+      {sidebar && (
+        <header className="desktop-topbar">
+          <button
+            type="button"
+            className="back-btn"
+            onClick={handleBack}
+            aria-label="Back"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+          <div className="desktop-brand">BarFlow</div>
+          {logoutButton && <div className="desktop-logout-wrapper">{logoutButton}</div>}
+        </header>
+      )}
+
+      {/* Mobile top bar + hamburger (visible on mobile only) */}
       {sidebar && (
         <>
           {mobileMenuOpen && (
@@ -41,17 +59,6 @@ export default function Layout({ children, navLinks, sidebar, logoutButton }) {
             />
           )}
           <header className="mobile-topbar">
-            <button
-              type="button"
-              className="back-btn"
-              onClick={handleBack}
-              aria-label="Back"
-              style={{ display: 'inline-flex' }}
-            >
-              <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-            </button>
             <button
               type="button"
               className="mobile-menu-button"

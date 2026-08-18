@@ -822,10 +822,40 @@ table tbody tr:hover {
   table {
     min-width: 640px !important;
   }
+
+  /* Make all table containers horizontally scrollable on mobile */
+  .user-table-wrap,
+  .registry-table,
+  table[class*="border-collapse"],
+  table.w-full,
+  .page > div > table,
+  .page section > table,
+  .page > table,
+  section > .user-table-wrap,
+  section > div > .user-table-wrap,
+  div[style*="overflow-x: auto"],
+  div[style*="overflow-x:auto"] {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    display: block !important;
+  }
+
+  /* Ensure tables inside cards/sections don't overflow */
+  .page > div > table,
+  .page > section > table,
+  section > div > table,
+  div[style*="background: white"] > table,
+  div[style*="background-color: white"] > table,
+  div[style*="background:#fff"] > table,
+  div[style*="background-color:#fff"] > table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 /* ============================================================
-   MANAGER PAYROLL REPORT — MOBILE CARDS
+   MANAGER PAYROLL REPORT — MOBILE CARDS + TABLE
    ============================================================ */
 .payroll-mobile-cards {
   display: none;
@@ -840,7 +870,13 @@ table tbody tr:hover {
     gap: 0.85rem;
   }
   .payroll-desktop-table {
-    display: none;
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-top: 1rem;
+  }
+  .payroll-desktop-table table {
+    min-width: 640px;
   }
   .payroll-card {
     background: var(--surface);
@@ -5447,6 +5483,54 @@ label {
   box-sizing: border-box;
 }
 
+/* Desktop top bar */
+.desktop-topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: #ffffff;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.desktop-brand {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.desktop-logout-wrapper {
+  margin-left: auto;
+}
+
+.desktop-topbar .back-btn {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--text);
+  transition: background 0.2s ease;
+  padding: 0;
+}
+
+.desktop-topbar .back-btn:hover {
+  background: var(--surface-2);
+}
+
+.desktop-topbar .back-btn svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
 /* Mobile top bar */
 .mobile-topbar {
   display: none;
@@ -5571,6 +5655,10 @@ label {
   .app-content {
     width: 100%;
     min-height: calc(100vh - 60px);
+  }
+
+  .desktop-topbar {
+    display: none !important;
   }
 
   .mobile-topbar {
@@ -5765,7 +5853,6 @@ label {
   #root {
     width: 100%;
     max-width: 100%;
-    overflow-x: hidden;
   }
 
   .layout-body,

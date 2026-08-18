@@ -182,34 +182,37 @@ export default function ManagerReports() {
             {tab.label}
           </button>
         ))}
-        {activeTab === 'payrolls' && (
-          <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto', alignItems: 'center' }}>
-            <label style={{ fontSize: '14px', color: '#475569', fontWeight: 600 }}>Month</label>
-            <select
-              value={payrollMonth}
-              onChange={(e) => setPayrollMonth(e.target.value)}
-              style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e0', fontSize: '14px' }}
-            >
-              <option value="">All months</option>
-              {Array.from({ length: 12 }, (_, i) => {
-                const m = String(i + 1).padStart(2, '0')
-                const year = new Date().getFullYear()
-                return <option key={`${year}-${m}`} value={`${year}-${m}`}>{formatMonthLabel(`${year}-${m}`)}</option>
-              })}
-            </select>
+
+        <div style={{ width: '100%', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginTop: '8px' }}>
+          {activeTab === 'payrolls' && (
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <label style={{ fontSize: '14px', color: '#475569', fontWeight: 600 }}>Month</label>
+              <select
+                value={payrollMonth}
+                onChange={(e) => setPayrollMonth(e.target.value)}
+                style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e0', fontSize: '14px' }}
+              >
+                <option value="">All months</option>
+                {Array.from({ length: 12 }, (_, i) => {
+                  const m = String(i + 1).padStart(2, '0')
+                  const year = new Date().getFullYear()
+                  return <option key={`${year}-${m}`} value={`${year}-${m}`}>{formatMonthLabel(`${year}-${m}`)}</option>
+                })}
+              </select>
+            </div>
+          )}
+          {activeTab === 'revenue' && (
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e0' }} />
+              <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e0' }} />
+              <button onClick={load} className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-semibold">Apply</button>
+            </div>
+          )}
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button onClick={exportPDF} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold">Export PDF</button>
+            <button onClick={exportCSV} className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold">Export CSV</button>
+            <button onClick={exportExcel} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold">Export Excel</button>
           </div>
-        )}
-        {activeTab === 'revenue' && (
-          <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
-            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e0' }} />
-            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e0' }} />
-            <button onClick={load} className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-semibold">Apply</button>
-          </div>
-        )}
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
-          <button onClick={exportPDF} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold">Export PDF</button>
-          <button onClick={exportCSV} className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold">Export CSV</button>
-          <button onClick={exportExcel} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold">Export Excel</button>
         </div>
       </div>
 
