@@ -3475,6 +3475,18 @@ label {
   .settings-page > .settings-tabs { position: static; }
 }
 
+/* Platform admin settings mobile */
+@media (max-width: 768px) {
+  .platform-settings-group-title {
+    font-size: 11px;
+    letter-spacing: 0.05em;
+  }
+  .platform-settings-nav button {
+    font-size: 13px;
+    padding: 10px 12px;
+  }
+}
+
 @media (max-width: 768px) {
   :root { --page-pad: 1rem; }
 
@@ -6064,6 +6076,21 @@ label {
   .owner-settings-panel {
     width: 100% !important;
     max-width: 100%;
+  }
+
+  .owner-settings-tabs {
+    max-height: none !important;
+    overflow-y: visible !important;
+  }
+
+  .owner-settings-group-title {
+    font-size: 11px;
+    letter-spacing: 0.05em;
+  }
+
+  .owner-settings-tabs button {
+    font-size: 13px;
+    padding: 10px 12px;
   }
 
   .customer-menu-header {

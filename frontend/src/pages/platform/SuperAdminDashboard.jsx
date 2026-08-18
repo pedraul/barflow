@@ -6,7 +6,7 @@ import {
   Users, BarChart3, ClipboardList, Settings, LogOut,
   Menu, ChevronDown, Building2, CheckCircle2, XCircle,
   Clock, Ban, CalendarDays, Plus, FileText, Send, ShieldAlert,
-  HardDriveDownload
+  HardDriveDownload, ArrowLeft
 } from 'lucide-react'
 import { fetchPlatformStats, fetchBusinesses, fetchPlatformReports, fetchAdmins, createAdmin, sendNotification } from '../../api/endpoints'
 
@@ -73,6 +73,14 @@ export default function SuperAdminDashboard() {
     localStorage.removeItem('auth_user')
     localStorage.removeItem('auth_permissions')
     navigate('/login')
+  }
+
+  const handleBack = () => {
+    if (location.pathname === '/admin/settings' || location.pathname.startsWith('/admin/settings/')) {
+      navigate('/admin/dashboard')
+      return
+    }
+    navigate(-1)
   }
 
   const handleCreateAdmin = async () => {
@@ -272,6 +280,16 @@ export default function SuperAdminDashboard() {
           {/* TOP SYSTEM HEAD NAVBAR */}
           <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0">
             <div className="flex items-center gap-4">
+              {(location.pathname === '/admin/settings' || location.pathname.startsWith('/admin/settings/')) && (
+                <button
+                  type="button"
+                  className="text-slate-500 hover:text-slate-800 transition flex items-center gap-1"
+                  onClick={handleBack}
+                  aria-label="Back"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+              )}
               <button
                 type="button"
                 className="text-slate-500 hover:text-slate-800 transition"

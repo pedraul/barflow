@@ -4,7 +4,7 @@ import { useOwner } from '../context/OwnerContext'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, CreditCard, Smartphone, ArrowLeftRight, Users,
-  TrendingUp, QrCode, UserCheck, FileText, Settings, LogOut, MessageSquare
+  TrendingUp, QrCode, UserCheck, FileText, Settings, LogOut, MessageSquare, ArrowLeft
 } from 'lucide-react'
 import { SidebarLink } from '../components/ui/SharedComponents'
 

@@ -1,29 +1,55 @@
 import React, { useEffect, useState } from 'react'
 import {
   Save, Globe, Info, CreditCard, Wallet, Mail, MessageSquare, Bell,
-  ShieldCheck, Database, ClipboardList, Plug, QrCode
+  ShieldCheck, Database, ClipboardList, Plug, QrCode, ChevronRight, ChevronDown, ArrowLeft
 } from 'lucide-react'
 import { fetchPlatformSettings, updatePlatformSettings } from '../../api/endpoints'
 
-const TABS = [
-  { id: 'general', label: 'General', icon: Globe },
-  { id: 'platform_info', label: 'Platform Info', icon: Info },
-  { id: 'subscription', label: 'Subscription', icon: CreditCard },
-  { id: 'payment', label: 'Payment', icon: Wallet },
-  { id: 'email', label: 'Email', icon: Mail },
-  { id: 'sms', label: 'SMS', icon: MessageSquare },
-  { id: 'notification', label: 'Notifications', icon: Bell },
-  { id: 'security', label: 'Security', icon: ShieldCheck },
-  { id: 'backup', label: 'Backup', icon: Database },
-  { id: 'audit', label: 'Audit', icon: ClipboardList },
-  { id: 'api', label: 'API', icon: Plug },
-  { id: 'qr', label: 'QR Code', icon: QrCode },
+const SETTINGS_GROUPS = [
+  {
+    id: 'general_info',
+    label: 'General Info',
+    items: [
+      { id: 'general', label: 'General', icon: Globe },
+      { id: 'platform_info', label: 'Platform Info', icon: Info },
+    ]
+  },
+  {
+    id: 'communication',
+    label: 'Communication',
+    items: [
+      { id: 'email', label: 'Email', icon: Mail },
+      { id: 'sms', label: 'SMS', icon: MessageSquare },
+      { id: 'notification', label: 'Notifications', icon: Bell },
+    ]
+  },
+  {
+    id: 'security',
+    label: 'Security',
+    items: [
+      { id: 'security', label: 'Security', icon: ShieldCheck },
+      { id: 'backup', label: 'Backup', icon: Database },
+      { id: 'audit', label: 'Audit', icon: ClipboardList },
+      { id: 'api', label: 'API', icon: Plug },
+    ]
+  },
+  {
+    id: 'financial',
+    label: 'Financial',
+    items: [
+      { id: 'payment', label: 'Payment', icon: Wallet },
+      { id: 'qr', label: 'QR Code', icon: QrCode },
+      { id: 'subscription', label: 'Subscription', icon: CreditCard },
+    ]
+  },
 ]
+
+const ALL_TABS = SETTINGS_GROUPS.flatMap(g => g.items)
 
 function getTabFromHash() {
   if (typeof window === 'undefined') return 'general'
   const hash = window.location.hash.replace('#', '')
-  return TABS.some((t) => t.id === hash) ? hash : 'general'
+  return ALL_TABS.some((t) => t.id === hash) ? hash : 'general'
 }
 
 export default function Settings() {
@@ -32,11 +58,16 @@ export default function Settings() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
+  const [mobileView, setMobileView] = useState('menu') // 'menu' | 'content'
 
   useEffect(() => { load() }, [])
 
   useEffect(() => {
-    const onHashChange = () => setActiveTab(getTabFromHash())
+    const onHashChange = () => {
+      const tab = getTabFromHash()
+      setActiveTab(tab)
+      setMobileView('content')
+    }
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
@@ -55,7 +86,13 @@ export default function Settings() {
 
   const switchTab = (id) => {
     setActiveTab(id)
+    setMobileView('content')
     window.location.hash = id
+  }
+
+  const goBack = () => {
+    setMobileView('menu')
+    window.location.hash = ''
   }
 
   const set = (key, value) => setSettings((prev) => ({ ...prev, [key]: value }))
@@ -78,6 +115,13 @@ export default function Settings() {
     return <div className="flex items-center justify-center py-20"><div className="animate-spin w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full" /></div>
   }
 
+  const activeGroup = SETTINGS_GROUPS.find(g => g.items.some(i => i.id === activeTab))
+  const activeItem = ALL_TABS.find(t => t.id === activeTab)
+
+  // On mobile, if viewing content, hide sidebar and show only content with back button
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768
+  const showMobileContent = isMobile && mobileView === 'content'
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -93,23 +137,42 @@ export default function Settings() {
       {message && <div className={`p-3 rounded-lg text-sm font-medium border ${message.startsWith('❌') ? 'bg-red-50 border-red-200 text-red-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>{message}</div>}
 
       <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-start">
-        {/* Tab nav */}
-        <div className="w-full md:w-56 shrink-0 bg-white border border-slate-200 rounded-xl p-2 md:sticky md:top-4">
-          <div className="flex md:flex-col gap-2 overflow-x-auto md:overflow-visible">
-            {TABS.map((t) => {
-              const Icon = t.icon
-              return (
-                <button key={t.id} onClick={() => switchTab(t.id)}
-                  className={`whitespace-nowrap flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold transition ${activeTab === t.id ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}>
-                  <Icon size={16} /> {t.label}
-                </button>
-              )
-            })}
+        {/* Tab nav - grouped - hidden on mobile when viewing content */}
+        {!showMobileContent && (
+          <div className="w-full md:w-64 shrink-0 bg-white border border-slate-200 rounded-xl p-2 md:sticky md:top-4">
+            <div className="flex md:flex-col gap-1">
+              {SETTINGS_GROUPS.map((group) => {
+                const isGroupActive = group.items.some(i => i.id === activeTab)
+                return (
+                  <div key={group.id} className="mb-1">
+                    <div className={`px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider ${isGroupActive ? 'text-indigo-700 bg-indigo-50' : 'text-slate-500'}`}>
+                      {group.label}
+                    </div>
+                    <div className="ml-1 mt-1 flex md:flex-col gap-1 overflow-x-auto md:overflow-visible">
+                      {group.items.map((t) => {
+                        const Icon = t.icon
+                        return (
+                          <button key={t.id} onClick={() => switchTab(t.id)}
+                            className={`whitespace-nowrap flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold transition ${activeTab === t.id ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}>
+                            <Icon size={16} /> {t.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Tab content */}
-        <div className="flex-1 bg-white border border-slate-200 rounded-xl p-4 md:p-6 shadow-sm min-w-0">
+        {/* Tab content - full width on mobile when viewing content */}
+        <div className={`${showMobileContent ? 'w-full' : 'flex-1'} bg-white border border-slate-200 rounded-xl p-4 md:p-6 shadow-sm min-w-0`}>
+          {showMobileContent && (
+            <button onClick={goBack} className="flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-700 mb-4">
+              <ArrowLeft size={16} /> Back to Settings
+            </button>
+          )}
           {activeTab === 'general' && (
             <TabBody title="General Settings" desc="Platform name, language, timezone and currency.">
               <Field label="Platform Name" v="platform_name" settings={settings} set={set} />

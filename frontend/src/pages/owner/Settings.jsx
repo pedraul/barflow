@@ -7,21 +7,53 @@ import QRCode from '../../components/QRCode'
 import {
   User, Database, CreditCard, ShieldCheck, Lock, RefreshCw,
   Settings, HelpCircle, LogOut, FileText,
-  Menu, Bell, ChevronDown, Save, Wallet, Printer, Mail,
+  Menu, Bell, ChevronDown, Save, Wallet, Printer, Mail, ArrowLeft
 } from 'lucide-react'
 import AuditLogViewer from './AuditLogViewer'
 
-const TABS = [
-  { id: 'account', label: 'Account', icon: <User size={18} /> },
-  { id: 'notifications', label: 'Notifications', icon: <Mail size={18} /> },
-  { id: 'backup', label: 'Backup', icon: <Database size={18} /> },
-  { id: 'subscription', label: 'Subscription', icon: <CreditCard size={18} /> },
-  { id: 'audit', label: 'Audit', icon: <FileText size={18} /> },
-  { id: 'payments', label: 'Payments', icon: <Wallet size={18} /> },
-  { id: 'permissions', label: 'Permissions', icon: <ShieldCheck size={18} /> },
-  { id: 'security', label: 'Security', icon: <Lock size={18} /> },
-  { id: 'recovery', label: 'Recovery', icon: <RefreshCw size={18} /> },
+const SETTINGS_GROUPS = [
+  {
+    id: 'general_info',
+    label: 'General Info',
+    items: [
+      { id: 'account', label: 'Account', icon: <User size={18} /> },
+    ]
+  },
+  {
+    id: 'communication',
+    label: 'Communication',
+    items: [
+      { id: 'notifications', label: 'Notifications', icon: <Mail size={18} /> },
+    ]
+  },
+  {
+    id: 'financial',
+    label: 'Financial',
+    items: [
+      { id: 'subscription', label: 'Subscription', icon: <CreditCard size={18} /> },
+      { id: 'payments', label: 'Payments', icon: <Wallet size={18} /> },
+    ]
+  },
+  {
+    id: 'security',
+    label: 'Security',
+    items: [
+      { id: 'permissions', label: 'Permissions', icon: <ShieldCheck size={18} /> },
+      { id: 'security', label: 'Security', icon: <Lock size={18} /> },
+      { id: 'recovery', label: 'Recovery', icon: <RefreshCw size={18} /> },
+    ]
+  },
+  {
+    id: 'system',
+    label: 'System',
+    items: [
+      { id: 'backup', label: 'Backup', icon: <Database size={18} /> },
+      { id: 'audit', label: 'Audit', icon: <FileText size={18} /> },
+    ]
+  },
 ]
+
+const ALL_TABS = SETTINGS_GROUPS.flatMap(g => g.items)
 
 const EMAIL_NOTIFICATION_OPTIONS = [
   ['notify_registration', 'Business Registration Confirmation'],
@@ -55,12 +87,16 @@ export default function SystemSettings() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const [activeSubTab, setActiveSubTab] = useState('account')
+  const [mobileView, setMobileView] = useState('menu') // 'menu' | 'content'
 
   // derive active subtab from path (e.g. /settings/security)
   React.useEffect(() => {
     const parts = pathname.split('/').filter(Boolean)
     const last = parts[parts.length - 1] || 'account'
-    if (TABS.find(t => t.id === last)) setActiveSubTab(last)
+    if (ALL_TABS.find(t => t.id === last)) {
+      setActiveSubTab(last)
+      setMobileView('content')
+    }
   }, [pathname])
   const [message, setMessage] = useState('')
   const [data, setData] = useState({
@@ -117,6 +153,11 @@ export default function SystemSettings() {
   }, [load])
 
   const flash = (m) => { setMessage(m); setTimeout(() => setMessage(''), 4000) }
+
+  const goBack = () => {
+    setMobileView('menu')
+    navigate('/settings')
+  }
 
   const handleSaveAccount = async () => {
     try {
@@ -275,6 +316,16 @@ export default function SystemSettings() {
         {/* 2. TOP BANNER HEADER */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 shadow-xs">
           <div className="flex items-center gap-4">
+            {(typeof window !== 'undefined' && window.innerWidth <= 768 && mobileView === 'content') && (
+              <button onClick={goBack} className="text-slate-500 hover:text-slate-800 transition flex items-center gap-1">
+                <ArrowLeft size={20} />
+              </button>
+            )}
+            {(typeof window !== 'undefined' && window.innerWidth > 768) && (
+              <button onClick={goBack} className="text-slate-500 hover:text-slate-800 transition flex items-center gap-1" title="Back to Dashboard">
+                <ArrowLeft size={20} />
+              </button>
+            )}
             <button className="text-slate-600 hover:text-slate-900 transition">
               <Menu size={20} />
             </button>
@@ -309,15 +360,34 @@ export default function SystemSettings() {
         {/* 3. WORKING WORKSPACE SCROLL CONTENT */}
         <main className="owner-settings-workspace flex-1 overflow-y-auto p-8 flex gap-6 items-start">
 
-          {/* LEFT COLUMN: Sub-Tab Controls */}
+          {/* LEFT COLUMN: Sub-Tab Controls - hidden on mobile when viewing content */}
+          {(typeof window === 'undefined' || window.innerWidth > 768 || mobileView === 'menu') && (
             <div className="owner-settings-tabs w-[240px] bg-white border border-slate-200 rounded-xl p-3 shadow-xs space-y-0.5 shrink-0">
-            {TABS.map((t) => (
-              <SubTabButton key={t.id} id={t.id} label={t.label} icon={t.icon} active={activeSubTab === t.id} onClick={(id) => { navigate(`/settings/${id}`); }} showBar={t.id === 'account'} />
-            ))}
-          </div>
+              {SETTINGS_GROUPS.map((group) => {
+                const isGroupActive = group.items.some(i => i.id === activeSubTab)
+                return (
+                  <div key={group.id} className="mb-2">
+                    <div className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider ${isGroupActive ? 'text-indigo-700 bg-indigo-50' : 'text-slate-500'}`}>
+                      {group.label}
+                    </div>
+                    <div className="ml-1 mt-1 space-y-0.5">
+                      {group.items.map((t) => (
+                        <SubTabButton key={t.id} id={t.id} label={t.label} icon={t.icon} active={activeSubTab === t.id} onClick={(id) => { navigate(`/settings/${id}`); setMobileView('content'); }} showBar={t.id === 'account'} />
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
 
           {/* RIGHT COLUMN: Settings Viewport Canvas */}
-          <div className="owner-settings-panel flex-1 bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
+          <div className={`${(typeof window !== 'undefined' && window.innerWidth <= 768 && mobileView === 'content') ? 'w-full' : 'flex-1'} bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden`}>
+            {(typeof window !== 'undefined' && window.innerWidth <= 768 && mobileView === 'content') && (
+              <button onClick={goBack} className="flex items-center gap-2 text-sm font-semibold text-[#0066FF] hover:text-blue-700 m-6 mb-0">
+                <ArrowLeft size={16} /> Back to Settings
+              </button>
+            )}
             {message && (
               <div className={`m-6 p-3 rounded-lg text-sm font-medium border ${message.startsWith('❌') ? 'bg-red-50 border-red-300 text-red-800' : 'bg-emerald-50 border-emerald-300 text-emerald-800'}`}>{message}</div>
             )}
