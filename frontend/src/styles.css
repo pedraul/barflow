@@ -826,18 +826,16 @@ table tbody tr:hover {
   /* Make all table containers horizontally scrollable on mobile */
   .user-table-wrap,
   .registry-table,
-  table[class*="border-collapse"],
-  table.w-full,
   .page > div > table,
   .page section > table,
   .page > table,
   section > .user-table-wrap,
   section > div > .user-table-wrap,
   div[style*="overflow-x: auto"],
-  div[style*="overflow-x:auto"] {
+  div[style*="overflow-x:auto"],
+  div[class*="overflow-x-auto"] {
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch !important;
-    display: block !important;
   }
 
   /* Ensure tables inside cards/sections don't overflow */

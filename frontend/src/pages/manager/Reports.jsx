@@ -172,25 +172,26 @@ export default function ManagerReports() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
         {TABS.map((tab) => (
           <button
             key={tab.key}
             onClick={() => { setActiveTab(tab.key); setData([]); setSummary(null) }}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold ${activeTab === tab.key ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold ${activeTab === tab.key ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}
+            style={{ fontSize: '12px', padding: '6px 10px' }}
           >
             {tab.label}
           </button>
         ))}
 
-        <div style={{ width: '100%', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginTop: '8px' }}>
+        <div style={{ width: '100%', display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', marginTop: '8px' }}>
           {activeTab === 'payrolls' && (
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <label style={{ fontSize: '14px', color: '#475569', fontWeight: 600 }}>Month</label>
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <label style={{ fontSize: '12px', color: '#475569', fontWeight: 600, whiteSpace: 'nowrap' }}>Month</label>
               <select
                 value={payrollMonth}
                 onChange={(e) => setPayrollMonth(e.target.value)}
-                style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e0', fontSize: '14px' }}
+                style={{ padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e0', fontSize: '12px', height: '32px' }}
               >
                 <option value="">All months</option>
                 {Array.from({ length: 12 }, (_, i) => {
@@ -202,16 +203,16 @@ export default function ManagerReports() {
             </div>
           )}
           {activeTab === 'revenue' && (
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e0' }} />
-              <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e0' }} />
-              <button onClick={load} className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-semibold">Apply</button>
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e0', fontSize: '12px', height: '32px' }} />
+              <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e0', fontSize: '12px', height: '32px' }} />
+              <button onClick={load} style={{ padding: '6px 12px', fontSize: '12px', height: '32px' }} className="bg-slate-900 text-white rounded-md text-xs font-semibold">Apply</button>
             </div>
           )}
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <button onClick={exportPDF} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold">Export PDF</button>
-            <button onClick={exportCSV} className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold">Export CSV</button>
-            <button onClick={exportExcel} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold">Export Excel</button>
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+            <button onClick={exportPDF} style={{ padding: '6px 10px', fontSize: '11px', height: '32px' }} className="bg-red-600 text-white rounded-md text-xs font-semibold">PDF</button>
+            <button onClick={exportCSV} style={{ padding: '6px 10px', fontSize: '11px', height: '32px' }} className="bg-emerald-600 text-white rounded-md text-xs font-semibold">CSV</button>
+            <button onClick={exportExcel} style={{ padding: '6px 10px', fontSize: '11px', height: '32px' }} className="bg-blue-600 text-white rounded-md text-xs font-semibold">Excel</button>
           </div>
         </div>
       </div>
