@@ -7609,3 +7609,527 @@ body {
   }
 
 }
+
+/* =========================================================
+   GLOBAL MOBILE RESPONSIVE LAYOUT
+   BarFlow
+   ========================================================= */
+
+/* Prevent ANY page from creating horizontal scrolling */
+html,
+body,
+#root {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Images must stay inside their containers */
+img,
+video,
+svg {
+  max-width: 100%;
+}
+
+/* =========================================================
+   DESKTOP
+   Keep your existing desktop layout
+   ========================================================= */
+
+.page-container,
+.main-content,
+.dashboard-container,
+.content-container {
+  max-width: 100%;
+}
+
+
+/* =========================================================
+   PHONE VIEW
+   ========================================================= */
+
+@media (max-width: 768px) {
+
+  /* -------------------------------------------------------
+     GLOBAL
+     ------------------------------------------------------- */
+
+  html,
+  body,
+  #root {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  body {
+    font-size: 15px;
+  }
+
+
+  /* -------------------------------------------------------
+     MAIN PAGE CONTAINERS
+     ------------------------------------------------------- */
+
+  .page-container,
+  .main-content,
+  .dashboard-container,
+  .content-container,
+  .page-content,
+  .dashboard-content,
+  .main-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    overflow-x: hidden;
+  }
+
+
+  /* -------------------------------------------------------
+     ALL GRIDS → ONE COLUMN
+     ------------------------------------------------------- */
+
+  .grid,
+  .dashboard-grid,
+  .stats-grid,
+  .cards-grid,
+  .card-grid,
+  .plans-grid,
+  .products-grid,
+  .orders-grid,
+  .users-grid,
+  .reports-grid,
+  .inventory-grid,
+  .form-grid,
+  .content-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    gap: 14px !important;
+  }
+
+
+  /* -------------------------------------------------------
+     COMMON CSS GRID PATTERNS
+     ------------------------------------------------------- */
+
+  [class*="grid"] {
+    min-width: 0;
+  }
+
+
+  /* -------------------------------------------------------
+     ALL FLEX ROWS → STACK WHEN NECESSARY
+     ------------------------------------------------------- */
+
+  .dashboard-row,
+  .content-row,
+  .stats-row,
+  .cards-row,
+  .form-row,
+  .button-row,
+  .action-row {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    gap: 12px !important;
+  }
+
+
+  /* -------------------------------------------------------
+     FLEX CONTAINERS
+     ------------------------------------------------------- */
+
+  .flex,
+  .d-flex {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+
+  /* Allow generic horizontal flex layouts to wrap */
+  .flex-wrap,
+  .toolbar,
+  .actions,
+  .header-actions {
+    flex-wrap: wrap !important;
+  }
+
+
+  /* -------------------------------------------------------
+     CARDS
+     ------------------------------------------------------- */
+
+  .card,
+  .dashboard-card,
+  .stat-card,
+  .summary-card,
+  .info-card,
+  .chart-card,
+  .table-card,
+  .form-card,
+  .plan-card,
+  .subscription-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+
+  /* -------------------------------------------------------
+     DASHBOARD STATISTICS
+     ------------------------------------------------------- */
+
+  .stat-card {
+    padding: 16px !important;
+  }
+
+  .stat-card h1,
+  .stat-card h2,
+  .stat-card h3 {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+
+  /* -------------------------------------------------------
+     HEADERS
+     ------------------------------------------------------- */
+
+  .page-header,
+  .dashboard-header,
+  .section-header,
+  .content-header {
+    width: 100%;
+    max-width: 100%;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px;
+  }
+
+
+  /* Header buttons */
+  .page-header button,
+  .dashboard-header button,
+  .section-header button,
+  .content-header button {
+    max-width: 100%;
+  }
+
+
+  /* -------------------------------------------------------
+     FORMS → ONE COLUMN
+     ------------------------------------------------------- */
+
+  form {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  form > div {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  input,
+  select,
+  textarea {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  textarea {
+    resize: vertical;
+  }
+
+
+  /* -------------------------------------------------------
+     BUTTONS
+     ------------------------------------------------------- */
+
+  button {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+
+  /* -------------------------------------------------------
+     TABLES
+     ------------------------------------------------------- */
+
+  .table-container,
+  .table-wrapper,
+  .data-table-container {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    width: 100%;
+    min-width: 650px;
+  }
+
+
+  /* -------------------------------------------------------
+     TEXT
+     ------------------------------------------------------- */
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p,
+  span,
+  label {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+
+
+  /* -------------------------------------------------------
+     LONG NUMBERS / IDs / EMAILS
+     ------------------------------------------------------- */
+
+  .email,
+  .phone,
+  .id,
+  .order-number,
+  .reference,
+  .transaction-id {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+
+  /* -------------------------------------------------------
+     SEARCH / FILTER AREA
+     ------------------------------------------------------- */
+
+  .search-bar,
+  .filter-bar,
+  .filters,
+  .search-filters {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  .search-bar input,
+  .filter-bar input,
+  .filters input,
+  .filters select,
+  .search-filters input,
+  .search-filters select {
+    width: 100% !important;
+  }
+
+
+  /* -------------------------------------------------------
+     MODALS
+     ------------------------------------------------------- */
+
+  .modal,
+  .modal-content,
+  .dialog,
+  .dialog-content {
+    width: calc(100% - 24px) !important;
+    max-width: calc(100% - 24px) !important;
+    min-width: 0 !important;
+    margin: 12px auto !important;
+  }
+
+
+  /* -------------------------------------------------------
+     CHARTS
+     ------------------------------------------------------- */
+
+  .chart-container,
+  .chart-wrapper {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto;
+  }
+
+
+  /* -------------------------------------------------------
+     IMAGES
+     ------------------------------------------------------- */
+
+  .card img,
+  .dashboard-card img,
+  .product-card img {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+  }
+
+
+  /* -------------------------------------------------------
+     PRODUCT / MENU ITEMS
+     ------------------------------------------------------- */
+
+  .product-list,
+  .menu-list,
+  .order-list,
+  .inventory-list {
+    width: 100%;
+    max-width: 100%;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 12px;
+  }
+
+
+  /* -------------------------------------------------------
+     ORDER ITEMS
+     ------------------------------------------------------- */
+
+  .order-item,
+  .cart-item,
+  .product-item {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+
+  /* -------------------------------------------------------
+     PAYMENT / CHECKOUT
+     ------------------------------------------------------- */
+
+  .payment-options,
+  .payment-methods,
+  .checkout-options {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    width: 100%;
+    gap: 12px;
+  }
+
+
+  /* -------------------------------------------------------
+     SUBSCRIPTION PLANS
+     ------------------------------------------------------- */
+
+  .subscription-plans,
+  .plans-container,
+  .plans-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
+    gap: 16px !important;
+  }
+
+  .subscription-plan,
+  .plan-card,
+  .pricing-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+
+  /* -------------------------------------------------------
+     SIDEBAR
+     ------------------------------------------------------- */
+
+  .sidebar {
+    width: 100%;
+    max-width: 100%;
+  }
+
+
+  /* -------------------------------------------------------
+     NAVIGATION
+     ------------------------------------------------------- */
+
+  .navbar,
+  .topbar,
+  .header {
+    width: 100%;
+    max-width: 100%;
+  }
+
+
+  /* -------------------------------------------------------
+     HIDE DESKTOP-ONLY ELEMENTS
+     ------------------------------------------------------- */
+
+  .desktop-only {
+    display: none !important;
+  }
+
+
+  /* -------------------------------------------------------
+     SHOW MOBILE ELEMENTS
+     ------------------------------------------------------- */
+
+  .mobile-only {
+    display: block !important;
+  }
+}
+
+
+/* =========================================================
+   VERY SMALL PHONES
+   ========================================================= */
+
+@media (max-width: 400px) {
+
+  .page-container,
+  .main-content,
+  .dashboard-container,
+  .content-container,
+  .page-content,
+  .dashboard-content,
+  .main-container {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+
+  h1 {
+    font-size: 22px;
+  }
+
+  h2 {
+    font-size: 20px;
+  }
+
+  h3 {
+    font-size: 18px;
+  }
+
+  .card,
+  .dashboard-card,
+  .stat-card,
+  .summary-card {
+    padding: 14px !important;
+  }
+}
