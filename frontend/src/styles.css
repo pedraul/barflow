@@ -5860,122 +5860,116 @@ label {
   .waiter-checkout-actions button {
     width: 100%;
   }
+
+  /* Waiter order cards must be full-width on phones */
+  .waiter-orders > div[style*="gridTemplateColumns"],
+  .waiter-orders [style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  .waiter-orders [style*="repeat(auto-fill"],
+  .waiter-orders [style*="repeat(auto-fit"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Waiter order cards stack without squeezing */
+  .waiter-orders [style*="borderRadius"],
+  .waiter-orders [style*="border-left"] {
+    margin-left: 0 !important;
+    border-left-width: 4px !important;
+  }
+
+  /* Order card actions stack on small screens */
+  .waiter-orders [style*="display: flex"][style*="gap: 8"],
+  .waiter-orders [style*="display:flex"][style*="gap:8"] {
+    flex-wrap: wrap !important;
+  }
+  .waiter-orders [style*="display: flex"][style*="gap: 8"] button,
+  .waiter-orders [style*="display:flex"][style*="gap:8"] button {
+    flex: 1 1 100% !important;
+  }
+
+  /* Waiter nav tabs become swipeable row */
+  .waiter-nav,
+  .section-nav {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    flex-wrap: nowrap !important;
+  }
+  .waiter-nav::-webkit-scrollbar,
+  .section-nav::-webkit-scrollbar {
+    display: none !important;
+  }
+  .waiter-nav a,
+  .waiter-nav button,
+  .section-nav a,
+  .section-nav button {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Order history period buttons wrap */
+  .waiter-order-history [style*="flexWrap: wrap"],
+  .waiter-order-history [style*="flex-wrap: wrap"] {
+    row-gap: 0.5rem;
+  }
+
+  /* Cart page items stack cleanly */
+  .waiter-cart [style*="divide-y"] > div {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* General inline-styled grids must not overflow phone width */
+  main [style*="grid-template-columns"],
+  main [style*="gridTemplateColumns"] {
+    grid-template-columns: 1fr !important;
+  }
+  main [style*="repeat(auto-fill"],
+  main [style*="repeat(auto-fit"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Inline-styled flex rows wrap on phones */
+  main [style*="display: flex"][style*="justify-content: space-between"],
+  main [style*="display:flex"][style*="justify-content:space-between"] {
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+  }
+
+  /* Inline-styled buttons inside cards must be full-width */
+  main [style*="display: flex"][style*="gap: 8"] button,
+  main [style*="display:flex"][style*="gap:8"] button {
+    flex: 1 1 100% !important;
+  }
+
+  /* Prevent any fixed-width inline containers from overflowing */
+  main [style*="min-width:"],
+  main [style*="max-width:"] {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* Ensure no horizontal scroll from absolute/fixed elements */
+  main [style*="position: fixed"],
+  main [style*="position:fixed"] {
+    max-width: calc(100vw - 2rem) !important;
+  }
 }
 
-/* ============================================================
-   PHONE COMPATIBILITY LAYER
-   Keeps every application view usable from 320px-wide phones upward.
-   Tables deliberately remain scrollable inside their own containers.
-   ============================================================ */
-@media (max-width: 768px) {
-  html,
-  body,
-  #root {
-    width: 100%;
-    max-width: 100%;
+@media (max-width: 480px) {
+  .waiter-orders [style*="fontSize: '24px'"] {
+    font-size: 1.1rem !important;
   }
-
-  .layout-body,
-  .layout-body > *,
-  .app-content,
-  .app-content > *,
-  .owner-content,
-  .owner-content > *,
-  .page,
-  .card,
-  .section-card,
-  .dashboard-card,
-  .user-section,
-  .settings-section {
-    min-width: 0;
-    max-width: 100%;
+  .waiter-orders [style*="padding: '20px'"] {
+    padding: 14px !important;
   }
-
-  .app-content > .page,
-  .owner-content,
-  .qr-manager {
-    padding: 1rem;
+  .waiter-orders [style*="fontSize: '14px'"] {
+    font-size: 12px !important;
   }
-
-  .card,
-  .section-card,
-  .dashboard-card,
-  .user-section,
-  .settings-section,
-  .withdraw-form,
-  .transfer-form,
-  .user-form,
-  .settings-form {
-    padding: 1rem;
-  }
-
-  .dashboard-heading,
-  .user-page-heading,
-  .page-heading,
-  .section-title-row,
-  .subscription-heading,
-  .receipt-footer,
-  .backup-actions,
-  .alert-content,
-  .action-btns,
-  .receipt-actions {
-    flex-wrap: wrap;
-  }
-
-  .dashboard-heading > *,
-  .user-page-heading > *,
-  .page-heading > *,
-  .alert-content > * {
-    min-width: 0;
-  }
-
-  .metric-grid,
-  .user-info-grid,
-  .hero-points,
-  .stock-grid,
-  .branch-card,
-  .invoice-row,
-  .operator-summary,
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .qr-grid,
-  .stock-menu-grid {
-    grid-template-columns: repeat(auto-fit, minmax(min(10rem, 100%), 1fr));
-  }
-
-  .dropdown-menu {
-    position: fixed;
-    left: 0.75rem;
-    right: 0.75rem;
-    top: auto;
-    width: auto;
-    max-width: none;
-  }
-
-  .subscription-alert,
-  .alert-content {
-    align-items: flex-start;
-  }
-
-  .btn-renew {
-    margin-left: 0;
-  }
-
-  img,
-  svg,
-  canvas,
-  video {
-    max-width: 100%;
-  }
-
-  p,
-  td,
-  th,
-  .qr-url,
-  .receipt-item-name {
-    overflow-wrap: anywhere;
+  .waiter-orders [style*="fontSize: '16px'"] {
+    font-size: 13px !important;
   }
 }
 
@@ -6046,6 +6040,115 @@ label {
   .admin-sidebar + div > main {
     overflow: visible !important;
     padding: 1rem !important;
+  }
+}
+
+/* ============================================================
+   MOBILE SIDEBAR OVERLAY & NAV — GLOBAL
+   ============================================================ */
+@media (max-width: 768px) {
+  .sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1500;
+    background: rgba(0, 0, 0, 0.45);
+  }
+
+  /* Section nav / waiter nav must swipe on phones */
+  .section-nav,
+  .waiter-nav {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    flex-wrap: nowrap !important;
+    gap: 0 !important;
+  }
+  .section-nav::-webkit-scrollbar,
+  .waiter-nav::-webkit-scrollbar {
+    display: none !important;
+  }
+  .section-nav a,
+  .section-nav button,
+  .waiter-nav a,
+  .waiter-nav button {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Page headings never overflow */
+  .page-heading,
+  .user-page-heading,
+  .dashboard-heading {
+    overflow-wrap: anywhere;
+  }
+  .page-heading h1,
+  .user-page-heading h1,
+  .dashboard-heading h1 {
+    word-break: break-word;
+  }
+
+  /* Stat cards stack cleanly */
+  .stat-card,
+  .StatCard {
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  /* Prevent any element with inline fixed width from breaking layout */
+  [style*="width: "] {
+    max-width: 100% !important;
+  }
+  [style*="min-width: "] {
+    min-width: 0 !important;
+  }
+
+  /* Section nav negative margins break mobile — reset to normal flow */
+  .section-nav {
+    margin: 0 0 0 0 !important;
+    padding: 0 0.5rem !important;
+  }
+
+  /* Page root grid stacks children properly */
+  .page {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  /* Mobile topbar brand text truncates safely */
+  .mobile-brand {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    flex-shrink: 1;
+  }
+
+  /* Operator order cards stack on phones */
+  .operator-order-card {
+    margin-left: 0 !important;
+  }
+  .operator-order-header {
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+  }
+  .operator-order-actions {
+    flex-wrap: wrap !important;
+  }
+  .operator-order-actions button {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+  }
+
+  /* Receipt cards stack cleanly */
+  .receipt-card {
+    margin-left: 0 !important;
+  }
+  .receipt-header {
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+  }
+  .receipt-actions {
+    flex-wrap: wrap !important;
   }
 }
 
@@ -6742,4 +6845,746 @@ label {
   main [class*="justify-end"] {
     flex-wrap: wrap;
   }
+}
+/* ============================================================
+   BARFLOW FINAL RESPONSIVE MOBILE DESIGN
+   ============================================================ */
+
+/* ---------- GLOBAL SAFETY ---------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0;
+  overflow-x: hidden;
+}
+
+#root {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+
+/* ============================================================
+   DESKTOP
+   Keep normal desktop layout
+   ============================================================ */
+
+@media (min-width: 769px) {
+
+  .app-content {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .page {
+    width: 100%;
+    max-width: var(--max-w);
+    margin: 0 auto;
+  }
+
+}
+
+
+/* ============================================================
+   TABLET + PHONE
+   ============================================================ */
+
+@media (max-width: 768px) {
+
+  /* ----------------------------------------------------------
+     PAGE WIDTH
+     ---------------------------------------------------------- */
+
+  html,
+  body,
+  #root {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  .layout-root {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    min-height: 100vh;
+  }
+
+  .layout-body {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .app-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+  }
+
+  .app-content > .page,
+  .page {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 12px !important;
+  }
+
+
+  /* ----------------------------------------------------------
+     MOBILE HEADER
+     ---------------------------------------------------------- */
+
+  .desktop-topbar {
+    display: none !important;
+  }
+
+  .mobile-topbar {
+    display: flex !important;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 58px;
+
+    align-items: center;
+
+    padding: 0 12px;
+
+    background: #ffffff;
+    border-bottom: 1px solid var(--border);
+
+    box-sizing: border-box;
+  }
+
+  .mobile-menu-button {
+    width: 44px;
+    height: 44px;
+
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobile-brand {
+    margin-left: 8px;
+
+    font-size: 18px;
+    font-weight: 700;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mobile-logout-wrapper {
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+
+  /* ----------------------------------------------------------
+     SIDEBAR
+     ---------------------------------------------------------- */
+
+  .sidebar-desktop {
+    display: none !important;
+  }
+
+  .sidebar-mobile {
+    position: fixed;
+
+    top: 0;
+    left: -280px;
+
+    width: 270px;
+    max-width: 85vw;
+    height: 100vh;
+
+    z-index: 2000;
+
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    transition: left 0.25s ease;
+  }
+
+  .sidebar-mobile.sidebar-open {
+    left: 0;
+  }
+
+  .owner-sidebar-mobile,
+  .operator-sidebar-mobile {
+    position: fixed;
+
+    top: 0;
+    left: -280px;
+
+    width: 270px;
+    max-width: 85vw;
+    height: 100vh;
+
+    z-index: 2000;
+
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    transition: left 0.25s ease;
+  }
+
+  .owner-sidebar-mobile.owner-sidebar-open,
+  .operator-sidebar-mobile.operator-sidebar-open {
+    left: 0;
+  }
+
+  .sidebar-overlay {
+    position: fixed;
+    inset: 0;
+
+    z-index: 1500;
+
+    background: rgba(0, 0, 0, 0.45);
+  }
+
+
+  /* ----------------------------------------------------------
+     ALL CARDS
+     ---------------------------------------------------------- */
+
+  .card,
+  .panel,
+  .section,
+  .dashboard-card,
+  .summary-card,
+  .metric-card,
+  .stat-card,
+  .stock-card,
+  .billing-card,
+  .plan-card {
+
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+
+    padding: 14px !important;
+  }
+
+
+  /* ----------------------------------------------------------
+     DASHBOARD GRIDS
+     ---------------------------------------------------------- */
+
+  .grid,
+  .dashboard-grid,
+  .stats-grid,
+  .cards-grid,
+  .overview-grid {
+
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+
+    grid-template-columns: 1fr !important;
+
+    gap: 12px !important;
+  }
+
+
+  /* Tailwind-style grids used by pages */
+
+  .grid-cols-2,
+  .grid-cols-3,
+  .grid-cols-4,
+  .grid-cols-5,
+  .grid-cols-6 {
+
+    grid-template-columns: 1fr !important;
+  }
+
+
+  /* ----------------------------------------------------------
+     FLEX ROWS
+     ---------------------------------------------------------- */
+
+  .row,
+  .flex-row,
+  .toolbar,
+  .header-row,
+  .actions,
+  .action-buttons,
+  .button-group {
+
+    width: 100% !important;
+    max-width: 100% !important;
+
+    flex-wrap: wrap !important;
+  }
+
+
+  /* ----------------------------------------------------------
+     HEADINGS
+     ---------------------------------------------------------- */
+
+  h1 {
+    font-size: 22px !important;
+    line-height: 1.25;
+  }
+
+  h2 {
+    font-size: 19px !important;
+    line-height: 1.3;
+  }
+
+  h3 {
+    font-size: 17px !important;
+  }
+
+  p {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+
+  /* ----------------------------------------------------------
+     FORMS
+     ---------------------------------------------------------- */
+
+  form {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  input,
+  select,
+  textarea {
+
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+
+    min-height: 44px;
+
+    font-size: 16px !important;
+
+    box-sizing: border-box;
+  }
+
+
+  /* ----------------------------------------------------------
+     BUTTONS
+     ---------------------------------------------------------- */
+
+  button {
+
+    min-height: 44px;
+
+    max-width: 100%;
+
+    font-size: 14px;
+
+    touch-action: manipulation;
+  }
+
+  .actions button,
+  .action-buttons button,
+  .button-group button {
+
+    flex: 1 1 auto;
+
+    min-width: 120px;
+  }
+
+
+  /* ----------------------------------------------------------
+     TABLES
+     ---------------------------------------------------------- */
+
+  /*
+     IMPORTANT:
+     The PHONE itself must NOT scroll horizontally.
+
+     Only the table container should scroll horizontally.
+  */
+
+  .table-container,
+  .table-wrapper,
+  .responsive-table,
+  .user-table-wrap,
+  .registry-table,
+  .waiter-cart-table {
+
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+
+    overflow-x: auto !important;
+    overflow-y: hidden;
+
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-container table,
+  .table-wrapper table,
+  .responsive-table table,
+  .user-table-wrap table,
+  .registry-table table,
+  .waiter-cart-table table {
+
+    width: max-content !important;
+    min-width: 640px !important;
+  }
+
+  table th,
+  table td {
+
+    padding: 8px 10px !important;
+
+    font-size: 12px !important;
+
+    white-space: nowrap;
+  }
+
+
+  /* ----------------------------------------------------------
+     WAITER NEW ORDER
+     ---------------------------------------------------------- */
+
+  .waiter-new-order-grid {
+
+    width: 100% !important;
+
+    grid-template-columns: 1fr !important;
+
+    gap: 12px !important;
+  }
+
+  .waiter-cart-aside {
+
+    width: 100% !important;
+
+    margin-top: 12px;
+  }
+
+  .waiter-checkout-actions {
+
+    width: 100%;
+
+    display: flex;
+
+    flex-direction: column !important;
+
+    gap: 10px;
+  }
+
+  .waiter-checkout-actions button {
+
+    width: 100% !important;
+  }
+
+
+  /* ----------------------------------------------------------
+     QR ORDERS
+     ---------------------------------------------------------- */
+
+  .qr-manager {
+
+    width: 100% !important;
+    max-width: 100% !important;
+
+    padding: 12px !important;
+  }
+
+  .qr-controls {
+
+    width: 100% !important;
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: stretch !important;
+
+    gap: 10px !important;
+  }
+
+  .qr-count-label input {
+
+    width: 100% !important;
+  }
+
+  .qr-operator {
+
+    margin-left: 0 !important;
+  }
+
+  .qr-grid {
+
+    width: 100% !important;
+
+    grid-template-columns: 1fr !important;
+
+    gap: 12px !important;
+  }
+
+  .qr-card {
+
+    width: 100% !important;
+
+    max-width: 100% !important;
+  }
+
+
+  /* ----------------------------------------------------------
+     MODALS
+     ---------------------------------------------------------- */
+
+  .modal,
+  .modal-content,
+  .responsive-modal {
+
+    width: calc(100vw - 20px) !important;
+
+    max-width: calc(100vw - 20px) !important;
+
+    max-height: calc(100vh - 20px);
+
+    margin: 10px;
+
+    overflow-y: auto;
+
+    box-sizing: border-box;
+  }
+
+
+  /* ----------------------------------------------------------
+     IMAGES / QR CODES
+     ---------------------------------------------------------- */
+
+  img,
+  svg,
+  canvas,
+  video {
+
+    max-width: 100%;
+    height: auto;
+  }
+
+  .qr-code,
+  .qr-container {
+
+    max-width: 100%;
+
+    overflow: hidden;
+  }
+
+
+  /* ----------------------------------------------------------
+     LONG TEXT
+     ---------------------------------------------------------- */
+
+  .url,
+  .qr-url,
+  .long-text,
+  code {
+
+    max-width: 100%;
+
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+
+  /* ----------------------------------------------------------
+     REMOVE DESKTOP FIXED WIDTHS
+     ---------------------------------------------------------- */
+
+  [style*="width: 500px"],
+  [style*="width: 600px"],
+  [style*="width: 700px"],
+  [style*="width: 800px"],
+  [style*="width: 900px"],
+  [style*="width: 1000px"] {
+
+    max-width: 100% !important;
+  }
+
+
+  /* ----------------------------------------------------------
+     PREVENT CONTENT FROM ESCAPING SCREEN
+     ---------------------------------------------------------- */
+
+  main,
+  main > div,
+  section,
+  article,
+  header,
+  footer {
+
+    max-width: 100%;
+
+    min-width: 0;
+  }
+
+}
+
+
+/* ============================================================
+   SMALL PHONES
+   480px AND BELOW
+   ============================================================ */
+
+@media (max-width: 480px) {
+
+  .app-content > .page,
+  .page {
+
+    padding: 10px !important;
+  }
+
+  .mobile-topbar {
+
+    height: 56px;
+
+    padding: 0 10px;
+  }
+
+  .mobile-brand {
+
+    font-size: 17px;
+  }
+
+  h1 {
+
+    font-size: 20px !important;
+  }
+
+  h2 {
+
+    font-size: 18px !important;
+  }
+
+  h3 {
+
+    font-size: 16px !important;
+  }
+
+  .card,
+  .panel,
+  .section,
+  .dashboard-card,
+  .summary-card,
+  .metric-card,
+  .stat-card {
+
+    padding: 12px !important;
+
+    border-radius: 12px;
+  }
+
+  button {
+
+    min-height: 44px;
+  }
+
+}
+
+
+/* ============================================================
+   VERY SMALL PHONES
+   360px AND BELOW
+   ============================================================ */
+
+@media (max-width: 360px) {
+
+  .app-content > .page,
+  .page {
+
+    padding: 8px !important;
+  }
+
+  .mobile-topbar {
+
+    padding: 0 8px;
+  }
+
+  .mobile-brand {
+
+    font-size: 16px;
+  }
+
+  .card,
+  .panel,
+  .section {
+
+    padding: 10px !important;
+  }
+
+  h1 {
+
+    font-size: 19px !important;
+  }
+
+  h2 {
+
+    font-size: 17px !important;
+  }
+
+  table th,
+  table td {
+
+    padding: 6px 8px !important;
+
+    font-size: 11px !important;
+  }
+
+}
+
+
+/* ============================================================
+   TOUCH DEVICES
+   ============================================================ */
+
+@media (hover: none) and (pointer: coarse) {
+
+  button,
+  a,
+  select,
+  input {
+
+    touch-action: manipulation;
+  }
+
+  button {
+
+    min-height: 44px;
+  }
+
 }
