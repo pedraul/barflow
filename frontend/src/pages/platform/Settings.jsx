@@ -139,7 +139,7 @@ export default function Settings() {
       <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-start">
         {/* Tab nav - grouped - hidden on mobile when viewing content */}
         {!showMobileContent && (
-          <div className="w-full md:w-64 shrink-0 bg-white border border-slate-200 rounded-xl p-2 md:sticky md:top-4">
+          <div className="platform-settings-sidebar w-full md:w-64 shrink-0 bg-white border border-slate-200 rounded-xl p-2 md:sticky md:top-4">
             <div className="flex md:flex-col gap-1">
               {SETTINGS_GROUPS.map((group) => {
                 const isGroupActive = group.items.some(i => i.id === activeTab)

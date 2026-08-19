@@ -850,6 +850,16 @@ table tbody tr:hover {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
+
+  /* Owner module: keep table wrappers inside the viewport so they scroll horizontally on mobile */
+  main > div > div[class*="overflow-x-auto"],
+  main > div > section > div[class*="overflow-x-auto"],
+  main > div > section > div > div[class*="overflow-x-auto"],
+  main > div > div > div[class*="overflow-x-auto"],
+  main > div > section > div > div > div[class*="overflow-x-auto"] {
+    max-width: 100%;
+    width: 100%;
+  }
 }
 
 /* ============================================================
@@ -6113,6 +6123,293 @@ label {
   .customer-menu-header button {
     flex-shrink: 0;
     padding: 0.65rem 0.75rem;
+  }
+}
+
+/* ============================================================
+   OWNER SYSTEM SETTINGS — HORIZONTAL TAB BAR ON MOBILE
+   Matches the platform admin settings tab style on phones.
+   ============================================================ */
+@media (max-width: 768px) {
+  /* Turn the vertical sidebar into a horizontal scrollable tab bar */
+  .owner-settings-tabs {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100% !important;
+    max-width: 100%;
+    padding: 0.5rem !important;
+    gap: 0.25rem;
+    scrollbar-width: none;
+  }
+  .owner-settings-tabs::-webkit-scrollbar { display: none; }
+
+  /* Each group becomes a horizontal segment */
+  .owner-settings-tabs > div {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.25rem;
+    margin-bottom: 0 !important;
+    flex-shrink: 0;
+  }
+
+  /* Group label becomes a compact chip */
+  .owner-settings-tabs > div > div:first-child {
+    white-space: nowrap;
+    padding: 0.4rem 0.6rem !important;
+    font-size: 10px !important;
+    border-radius: 9999px !important;
+    margin: 0 !important;
+  }
+
+  /* Item list becomes a horizontal row */
+  .owner-settings-tabs > div > div:last-child {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 0.25rem;
+    margin: 0 !important;
+  }
+
+  /* Each tab button becomes a compact horizontal pill */
+  .owner-settings-tabs button {
+    white-space: nowrap;
+    width: auto !important;
+    min-width: 0;
+    padding: 0.45rem 0.7rem !important;
+    border-radius: 9999px !important;
+    font-size: 12px !important;
+    flex-shrink: 0;
+  }
+
+  /* Hide the left accent bar on horizontal pills */
+  .owner-settings-tabs button span[class*="absolute"] {
+    display: none;
+  }
+}
+
+/* ============================================================
+   SETTINGS SIDEBARS — DESKTOP GROUPED MENU STYLE
+   Owner System Settings + Platform Admin Settings match the
+   dashboard sidebar look (dark, grouped, icon links) on PC.
+   ============================================================ */
+@media (min-width: 769px) {
+  /* Shared sidebar shell — dark like the dashboard sidebars */
+  .owner-settings-tabs,
+  .platform-settings-sidebar {
+    background: #0A1128 !important;
+    border: 1px solid #1e293b !important;
+    border-radius: 0.75rem !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18) !important;
+    padding: 0.75rem !important;
+    width: 240px !important;
+    min-width: 240px !important;
+    max-width: 240px !important;
+    flex-shrink: 0;
+  }
+
+  /* Group wrapper — vertical stack */
+  .owner-settings-tabs > div,
+  .platform-settings-sidebar > div > div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    margin-bottom: 0.75rem !important;
+  }
+
+  /* Group label — dashboard section header style */
+  .owner-settings-tabs > div > div:first-child,
+  .platform-settings-sidebar > div > div > div:first-child {
+    color: #64748b !important;
+    background: transparent !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.08em !important;
+    padding: 0.4rem 0.75rem 0.25rem !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Item list — vertical stack */
+  .owner-settings-tabs > div > div:last-child,
+  .platform-settings-sidebar > div > div > div:last-child {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    margin: 0 !important;
+  }
+
+  /* Tab buttons — dashboard sidebar link style */
+  .owner-settings-tabs button,
+  .platform-settings-sidebar button {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    width: 100% !important;
+    min-width: 0;
+    padding: 0.55rem 0.75rem !important;
+    border-radius: 0.5rem !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: #94a3b8 !important;
+    background: transparent !important;
+    text-align: left;
+    white-space: nowrap;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .owner-settings-tabs button:hover,
+  .platform-settings-sidebar button:hover {
+    background: rgba(148, 163, 184, 0.12) !important;
+    color: #e2e8f0 !important;
+  }
+
+  /* Active tab — highlighted like the dashboard active link */
+  /* Owner settings active tab (SubTabButton applies text-slate-900 font-bold) */
+  .owner-settings-tabs button.text-slate-900,
+  .owner-settings-tabs button.font-bold {
+    background: #4F46E5 !important;
+    color: #ffffff !important;
+  }
+  .owner-settings-tabs button.text-slate-900 svg,
+  .owner-settings-tabs button.font-bold svg {
+    color: #ffffff !important;
+  }
+
+  /* Platform admin settings active tab (applies bg-indigo-50 text-indigo-700) */
+  .platform-settings-sidebar button.bg-indigo-50,
+  .platform-settings-sidebar button.text-indigo-700 {
+    background: #4F46E5 !important;
+    color: #ffffff !important;
+  }
+  .platform-settings-sidebar button.bg-indigo-50 svg,
+  .platform-settings-sidebar button.text-indigo-700 svg {
+    color: #ffffff !important;
+  }
+
+  /* Icons inside tab buttons */
+  .owner-settings-tabs button svg,
+  .platform-settings-sidebar button svg {
+    flex-shrink: 0;
+  }
+}
+
+/* ============================================================
+   GLOBAL MOBILE FIT — ALL DASHBOARDS & BUSINESSES
+   Makes the whole platform fully visible on phone screens.
+   Uses compact typography + tight spacing (mobile only).
+   ============================================================ */
+@media (max-width: 768px) {
+  /* Compact headings so they never wrap off-screen */
+  main h1 { font-size: 1.15rem !important; letter-spacing: -0.02em; }
+  main h2 { font-size: 1rem !important; }
+  main h3 { font-size: 0.9rem !important; }
+  main h4 { font-size: 0.82rem !important; }
+
+  /* Compact body text so every column/label stays readable */
+  main p,
+  main span,
+  main li,
+  main a,
+  main button,
+  main td,
+  main th,
+  main div[class*="text-sm"],
+  main label {
+    font-size: 0.82rem !important;
+  }
+
+  /* Tighter page padding — more usable width on phones */
+  main,
+  main > div,
+  main > section,
+  main > div > div,
+  main > div > section {
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+  main .p-6,
+  main .p-5,
+  main .p-4,
+  main .p-3 {
+    padding: 0.65rem !important;
+  }
+  main .px-6 { padding-left: 0.65rem !important; padding-right: 0.65rem !important; }
+  main .px-4 { padding-left: 0.6rem !important; padding-right: 0.6rem !important; }
+  main .space-y-6 > * + * { margin-top: 0.8rem !important; }
+  main .space-y-4 > * + * { margin-top: 0.6rem !important; }
+  main .space-y-3 > * + * { margin-top: 0.45rem !important; }
+  main .gap-3 { gap: 0.5rem !important; }
+  main .gap-4 { gap: 0.6rem !important; }
+  main .gap-6 { gap: 0.75rem !important; }
+
+  /* Wide dashboard grids collapse to 2 columns on phones */
+  main .grid-cols-3,
+  main .grid-cols-4,
+  main .grid-cols-5,
+  main .grid-cols-6,
+  main [class*="grid-cols-3"],
+  main [class*="grid-cols-4"],
+  main [class*="grid-cols-5"],
+  main [class*="grid-cols-6"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  /* Compact tables keep more columns visible on screen */
+  main table { font-size: 0.62rem !important; }
+  main table th,
+  main table td {
+    padding: 0.3rem 0.4rem !important;
+    white-space: nowrap;
+  }
+
+  /* Buttons shrink vertically/horizontally to fit the viewport */
+  main button {
+    min-height: 0 !important;
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+  }
+  main button[class*="px-3"] { padding-left: 0.55rem !important; padding-right: 0.55rem !important; }
+
+  /* Constrain charts, cards and utility widths so nothing spills */
+  main [class*="max-w-"],
+  main [class*="w-"] {
+    max-width: 100%;
+  }
+  main canvas,
+  main svg,
+  main img {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Very small phones: single column everywhere + ultra compact text */
+  main h1 { font-size: 1.05rem !important; }
+  main .grid-cols-2,
+  main .grid-cols-3,
+  main .grid-cols-4,
+  main .grid-cols-5,
+  main .grid-cols-6 {
+    grid-template-columns: 1fr !important;
+  }
+  main table { font-size: 0.58rem !important; }
+  main table th,
+  main table td {
+    padding: 0.2rem 0.3rem !important;
+  }
+  main p,
+  main span,
+  main button,
+  main td,
+  main th {
+    font-size: 0.75rem !important;
   }
 }
 
