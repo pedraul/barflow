@@ -6150,6 +6150,27 @@ label {
   .receipt-actions {
     flex-wrap: wrap !important;
   }
+
+  /* Shared component cards must not overflow */
+  .StatCard,
+  .OrderListItem,
+  .QuickActionButton {
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+  .StatCard {
+    height: auto !important;
+    min-height: 0 !important;
+  }
+  .OrderListItem {
+    margin-left: 0 !important;
+  }
+  .OrderListItem .grid {
+    grid-template-columns: 1fr !important;
+  }
+  .QuickActionButton {
+    width: 100% !important;
+  }
 }
 
 /* Page canvases: prevent fixed utility widths and flex children from widening a phone viewport. */
