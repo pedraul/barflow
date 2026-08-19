@@ -7065,6 +7065,11 @@ body {
     box-sizing: border-box;
   }
 
+  .mobile-topbar .back-btn::after,
+  .mobile-header .back-btn::after {
+    display: none !important;
+  }
+
   .mobile-menu-button {
     width: 44px;
     height: 44px;
