@@ -6455,3 +6455,291 @@ label {
     width: 100%;
   }
 }
+
+/* ============================================================
+   MOBILE APP RESPONSIVE LAYER — ALL PAGES (PHONE ONLY)
+   Turns every BarFlow page into a proper mobile application:
+   compact nav, stacked cards, full-width touch targets, and
+   controlled horizontal scrolling. Desktop is untouched.
+   Applies to Owner, Manager, Cashier, Waiter, Operator,
+   Kitchen, Bar, QR Orders, Products, Inventory, Orders,
+   Payments, Reports, Settings and every other page.
+   ============================================================ */
+@media (max-width: 768px) {
+  /* Never allow the page itself to scroll sideways */
+  html,
+  body,
+  #root {
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* Every page canvas stays inside the phone viewport */
+  #root > *,
+  .layout-root,
+  .layout-body,
+  .app-content,
+  .page-screen,
+  .page-content,
+  .owner-content,
+  .operator-content,
+  .billing-page,
+  .settings-page,
+  .subscription-page,
+  .qr-manager,
+  .owner-command-deck,
+  .obw,
+  .operator-dashboard,
+  main {
+    max-width: 100% !important;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  /* Neutralise fixed utility widths that widen the phone viewport */
+  main [class*="min-w-"] { min-width: 0 !important; }
+  main [class*="max-w-"],
+  main [class*="w-"] { max-width: 100% !important; }
+
+  /* Page padding becomes tight and consistent on phones */
+  main { padding: 0.75rem !important; }
+  main .p-8 { padding: 0.75rem !important; }
+  main .py-8 { padding-top: 0.75rem !important; padding-bottom: 0.75rem !important; }
+  main .px-8 { padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
+  main .p-6 { padding: 0.65rem !important; }
+  main .p-5 { padding: 0.6rem !important; }
+  main .p-4 { padding: 0.55rem !important; }
+  main .p-3 { padding: 0.5rem !important; }
+  main .py-6 { padding-top: 0.65rem !important; padding-bottom: 0.65rem !important; }
+  main .py-4 { padding-top: 0.55rem !important; padding-bottom: 0.55rem !important; }
+
+  /* Vertical rhythm compacts so more content fits on one screen */
+  main .space-y-8 > * + * { margin-top: 0.9rem !important; }
+  main .space-y-6 > * + * { margin-top: 0.75rem !important; }
+  main .space-y-5 > * + * { margin-top: 0.65rem !important; }
+  main .space-y-4 > * + * { margin-top: 0.55rem !important; }
+  main .space-y-3 > * + * { margin-top: 0.45rem !important; }
+  main .space-y-2 > * + * { margin-top: 0.35rem !important; }
+  main .mb-8 { margin-bottom: 0.9rem !important; }
+  main .mb-6 { margin-bottom: 0.75rem !important; }
+  main .mb-4 { margin-bottom: 0.55rem !important; }
+  main .mt-6 { margin-top: 0.75rem !important; }
+  main .mt-4 { margin-top: 0.55rem !important; }
+
+  /* Gaps compact consistently */
+  main .gap-2 { gap: 0.35rem !important; }
+  main .gap-3 { gap: 0.5rem !important; }
+  main .gap-4 { gap: 0.6rem !important; }
+  main .gap-5 { gap: 0.7rem !important; }
+  main .gap-6 { gap: 0.75rem !important; }
+  main .gap-x-6 { column-gap: 0.75rem !important; }
+  main .gap-y-5 { row-gap: 0.65rem !important; }
+
+  /* Cards stack vertically — never side-by-side squeezed */
+  main .md\:flex-row { flex-direction: column !important; }
+  main .flex-row {
+    flex-wrap: wrap;
+  }
+  main .flex-col {
+    flex-direction: column;
+  }
+  main [class*="sm:flex"] {
+    flex-wrap: wrap;
+  }
+
+  /* Wide card grids become 2 columns on phones, 1 on very small phones */
+  main .grid-cols-2,
+  main .grid-cols-3,
+  main .grid-cols-4,
+  main .grid-cols-5,
+  main .grid-cols-6,
+  main [class*="grid-cols-2"],
+  main [class*="grid-cols-3"],
+  main [class*="grid-cols-4"],
+  main [class*="grid-cols-5"],
+  main [class*="grid-cols-6"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  main [class*="sm:grid-cols-2"],
+  main [class*="sm:grid-cols-3"],
+  main [class*="lg:grid-cols-3"],
+  main [class*="lg:grid-cols-4"],
+  main [class*="xl:grid-cols-5"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  /* Compact navigation/tab/filter bars become swipeable rows */
+  main nav,
+  main [role="tablist"],
+  main [class*="tab"],
+  main [class*="subnav"],
+  main [class*="subtab"],
+  main [class*="filters"],
+  main [class*="tabs-"] {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap !important;
+  }
+  main nav::-webkit-scrollbar,
+  main [class*="tab"]::-webkit-scrollbar,
+  main [class*="filters"]::-webkit-scrollbar {
+    display: none;
+  }
+  main nav a,
+  main nav button,
+  main [class*="tab"] button,
+  main [class*="filters"] button,
+  main [class*="subtab"] {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Touch-friendly but still compact buttons */
+  main button {
+    min-height: 34px !important;
+    border-radius: 0.5rem !important;
+  }
+  main button[class*="px-6"] { padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
+  main button[class*="px-4"] { padding-left: 0.65rem !important; padding-right: 0.65rem !important; }
+  main button[class*="px-3"] { padding-left: 0.55rem !important; padding-right: 0.55rem !important; }
+  main button[class*="px-2"] { padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
+
+  /* Form controls fill the phone width and stay tappable */
+  main input,
+  main select,
+  main textarea {
+    min-height: 38px !important;
+    font-size: 15px !important;
+  }
+
+  /* Every table scrolls inside its own box — no page squeeze */
+  main table,
+  main div > table,
+  main section > table,
+  main section > div > table,
+  main div > div > table,
+  main div > section > table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+    width: 100%;
+  }
+  main table thead,
+  main table tbody,
+  main table tr {
+    display: table;
+    width: 100%;
+  }
+
+  /* Icons and avatars scale down gracefully */
+  main svg {
+    flex-shrink: 0;
+  }
+  main [class*="avatar"] {
+    max-width: 100%;
+  }
+
+  /* Images, charts, QR codes never overflow */
+  main img,
+  main canvas {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Stat / metric value text compacts */
+  main .text-2xl { font-size: 1.3rem !important; }
+  main .text-3xl { font-size: 1.5rem !important; }
+  main .text-4xl { font-size: 1.7rem !important; }
+  main .text-5xl { font-size: 2rem !important; }
+
+  /* Headings compact so every page title fits one line */
+  main h1 { font-size: 1.1rem !important; }
+  main h2 { font-size: 0.98rem !important; }
+  main h3 { font-size: 0.88rem !important; }
+  main h4 { font-size: 0.8rem !important; }
+
+  /* Labels and helper text stay readable but compact */
+  main label { font-size: 0.8rem !important; }
+  main p { font-size: 0.8rem !important; }
+  main span { font-size: 0.8rem !important; }
+
+  /* Page headers wrap instead of squeezing action buttons */
+  main .flex.justify-between,
+  main [class*="justify-between"] {
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  /* Modals and dialogs fit the phone screen */
+  .modal-backdrop,
+  .operator-modal-backdrop {
+    padding: 0.75rem !important;
+  }
+  .confirm-dialog,
+  .operator-modal,
+  .responsive-modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 92vh !important;
+    padding: 1rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Ultra-compact for small phones */
+  main { padding: 0.5rem !important; }
+  main .p-8,
+  main .p-6,
+  main .p-5,
+  main .p-4,
+  main .p-3 { padding: 0.45rem !important; }
+  main .px-8,
+  main .px-6,
+  main .px-4 { padding-left: 0.45rem !important; padding-right: 0.45rem !important; }
+
+  /* Everything stacks to a single column on very small phones */
+  main .grid-cols-2,
+  main .grid-cols-3,
+  main .grid-cols-4,
+  main .grid-cols-5,
+  main .grid-cols-6,
+  main [class*="grid-cols-2"],
+  main [class*="grid-cols-3"],
+  main [class*="grid-cols-4"],
+  main [class*="grid-cols-5"],
+  main [class*="grid-cols-6"],
+  main [class*="sm:grid-cols-2"],
+  main [class*="sm:grid-cols-3"],
+  main [class*="lg:grid-cols-3"],
+  main [class*="lg:grid-cols-4"],
+  main [class*="xl:grid-cols-5"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Even tighter text */
+  main h1 { font-size: 1rem !important; }
+  main h2 { font-size: 0.9rem !important; }
+  main h3 { font-size: 0.82rem !important; }
+  main p,
+  main span,
+  main label,
+  main td,
+  main th,
+  main button { font-size: 0.75rem !important; }
+  main table { font-size: 0.56rem !important; }
+  main table th,
+  main table td { padding: 0.2rem 0.28rem !important; }
+
+  /* Compact stat numbers */
+  main .text-2xl { font-size: 1.15rem !important; }
+  main .text-3xl { font-size: 1.3rem !important; }
+
+  /* Bottom-anchored action rows fill width */
+  main .flex.justify-end,
+  main [class*="justify-end"] {
+    flex-wrap: wrap;
+  }
+}
