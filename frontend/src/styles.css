@@ -2771,12 +2771,12 @@ label {
 .back-btn {
   background: var(--surface);
   border: 1px solid var(--border-2);
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   padding: 0;
   cursor: pointer;
   border-radius: 9999px;
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--shadow-sm);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2786,7 +2786,7 @@ label {
 }
 .back-btn:hover { transform: translateX(-4px); box-shadow: var(--shadow-sm); background: var(--surface-2); }
 
-.back-btn svg { width: 20px; height: 20px; display: block; }
+.back-btn svg { width: 24px; height: 24px; display: block; }
 
 .back-btn::after {
   content: 'Back';
@@ -5501,6 +5501,8 @@ label {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+  background: #0B132B;
+  color: #94a3b8;
 }
 
 /* Desktop top bar */
@@ -5546,8 +5548,8 @@ label {
 }
 
 .desktop-topbar .back-btn svg {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   display: block;
 }
 
@@ -5590,8 +5592,8 @@ label {
 }
 
 .mobile-topbar .back-btn svg {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   display: block;
 }
 
@@ -5707,7 +5709,8 @@ label {
     min-width: 270px;
     height: 100vh;
     z-index: 2000;
-    background: #ffffff;
+    background: #0B132B;
+    color: #94a3b8;
     box-shadow: 4px 0 15px rgba(0, 0, 0, 0.12);
     transition: left 0.25s ease;
     overflow-y: auto;
@@ -6277,9 +6280,14 @@ label {
   }
   .owner-settings-tabs::-webkit-scrollbar { display: none; }
 
-  /* Hide group headers — show all tabs flat */
-  .owner-settings-tabs > div > div:first-child {
+  /* Hide desktop group labels on mobile */
+  .owner-settings-tabs > div > div.hidden {
     display: none !important;
+  }
+
+  /* Show mobile group labels */
+  .owner-settings-tabs > div > div.md\:hidden {
+    display: block !important;
   }
 
   /* Each group becomes a flat wrapped row of tabs */
@@ -6330,21 +6338,27 @@ label {
    PLATFORM ADMIN SETTINGS — FLAT TABS ON MOBILE, NO GROUP HEADERS, NO BACK BUTTON
    ============================================================ */
 @media (max-width: 768px) {
-  /* Hide group headers in platform settings sidebar */
-  .platform-settings-sidebar > div > div > div:first-child {
+  /* Hide desktop group labels on mobile */
+  .platform-settings-sidebar > div > div.hidden {
     display: none !important;
   }
 
+  /* Show mobile group labels */
+  .platform-settings-sidebar > div > div.md\:hidden {
+    display: block !important;
+  }
+
   /* Flatten platform settings items into wrapped rows */
-  .platform-settings-sidebar > div > div {
+  .platform-settings-sidebar > div {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
-    gap: 0.35rem;
+    gap: 0.5rem;
     margin-bottom: 0 !important;
+    flex-shrink: 0;
   }
 
-  .platform-settings-sidebar > div > div > div:last-child {
+  .platform-settings-sidebar > div > div:last-child {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
@@ -8110,12 +8124,6 @@ svg {
   /* -------------------------------------------------------
      SIDEBAR
      ------------------------------------------------------- */
-
-  .sidebar {
-    width: 100%;
-    max-width: 100%;
-  }
-
 
   /* -------------------------------------------------------
      NAVIGATION

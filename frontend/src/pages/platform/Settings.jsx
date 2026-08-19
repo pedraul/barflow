@@ -58,7 +58,6 @@ export default function Settings() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
-  const [mobileView, setMobileView] = useState('menu') // 'menu' | 'content'
 
   useEffect(() => { load() }, [])
 
@@ -66,7 +65,6 @@ export default function Settings() {
     const onHashChange = () => {
       const tab = getTabFromHash()
       setActiveTab(tab)
-      setMobileView('content')
     }
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
@@ -86,13 +84,7 @@ export default function Settings() {
 
   const switchTab = (id) => {
     setActiveTab(id)
-    setMobileView('content')
     window.location.hash = id
-  }
-
-  const goBack = () => {
-    setMobileView('menu')
-    window.location.hash = ''
   }
 
   const set = (key, value) => setSettings((prev) => ({ ...prev, [key]: value }))
@@ -118,10 +110,6 @@ export default function Settings() {
   const activeGroup = SETTINGS_GROUPS.find(g => g.items.some(i => i.id === activeTab))
   const activeItem = ALL_TABS.find(t => t.id === activeTab)
 
-  // On mobile, if viewing content, hide sidebar and show only content with back button
-  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768
-  const showMobileContent = isMobile && mobileView === 'content'
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -137,42 +125,36 @@ export default function Settings() {
       {message && <div className={`p-3 rounded-lg text-sm font-medium border ${message.startsWith('❌') ? 'bg-red-50 border-red-200 text-red-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>{message}</div>}
 
       <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-start">
-        {/* Tab nav - grouped - hidden on mobile when viewing content */}
-        {!showMobileContent && (
-          <div className="platform-settings-sidebar w-full md:w-64 shrink-0 bg-white border border-slate-200 rounded-xl p-2 md:sticky md:top-4">
-            <div className="flex md:flex-col gap-1">
-              {SETTINGS_GROUPS.map((group) => {
-                const isGroupActive = group.items.some(i => i.id === activeTab)
-                return (
-                  <div key={group.id} className="mb-1">
-                    <div className={`px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider ${isGroupActive ? 'text-indigo-700 bg-indigo-50' : 'text-slate-500'}`}>
-                      {group.label}
-                    </div>
-                    <div className="ml-1 mt-1 flex md:flex-col gap-1 overflow-x-auto md:overflow-visible">
-                      {group.items.map((t) => {
-                        const Icon = t.icon
-                        return (
-                          <button key={t.id} onClick={() => switchTab(t.id)}
-                            className={`whitespace-nowrap flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold transition ${activeTab === t.id ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}>
-                            <Icon size={16} /> {t.label}
-                          </button>
-                        )
-                      })}
-                    </div>
+        {/* Tab nav - grouped - horizontal scroll on mobile */}
+        <div className="platform-settings-sidebar w-full md:w-64 shrink-0 bg-white border border-slate-200 rounded-xl p-2 md:sticky md:top-4">
+          <div className="flex md:flex-col gap-1 overflow-x-auto md:overflow-visible pb-1 md:pb-0 -mx-1 px-1 md:mx-0 md:px-0">
+            {SETTINGS_GROUPS.map((group) => {
+              const isGroupActive = group.items.some(i => i.id === activeTab)
+              return (
+                <div key={group.id} className="mb-1 flex-shrink-0 md:flex-shrink">
+                  <div className={`hidden md:block px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider ${isGroupActive ? 'text-indigo-700 bg-indigo-50' : 'text-slate-500'}`}>
+                    {group.label}
                   </div>
-                )
-              })}
-            </div>
+                  <div className="md:hidden text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2 py-1">{group.label}</div>
+                  <div className="flex md:flex-col gap-1">
+                    {group.items.map((t) => {
+                      const Icon = t.icon
+                      return (
+                        <button key={t.id} onClick={() => switchTab(t.id)}
+                          className={`whitespace-nowrap flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition ${activeTab === t.id ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}>
+                          <Icon size={16} /> {t.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
           </div>
-        )}
+        </div>
 
-        {/* Tab content - full width on mobile when viewing content */}
-        <div className={`${showMobileContent ? 'w-full' : 'flex-1'} bg-white border border-slate-200 rounded-xl p-4 md:p-6 shadow-sm min-w-0`}>
-          {showMobileContent && (
-            <button onClick={goBack} className="flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-700 mb-4">
-              <ArrowLeft size={16} /> Back to Settings
-            </button>
-          )}
+        {/* Tab content */}
+        <div className={`flex-1 bg-white border border-slate-200 rounded-xl p-4 md:p-6 shadow-sm min-w-0`}>
           {activeTab === 'general' && (
             <TabBody title="General Settings" desc="Platform name, language, timezone and currency.">
               <Field label="Platform Name" v="platform_name" settings={settings} set={set} />

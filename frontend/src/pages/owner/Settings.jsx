@@ -87,7 +87,7 @@ export default function SystemSettings() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const [activeSubTab, setActiveSubTab] = useState('account')
-  const [mobileView, setMobileView] = useState('menu') // 'menu' | 'content'
+  const [message, setMessage] = useState('')
 
   // derive active subtab from path (e.g. /settings/security)
   React.useEffect(() => {
@@ -95,10 +95,8 @@ export default function SystemSettings() {
     const last = parts[parts.length - 1] || 'account'
     if (ALL_TABS.find(t => t.id === last)) {
       setActiveSubTab(last)
-      setMobileView('content')
     }
   }, [pathname])
-  const [message, setMessage] = useState('')
   const [data, setData] = useState({
     business: { name: '', address: '', phone: '', email: '', currency: 'RWF', taxRate: 18 },
     settings: {}, permissions: [], backups: [],
@@ -155,8 +153,7 @@ export default function SystemSettings() {
   const flash = (m) => { setMessage(m); setTimeout(() => setMessage(''), 4000) }
 
   const goBack = () => {
-    setMobileView('menu')
-    navigate('/settings')
+    navigate('/dashboard/owner')
   }
 
   const handleSaveAccount = async () => {
@@ -316,16 +313,9 @@ export default function SystemSettings() {
         {/* 2. TOP BANNER HEADER */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 shadow-xs">
           <div className="flex items-center gap-4">
-            {(typeof window !== 'undefined' && window.innerWidth <= 768 && mobileView === 'content') && (
-              <button onClick={goBack} className="text-slate-500 hover:text-slate-800 transition flex items-center gap-1">
-                <ArrowLeft size={20} />
-              </button>
-            )}
-            {(typeof window !== 'undefined' && window.innerWidth > 768) && (
-              <button onClick={goBack} className="text-slate-500 hover:text-slate-800 transition flex items-center gap-1" title="Back to Dashboard">
-                <ArrowLeft size={20} />
-              </button>
-            )}
+            <button onClick={goBack} className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition" title="Back to Dashboard">
+              <ArrowLeft size={22} />
+            </button>
             <button className="text-slate-600 hover:text-slate-900 transition">
               <Menu size={20} />
             </button>
@@ -342,6 +332,9 @@ export default function SystemSettings() {
           </div>
 
           <div className="flex items-center gap-4">
+            <button onClick={goBack} className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition" title="Back to Dashboard">
+              <ArrowLeft size={22} />
+            </button>
             <div className="relative cursor-pointer p-1.5 hover:bg-slate-100 rounded-full transition">
               <Bell size={20} className="text-slate-600" />
               <span className="absolute top-1.5 right-1.5 bg-red-500 w-2 h-2 rounded-full"></span>
@@ -358,36 +351,32 @@ export default function SystemSettings() {
         </header>
 
         {/* 3. WORKING WORKSPACE SCROLL CONTENT */}
-        <main className="owner-settings-workspace flex-1 overflow-y-auto p-8 flex gap-6 items-start">
+        <main className="owner-settings-workspace flex-1 overflow-y-auto p-4 md:p-8 flex flex-col md:flex-row gap-4 md:gap-6 items-start">
 
-          {/* LEFT COLUMN: Sub-Tab Controls - hidden on mobile when viewing content */}
-          {(typeof window === 'undefined' || window.innerWidth > 768 || mobileView === 'menu') && (
-            <div className="owner-settings-tabs w-[240px] bg-white border border-slate-200 rounded-xl p-3 shadow-xs space-y-0.5 shrink-0">
+          {/* LEFT COLUMN: Sub-Tab Controls - vertical on desktop, horizontal on mobile */}
+          <div className="owner-settings-tabs w-full md:w-[240px] bg-white border border-slate-200 rounded-xl p-2 md:p-3 shadow-xs shrink-0">
+            <div className="flex md:flex-col gap-1 overflow-x-auto md:overflow-visible pb-1 md:pb-0 -mx-1 px-1 md:mx-0 md:px-0">
               {SETTINGS_GROUPS.map((group) => {
                 const isGroupActive = group.items.some(i => i.id === activeSubTab)
                 return (
-                  <div key={group.id} className="mb-2">
-                    <div className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider ${isGroupActive ? 'text-indigo-700 bg-indigo-50' : 'text-slate-500'}`}>
+                  <div key={group.id} className="flex-shrink-0 md:flex-shrink mb-1">
+                    <div className={`hidden md:block px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider ${isGroupActive ? 'text-indigo-700 bg-indigo-50' : 'text-slate-500'}`}>
                       {group.label}
                     </div>
-                    <div className="ml-1 mt-1 space-y-0.5">
+                    <div className="md:hidden text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2 py-1">{group.label}</div>
+                    <div className="flex md:flex-col gap-0.5">
                       {group.items.map((t) => (
-                        <SubTabButton key={t.id} id={t.id} label={t.label} icon={t.icon} active={activeSubTab === t.id} onClick={(id) => { navigate(`/settings/${id}`); setMobileView('content'); }} showBar={t.id === 'account'} />
+                        <SubTabButton key={t.id} id={t.id} label={t.label} icon={t.icon} active={activeSubTab === t.id} onClick={(id) => { navigate(`/settings/${id}`); }} showBar={t.id === 'account'} />
                       ))}
                     </div>
                   </div>
                 )
               })}
             </div>
-          )}
+          </div>
 
           {/* RIGHT COLUMN: Settings Viewport Canvas */}
-          <div className={`${(typeof window !== 'undefined' && window.innerWidth <= 768 && mobileView === 'content') ? 'w-full' : 'flex-1'} bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden`}>
-            {(typeof window !== 'undefined' && window.innerWidth <= 768 && mobileView === 'content') && (
-              <button onClick={goBack} className="flex items-center gap-2 text-sm font-semibold text-[#0066FF] hover:text-blue-700 m-6 mb-0">
-                <ArrowLeft size={16} /> Back to Settings
-              </button>
-            )}
+          <div className="flex-1 bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden min-w-0">
             {message && (
               <div className={`m-6 p-3 rounded-lg text-sm font-medium border ${message.startsWith('❌') ? 'bg-red-50 border-red-300 text-red-800' : 'bg-emerald-50 border-emerald-300 text-emerald-800'}`}>{message}</div>
             )}

@@ -15,7 +15,15 @@ export default function Layout({ children, navLinks, sidebar, logoutButton }) {
   const dashboardPaths = new Set([
     '/dashboard/owner', '/dashboard/manager', '/dashboard/accountant', '/dashboard/kitchen', '/dashboard/bar', '/dashboard/operator',
     '/manager/dashboard', '/accountant/dashboard', '/waiter/dashboard', '/dashboard',
-    '/kitchen', '/bar'
+    '/kitchen', '/bar',
+    '/manager/orders', '/manager/staff', '/manager/users', '/manager/create-user', '/manager/password',
+    '/manager/transfer', '/manager/approve-transfers', '/manager/refunds', '/manager/approve-payrolls',
+    '/manager/approve-withdrawals', '/manager/settings', '/manager/bar-menu', '/manager/kitchen-menu',
+    '/manager/reports', '/manager/revenue', '/qr-manager',
+    '/waiter/order', '/waiter/cart', '/waiter/checkout', '/waiter/unpaid-orders', '/waiter/orders', '/waiter/order-history',
+    '/accountant/salary', '/accountant/reconciliations', '/accountant/sales-revenue', '/accountant/payments',
+    '/accountant/refunds', '/accountant/reports', '/accountant/settings', '/accountant/taxes',
+    '/accountant/transfers', '/accountant/profit', '/accountant/orders', '/accountant/qr',
   ])
 
   const showSidebarDesktop = sidebar && dashboardPaths.has(pathname)
@@ -40,7 +48,7 @@ export default function Layout({ children, navLinks, sidebar, logoutButton }) {
             onClick={handleBack}
             aria-label="Back"
           >
-            <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </button>
