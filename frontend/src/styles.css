@@ -6054,25 +6054,18 @@ label {
     background: rgba(0, 0, 0, 0.45);
   }
 
-  /* Section nav / waiter nav must swipe on phones */
+  /* Section nav / waiter nav must wrap onto new lines on phones */
   .section-nav,
   .waiter-nav {
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-    scrollbar-width: none !important;
-    flex-wrap: nowrap !important;
-    gap: 0 !important;
-  }
-  .section-nav::-webkit-scrollbar,
-  .waiter-nav::-webkit-scrollbar {
-    display: none !important;
+    flex-wrap: wrap !important;
+    gap: 0.25rem !important;
   }
   .section-nav a,
   .section-nav button,
   .waiter-nav a,
   .waiter-nav button {
-    white-space: nowrap !important;
-    flex-shrink: 0 !important;
+    white-space: normal !important;
+    flex-shrink: 1 !important;
   }
 
   /* Page headings never overflow */
@@ -6106,6 +6099,24 @@ label {
   .section-nav {
     margin: 0 0 0 0 !important;
     padding: 0 0.5rem !important;
+  }
+
+  /* Page nav wrapper links must wrap onto new lines on phones */
+  .page-nav-wrapper,
+  .second-nav {
+    flex-wrap: wrap !important;
+    gap: 0.25rem !important;
+  }
+  .page-nav-wrapper a,
+  .second-nav a {
+    white-space: normal !important;
+  }
+  .page-nav-wrapper a,
+  .second-nav a,
+  .link-grid a,
+  .section-tab,
+  .quick-link-btn {
+    white-space: normal !important;
   }
 
   /* Page root grid stacks children properly */
@@ -6255,59 +6266,56 @@ label {
    Matches the platform admin settings tab style on phones.
    ============================================================ */
 @media (max-width: 768px) {
-  /* Turn the vertical sidebar into a horizontal scrollable tab bar */
+  /* Owner settings tabs wrap onto new lines on phones */
   .owner-settings-tabs {
     display: flex;
     flex-direction: row;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    flex-wrap: wrap;
     width: 100% !important;
     max-width: 100%;
     padding: 0.5rem !important;
-    gap: 0.25rem;
-    scrollbar-width: none;
+    gap: 0.5rem;
   }
   .owner-settings-tabs::-webkit-scrollbar { display: none; }
 
-  /* Each group becomes a horizontal segment */
+  /* Each group becomes a stacked group */
   .owner-settings-tabs > div {
     display: flex;
     flex-direction: row;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.5rem;
     margin-bottom: 0 !important;
     flex-shrink: 0;
   }
 
   /* Group label becomes a compact chip */
   .owner-settings-tabs > div > div:first-child {
-    white-space: nowrap;
+    white-space: normal;
     padding: 0.4rem 0.6rem !important;
     font-size: 10px !important;
     border-radius: 9999px !important;
     margin: 0 !important;
   }
 
-  /* Item list becomes a horizontal row */
+  /* Item list becomes a wrapped row */
   .owner-settings-tabs > div > div:last-child {
     display: flex;
     flex-direction: row;
-    flex-wrap: nowrap;
-    gap: 0.25rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
     margin: 0 !important;
   }
 
   /* Each tab button becomes a compact horizontal pill */
   .owner-settings-tabs button {
-    white-space: nowrap;
+    white-space: normal;
     width: auto !important;
     min-width: 0;
     padding: 0.45rem 0.7rem !important;
     border-radius: 9999px !important;
     font-size: 12px !important;
-    flex-shrink: 0;
+    flex-shrink: 1;
   }
 
   /* Hide the left accent bar on horizontal pills */
