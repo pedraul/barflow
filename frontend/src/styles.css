@@ -6262,8 +6262,7 @@ label {
 }
 
 /* ============================================================
-   OWNER SYSTEM SETTINGS — HORIZONTAL TAB BAR ON MOBILE
-   Matches the platform admin settings tab style on phones.
+   OWNER SYSTEM SETTINGS — FLAT TABS ON MOBILE, NO GROUP HEADERS, NO BACK BUTTON
    ============================================================ */
 @media (max-width: 768px) {
   /* Owner settings tabs wrap onto new lines on phones */
@@ -6278,7 +6277,12 @@ label {
   }
   .owner-settings-tabs::-webkit-scrollbar { display: none; }
 
-  /* Each group becomes a stacked group */
+  /* Hide group headers — show all tabs flat */
+  .owner-settings-tabs > div > div:first-child {
+    display: none !important;
+  }
+
+  /* Each group becomes a flat wrapped row of tabs */
   .owner-settings-tabs > div {
     display: flex;
     flex-direction: row;
@@ -6287,15 +6291,6 @@ label {
     gap: 0.5rem;
     margin-bottom: 0 !important;
     flex-shrink: 0;
-  }
-
-  /* Group label becomes a compact chip */
-  .owner-settings-tabs > div > div:first-child {
-    white-space: normal;
-    padding: 0.4rem 0.6rem !important;
-    font-size: 10px !important;
-    border-radius: 9999px !important;
-    margin: 0 !important;
   }
 
   /* Item list becomes a wrapped row */
@@ -6321,6 +6316,54 @@ label {
   /* Hide the left accent bar on horizontal pills */
   .owner-settings-tabs button span[class*="absolute"] {
     display: none;
+  }
+
+  /* Hide owner settings back button on mobile */
+  .owner-settings-workspace button[class*="Back to Settings"],
+  .owner-settings-workspace button[onClick*="goBack"],
+  header button[onClick*="goBack"] {
+    display: none !important;
+  }
+}
+
+/* ============================================================
+   PLATFORM ADMIN SETTINGS — FLAT TABS ON MOBILE, NO GROUP HEADERS, NO BACK BUTTON
+   ============================================================ */
+@media (max-width: 768px) {
+  /* Hide group headers in platform settings sidebar */
+  .platform-settings-sidebar > div > div > div:first-child {
+    display: none !important;
+  }
+
+  /* Flatten platform settings items into wrapped rows */
+  .platform-settings-sidebar > div > div {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0 !important;
+  }
+
+  .platform-settings-sidebar > div > div > div:last-child {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin: 0 !important;
+  }
+
+  /* Platform settings buttons become compact pills */
+  .platform-settings-sidebar button {
+    white-space: normal !important;
+    font-size: 0.8rem !important;
+    padding: 0.45rem 0.7rem !important;
+    border-radius: 9999px !important;
+  }
+
+  /* Hide platform settings back button on mobile */
+  .platform-settings-content button[onClick*="goBack"],
+  button[class*="Back to Settings"] {
+    display: none !important;
   }
 }
 
