@@ -8732,6 +8732,353 @@ svg {
     max-width: 100% !important;
   }
 
+  /* Accountant Dashboard — stack all sections vertically */
+  .accountant-dashboard,
+  .reconciliation-dashboard {
+    display: grid !important;
+    gap: 0.75rem !important;
+  }
+  .accountant-dashboard > div,
+  .reconciliation-dashboard > div,
+  .accountant-dashboard > main,
+  .reconciliation-dashboard > main {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Dashboard KPI cards stack */
+  .accountant-dashboard .grid,
+  .reconciliation-dashboard .grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+  }
+
+  /* Chart sections stack */
+  .accountant-dashboard [class*="lg:col-span-2"],
+  .accountant-dashboard [class*="lg:col-span-3"],
+  .reconciliation-dashboard [class*="lg:col-span-3"] {
+    grid-column: 1 / -1 !important;
+  }
+
+  /* Reconciliation tabs wrap onto new lines */
+  .reconciliation-dashboard [class*="border-b"] {
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+  }
+  .reconciliation-dashboard [class*="border-b"] button {
+    white-space: normal !important;
+    padding-bottom: 0.5rem !important;
+  }
+
+  /* Reconciliation table header controls stack */
+  .reconciliation-dashboard [class*="flex items-center justify-between"][class*="gap-"] {
+    flex-wrap: wrap !important;
+    gap: 0.75rem !important;
+  }
+  .reconciliation-dashboard [class*="flex items-center gap-"] {
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+  }
+  .reconciliation-dashboard input[class*="w-60"] {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Reconciliation right side panel drops below table */
+  .reconciliation-dashboard [class*="lg:col-span-3"],
+  .reconciliation-dashboard [class*="lg:col-span-4"] {
+    grid-column: 1 / -1 !important;
+  }
+  .reconciliation-dashboard [class*="space-y-6"] {
+    display: grid !important;
+    gap: 0.75rem !important;
+  }
+
+  /* Reconciliation controls buttons stack */
+  .reconciliation-dashboard [class*="Reconciliation Controls"] {
+    display: grid !important;
+    gap: 0.5rem !important;
+  }
+  .reconciliation-dashboard [class*="Reconciliation Controls"] button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  /* Filter boxes stack */
+  .reconciliation-dashboard [class*="Filters"] {
+    display: grid !important;
+    gap: 0.75rem !important;
+  }
+  .reconciliation-dashboard [class*="Filters"] [class*="flex gap-2"] {
+    flex-wrap: wrap !important;
+  }
+  .reconciliation-dashboard [class*="Filters"] [class*="flex-1"] {
+    width: 100% !important;
+    flex: 1 1 auto !important;
+  }
+
+  /* Summary by status rows stack */
+  .reconciliation-dashboard [class*="Summary by Status"] [class*="flex items-center justify-between"] {
+    flex-wrap: wrap !important;
+    gap: 0.25rem !important;
+  }
+
+  /* Bottom tip banner stacks */
+  .reconciliation-dashboard [class*="Tip:"] {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.5rem !important;
+  }
+
+  /* -------------------------------------------------------
+     OWNER PAGES — force fit phone width
+     ------------------------------------------------------- */
+  .owner-command-deck,
+  .obw,
+  .billing-page {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    padding: 0.75rem !important;
+    gap: 0.75rem !important;
+  }
+
+  .owner-command-deck .command-card,
+  .obw .obw-card,
+  .billing-page .billing-context {
+    padding: 0.85rem !important;
+    border-radius: var(--radius-lg) !important;
+  }
+
+  .owner-command-deck h1,
+  .obw h1,
+  .billing-page h1 {
+    font-size: 1.05rem !important;
+    font-weight: 800 !important;
+  }
+
+  .owner-command-deck h2,
+  .obw h2,
+  .billing-page h2,
+  .command-card h2,
+  .registry-card h2 {
+    font-size: 0.9rem !important;
+    font-weight: 700 !important;
+  }
+
+  .command-subtitle,
+  .billing-context p,
+  .command-card p {
+    font-size: 0.75rem !important;
+    line-height: 1.5 !important;
+  }
+
+  .command-actions {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    margin-top: 0.75rem !important;
+    padding-top: 0.75rem !important;
+  }
+  .command-actions button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .command-columns {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+  }
+
+  .command-aside {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+  }
+
+  .registry-card .registry-head {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.5rem !important;
+  }
+  .registry-card .registry-head .bulk-actions {
+    width: 100% !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+  }
+  .registry-card .registry-head .bulk-actions button {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+  }
+
+  .user-toolbar {
+    grid-template-columns: 1fr !important;
+    gap: 0.5rem !important;
+  }
+
+  .registry-table {
+    min-width: 0 !important;
+  }
+  .user-table-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .user-table {
+    min-width: 560px !important;
+    font-size: 0.75rem !important;
+  }
+  .user-table th,
+  .user-table td {
+    padding: 0.5rem 0.6rem !important;
+    font-size: 0.75rem !important;
+  }
+
+  .registry-footer {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.5rem !important;
+    font-size: 0.75rem !important;
+  }
+
+  .permission-list li {
+    flex-direction: column !important;
+    gap: 0.35rem !important;
+  }
+  .permission-icon {
+    width: 1.5rem !important;
+    height: 1.5rem !important;
+    font-size: 0.8rem !important;
+  }
+  .permission-list li strong {
+    font-size: 0.8rem !important;
+  }
+  .permission-list li span {
+    font-size: 0.7rem !important;
+  }
+
+  .activity-feed li {
+    flex-direction: column !important;
+    gap: 0.15rem !important;
+  }
+  .activity-time {
+    font-size: 0.65rem !important;
+  }
+  .activity-text {
+    font-size: 0.75rem !important;
+  }
+
+  /* Owner subnav tabs wrap */
+  .obw-subnav {
+    flex-wrap: wrap !important;
+    gap: 0.25rem !important;
+    padding: 0.25rem !important;
+  }
+  .obw-subtab {
+    padding: 0.4rem 0.7rem !important;
+    font-size: 0.7rem !important;
+    white-space: normal !important;
+  }
+
+  /* Owner settings tabs wrap */
+  .owner-settings-tabs {
+    flex-wrap: wrap !important;
+    gap: 0.4rem !important;
+    padding: 0.4rem !important;
+  }
+  .owner-settings-tabs > div {
+    flex-wrap: wrap !important;
+    gap: 0.4rem !important;
+  }
+  .owner-settings-tabs button {
+    font-size: 0.7rem !important;
+    padding: 0.4rem 0.6rem !important;
+    white-space: normal !important;
+  }
+
+  /* Owner inventory tables */
+  .owner-inventory table,
+  .owner-inventory .user-table-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .owner-inventory table {
+    min-width: 500px !important;
+    font-size: 0.75rem !important;
+  }
+  .owner-inventory table th,
+  .owner-inventory table td {
+    padding: 0.4rem 0.5rem !important;
+    font-size: 0.7rem !important;
+  }
+
+  /* Owner revenue cards */
+  .owner-revenue .grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.6rem !important;
+  }
+  .owner-revenue [class*="max-w-[1400px]"] {
+    max-width: 100% !important;
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+
+  /* Owner overview cards */
+  .owner-overview .grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.6rem !important;
+  }
+  .owner-overview [class*="max-w-[1400px]"] {
+    max-width: 100% !important;
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+
+  /* Owner payroll */
+  .owner-payroll [style*="gridTemplateColumns"] {
+    grid-template-columns: 1fr !important;
+  }
+  .owner-payroll [style*="display: flex"][style*="justify-content: space-between"] {
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+  }
+  .owner-payroll [style*="overflow: auto"] {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .owner-payroll table {
+    min-width: 500px !important;
+    font-size: 0.75rem !important;
+  }
+  .owner-payroll table th,
+  .owner-payroll table td {
+    padding: 0.4rem 0.5rem !important;
+    font-size: 0.7rem !important;
+  }
+
+  /* Owner exports / audit */
+  .owner-exports,
+  .owner-audit {
+    max-width: 100% !important;
+    padding: 0.75rem !important;
+  }
+
+  /* Force all inline max-w-[...] on owner pages to 100% */
+  .owner-command-deck [style*="max-w-[1400px]"],
+  .obw [style*="max-w-[1400px]"],
+  .billing-page [style*="max-w-[1400px]"] {
+    max-width: 100% !important;
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+
+  /* Owner page headings compact */
+  .owner-command-deck .eyebrow,
+  .obw .eyebrow {
+    font-size: 0.6rem !important;
+  }
+  .owner-command-deck h1,
+  .obw h1 {
+    font-size: 1rem !important;
+  }
+
   /* -------------------------------------------------------
      CUSTOMER / QR MENU — manager style
      ------------------------------------------------------- */
