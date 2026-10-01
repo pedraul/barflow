@@ -10,6 +10,12 @@ import {
 } from 'lucide-react'
 import { PROVINCES, DISTRICTS_BY_PROVINCE } from '../../constants/locationOptions'
 
+const BILLING_CYCLES = [
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'quarterly', label: 'Quarterly' },
+  { value: 'annually', label: 'Annually' },
+]
+
 export default function RegisterBusiness() {
   const { login, user } = useAuth()
   const [description, setDescription] = useState('')
@@ -41,7 +47,7 @@ export default function RegisterBusiness() {
         const active = (data || []).filter((p) => p.isActive !== false)
         setPlans(active)
         if (active.length && !form.subscriptionPlanId) {
-          setForm((prev) => ({ ...prev, subscriptionPlanId: active[0].id }))
+          setForm((prev) => ({ ...prev, subscriptionPlanId: active[0].id, billingCycle: 'monthly' }))
         }
       } catch (e) {
         console.error('Failed to load plans:', e)
@@ -364,23 +370,24 @@ export default function RegisterBusiness() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 gap-5">
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-700">Subscription Plan <span className="text-red-500">*</span></label>
-                  <select name="subscriptionPlanId" value={form.subscriptionPlanId} onChange={handleInputChange} className="w-full bg-white border border-slate-200 rounded-lg px-3.5 py-2 text-sm focus:outline-hidden focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] font-medium text-slate-700" disabled={loadingPlans}>
+                  <select
+                    value={form.subscriptionPlanId ? `${form.subscriptionPlanId}|${form.billingCycle}` : ''}
+                    onChange={(event) => {
+                      const [subscriptionPlanId, billingCycle] = event.target.value.split('|')
+                      setForm((prev) => ({ ...prev, subscriptionPlanId, billingCycle }))
+                    }}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3.5 py-2 text-sm focus:outline-hidden focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] font-medium text-slate-700"
+                    disabled={loadingPlans}
+                  >
                     <option value="">Select subscription plan</option>
-                    {plans.map((p) => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Billing Cycle <span className="text-red-500">*</span></label>
-                  <select name="billingCycle" value={form.billingCycle} onChange={handleInputChange} className="w-full bg-white border border-slate-200 rounded-lg px-3.5 py-2 text-sm focus:outline-hidden focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] font-medium text-slate-700">
-                    <option value="monthly">Monthly</option>
-                    <option value="quarterly">Quarterly</option>
-                    <option value="annually">Annually</option>
+                    {plans.flatMap((plan) => BILLING_CYCLES.map((cycle) => (
+                      <option key={`${plan.id}-${cycle.value}`} value={`${plan.id}|${cycle.value}`}>
+                        {plan.name} — {cycle.label}
+                      </option>
+                    )))}
                   </select>
                 </div>
               </div>
