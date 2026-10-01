@@ -48,12 +48,12 @@ export default function Login() {
          setAuth({ token: data.token, user: data.user })
         // Route based on role
         const role = data.user.role
-        if (data.user.subscriptionExpired && role !== 'owner') {
+        if (data.user.subscriptionExpired && data.user.unpaidAccessGranted !== true && role !== 'owner') {
           window.location.assign(buildWorkspaceUrl(data.user, '/subscription-expired'))
           return
         }
-        if (data.user.subscriptionExpired && role === 'owner') {
-            window.location.assign(buildWorkspaceUrl(data.user, '/owner/subscription'))
+        if (data.user.subscriptionExpired && data.user.unpaidAccessGranted !== true && role === 'owner') {
+          window.location.assign(buildWorkspaceUrl(data.user, '/owner/subscription'))
           return
         }
         const roleRoutes = {
