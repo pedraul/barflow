@@ -420,18 +420,40 @@ export async function deleteUser(req, res) {
       return res.status(404).json({ error: 'User not found.' })
     }
 
-    await query('DELETE FROM users WHERE id = $1 AND business_id = $2', [id, businessId])
+    const { rows: orderReferences } = await query(
+      `SELECT EXISTS (
+         SELECT 1 FROM orders
+         WHERE user_id = $1 OR waiter_id = $1
+       ) AS has_orders`,
+      [id]
+    )
+    const hasOrders = orderReferences[0].has_orders
+    if (hasOrders) {
+      await query(
+        'UPDATE users SET is_active = FALSE, updated_at = NOW() WHERE id = $1 AND business_id = $2',
+        [id, businessId]
+      )
+    } else {
+      await query('DELETE FROM users WHERE id = $1 AND business_id = $2', [id, businessId])
+    }
 
     await logAudit({
       userId: req.user.id,
       actorName: req.user.full_name || req.user.email,
-      action: `Deleted user ${rows[0].full_name}`,
+      action: hasOrders
+        ? `Deactivated user ${rows[0].full_name} because linked orders must be retained`
+        : `Deleted user ${rows[0].full_name}`,
       targetModule: 'Staff Management',
       ipAddress: getClientIp(req),
       businessId: req.user?.businessId,
     })
 
-    res.json({ message: `User ${rows[0].full_name} deleted successfully.` })
+    res.json({
+      deactivated: hasOrders,
+      message: hasOrders
+        ? `${rows[0].full_name} has orders, so the account was deactivated instead of deleted.`
+        : `User ${rows[0].full_name} deleted successfully.`,
+    })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

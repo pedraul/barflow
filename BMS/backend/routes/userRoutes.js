@@ -196,60 +196,32 @@ router.patch('/:id', authMiddleware, async (req, res) => {
 })
 
 router.delete('/:id', authMiddleware, async (req, res) => {
-  const client = await query('BEGIN')
   try {
     const targetId = req.params.id
     const businessId = req.user.businessId
-
-    const { rows } = await query('SELECT full_name FROM users WHERE id = $1 AND business_id = $2 LIMIT 1', [targetId, businessId])
-    const userName = rows[0]?.full_name || 'Unknown'
-
-    const nullify = async (table, column) => {
-      await query(`UPDATE ${table} SET ${column} = NULL WHERE ${column} = $1`, [targetId])
-    }
-
-    const cleanup = async (table, column) => {
-      await query(`DELETE FROM ${table} WHERE ${column} = $1`, [targetId])
-    }
-
-    await nullify('audit_logs', 'actor_id')
-    await nullify('order_item_changes', 'changed_by')
-    await nullify('orders', 'user_id')
-    await nullify('orders', 'waiter_id')
-    await nullify('payments', 'received_by')
-    await nullify('refunds', 'approved_by')
-    await nullify('salary_payments', 'approved_by')
-    await nullify('salary_payments', 'user_id')
-    await nullify('shifts', 'user_id')
-    await nullify('stock_adjustments', 'adjusted_by')
-    await nullify('stock_movements', 'created_by')
-    await nullify('support_tickets', 'user_id')
-    await nullify('transfers', 'from_user')
-    await nullify('transfers', 'manager_approved_by')
-    await nullify('transfers', 'to_user')
-    await nullify('withdrawals', 'initiated_by')
-
-    await cleanup('notification_reads', 'user_id')
-    await cleanup('notifications', 'receiver_id')
-    await cleanup('notifications', 'sender_id')
-    await cleanup('password_reset_tokens', 'user_id')
-    await cleanup('two_factor_codes', 'user_id')
-
-    await query('DELETE FROM users WHERE id = $1 AND business_id = $2', [targetId, businessId])
+    const { rows } = await query(
+      `UPDATE users SET is_active = FALSE, updated_at = NOW()
+       WHERE id = $1 AND business_id = $2
+       RETURNING id, full_name`,
+      [targetId, businessId]
+    )
+    if (!rows.length) return res.status(404).json({ error: 'User not found.' })
 
     await logAudit({
       userId: req.user?.id,
       actorName: req.user?.full_name || req.user?.email || 'System',
-      action: `Deleted user "${userName}"`,
+      action: `Deactivated user "${rows[0].full_name}" to preserve linked records`,
       targetModule: 'Users',
       ipAddress: getClientIp(req),
       businessId: req.user?.businessId,
     })
 
-    await query('COMMIT')
-    res.json({ id: targetId })
+    res.json({
+      id: targetId,
+      deactivated: true,
+      message: `${rows[0].full_name} was deactivated. Historical orders and other records were preserved.`,
+    })
   } catch (error) {
-    await query('ROLLBACK')
     res.status(500).json({ error: error.message })
   }
 })
