@@ -35,5 +35,5 @@ export const mapOrder = (o) => ({
   status: o.status,
   createdAt: new Date(o.created_at).toLocaleString(),
   source: o.source || 'waiter',
-  waiterId: o.user_id || null,
+  waiterId: o.waiter_id || o.user_id || null,
 })

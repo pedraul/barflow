@@ -36,7 +36,27 @@ function ordersSelect(where = '', params = []) {
 router.get('/', authMiddleware, async (req, res) => {
   const { status, source, branchId, from, to, table } = req.query
   try {
-    const scope = await getBranchContext(req, { requestedBranchId: branchId, allowOwnerAll: true })
+    let scope
+    try {
+      scope = await getBranchContext(req, { requestedBranchId: branchId, allowOwnerAll: true })
+    } catch (error) {
+      if (String(req.user?.role || '').toLowerCase() !== 'waiter' || branchId || !req.user?.businessId) {
+        throw error
+      }
+      const { rows: branches } = await query(
+        `SELECT id FROM branches
+         WHERE business_id = $1 AND COALESCE(is_active, TRUE) = TRUE
+         ORDER BY (LOWER(name) = 'main branch') DESC, created_at ASC
+         LIMIT 1`,
+        [req.user.businessId]
+      )
+      if (!branches.length) throw error
+      scope = { businessId: req.user.businessId, branchId: branches[0].id }
+      await query(
+        'UPDATE users SET branch_id = $1 WHERE id = $2 AND business_id = $3',
+        [scope.branchId, req.user.id, req.user.businessId]
+      )
+    }
     const clauses = [`o.business_id = $${1}`]
     const params = [scope.businessId]
     let idx = 2
@@ -73,7 +93,7 @@ router.get('/', authMiddleware, async (req, res) => {
     const { rows } = await query(text, p)
     res.json(rows.map(mapOrder))
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    res.status(error.statusCode || 500).json({ error: error.message })
   }
 })
 

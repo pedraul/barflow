@@ -82,8 +82,14 @@ export async function deleteUser(id) {
 // ===== ORDERS =====
 export async function fetchOrders(params = {}) {
   const qs = new URLSearchParams(params).toString()
-  const { data } = await api.get(`/orders${qs ? `?${qs}` : ''}`)
-  return data
+  try {
+    const { data } = await api.get(`/orders${qs ? `?${qs}` : ''}`)
+    return data
+  } catch (error) {
+    const message = error.response?.data?.error || error.response?.data?.message
+    if (message) throw new Error(message)
+    throw error
+  }
 }
 
 export async function fetchOrderById(id) {

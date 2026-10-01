@@ -67,7 +67,7 @@ router.get('/', authMiddleware, async (req, res) => {
     const { rows } = await query(text, p)
     res.json(rows.map(mapOrder))
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    res.status(error.statusCode || 500).json({ error: error.message })
   }
 })
 
