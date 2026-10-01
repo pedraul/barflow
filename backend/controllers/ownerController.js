@@ -445,6 +445,54 @@ export async function deleteUser(req, res) {
       return res.status(404).json({ error: 'User not found.' })
     }
 
+    const { rows: requiredReferences } = await client.query(
+      `SELECT DISTINCT kcu.table_name, kcu.column_name
+       FROM information_schema.table_constraints tc
+       JOIN information_schema.key_column_usage kcu
+         ON tc.constraint_name = kcu.constraint_name
+        AND tc.table_schema = kcu.table_schema
+       JOIN information_schema.constraint_column_usage ccu
+         ON tc.constraint_name = ccu.constraint_name
+        AND tc.table_schema = ccu.table_schema
+       JOIN information_schema.columns cols
+         ON cols.table_schema = kcu.table_schema
+        AND cols.table_name = kcu.table_name
+        AND cols.column_name = kcu.column_name
+       WHERE tc.constraint_type = 'FOREIGN KEY'
+         AND ccu.table_schema = 'public'
+         AND ccu.table_name = 'users'
+         AND ccu.column_name = 'id'
+         AND cols.is_nullable = 'NO'`
+    )
+
+    for (const reference of requiredReferences) {
+      const table = reference.table_name.replace(/"/g, '""')
+      const column = reference.column_name.replace(/"/g, '""')
+      const { rows: matches } = await client.query(
+        `SELECT EXISTS (SELECT 1 FROM "${table}" WHERE "${column}" = $1) AS referenced`,
+        [id]
+      )
+      if (!matches[0].referenced) continue
+
+      await client.query(
+        'UPDATE users SET is_active = FALSE, updated_at = NOW() WHERE id = $1 AND business_id = $2',
+        [id, businessId]
+      )
+      await logAudit({
+        userId: req.user.id,
+        actorName: req.user.full_name || req.user.email,
+        action: `Deactivated user ${rows[0].full_name} because linked records must be retained`,
+        targetModule: 'Staff Management',
+        ipAddress: getClientIp(req),
+        businessId,
+      })
+      await client.query('COMMIT')
+      return res.json({
+        deactivated: true,
+        message: `${rows[0].full_name} has order or other required history, so the account was deactivated instead of deleted.`,
+      })
+    }
+
     // Detach nullable foreign-key references before permanently deleting the account.
     const { rows: references } = await client.query(
       `SELECT DISTINCT kcu.table_name, kcu.column_name

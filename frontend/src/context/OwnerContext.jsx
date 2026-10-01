@@ -77,7 +77,8 @@ export function OwnerProvider({ children }) {
 
   const deleteUser = useCallback(async (id) => {
     return withLoading(async () => {
-      await api.delete(`/v1/owner/users/${id}`)
+      const { data } = await api.delete(`/v1/owner/users/${id}`)
+      return data
     })
   }, [withLoading])
 

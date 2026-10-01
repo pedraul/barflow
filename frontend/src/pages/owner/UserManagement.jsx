@@ -72,10 +72,10 @@ export default function UserManagement() {
   }
 
   const handleDelete = async (u) => {
-    if (!window.confirm(`Permanently delete ${u.fullName || u.name}'s account? This cannot be undone.`)) return
+    if (!window.confirm(`Remove ${u.fullName || u.name}'s account? Accounts with required order or other history will be deactivated instead.`)) return
     try {
-      await deleteUser(u.id)
-      setMessage('User permanently deleted successfully.')
+      const result = await deleteUser(u.id)
+      setMessage(result?.message || 'User deleted successfully.')
       await loadUsers()
     } catch (e) { setMessage(e.message) }
   }
@@ -115,18 +115,18 @@ export default function UserManagement() {
             <thead>
               <tr className="border-b border-slate-200">
                 {['Name', 'Username', 'Email', 'Phone', 'Role', 'Branch', 'Salary', 'Status', 'Actions'].map((h) => (
-                  <th key={h} className="text-left p-2 font-semibold text-slate-500 text-xs uppercase tracking-wider">{h}</th>
+                  <th key={h} className={`text-left p-2 font-semibold text-slate-500 text-xs uppercase tracking-wider ${h === 'Actions' ? 'sticky right-0 z-20 min-w-[176px] bg-white shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.5)]' : ''}`}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {users.map((u) => (
-                <tr key={u.id} className="hover:bg-slate-50 transition">
+                <tr key={u.id} className="group hover:bg-slate-50 transition">
                   <td className="p-2 font-medium text-slate-900">{u.fullName || u.name}</td>
                   <td className="p-2 text-slate-600">{u.username || '—'}</td>
                   <td className="p-2 text-slate-600">{u.email}</td>
                   <td className="p-2 text-slate-600">{u.phone || '—'}</td>
-                  <td className="p-2">
+                  <td className="sticky right-0 z-10 min-w-[176px] bg-white p-2 shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.5)] group-hover:bg-slate-50">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-medium role-pill role-${u.role}`}>{u.role}</span>
                   </td>
                   <td className="p-2 text-slate-600">{u.branchName || u.branch || '—'}</td>
