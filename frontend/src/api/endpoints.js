@@ -297,8 +297,14 @@ export async function fetchMenu(tableNumber, businessId, branchId) {
 }
 
 export async function placeCustomerOrder(payload) {
-  const { data } = await api.post('/customer/order', payload)
-  return data
+  try {
+    const { data } = await api.post('/customer/order', payload)
+    return data
+  } catch (error) {
+    const message = error.response?.data?.error || error.response?.data?.message
+    if (message) throw new Error(message)
+    throw error
+  }
 }
 
 export async function checkOrderStatus(orderId) {

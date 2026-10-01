@@ -234,12 +234,13 @@ export function CustomerProvider({ children }) {
         price: item.price,
       })),
       businessId: businessId || undefined,
+      branchId: branchId || undefined,
     }
     try {
       const result = await api.placeCustomerOrder(payload)
       setDeferredOrder(result)
       clearCart()
-      await loadMenu(tableNumber, businessId)
+      await loadMenu(tableNumber, businessId, branchId)
       return result
     } finally {
       placingRef.current = false
