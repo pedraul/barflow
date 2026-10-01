@@ -34,7 +34,7 @@ router.get('/menu', async (req, res) => {
 
     const { rows } = await query(
       `SELECT p.id, p.name, p.category, p.selling_price, p.image_url, p.stock_unit,
-          COALESCE(bs.quantity, p.quantity) AS quantity
+          COALESCE(bs.quantity, 0) AS quantity
        FROM products p
        LEFT JOIN branch_stock bs ON bs.product_id = p.id AND bs.branch_id = $2::uuid
        WHERE p.is_active = true AND p.business_id = $1
