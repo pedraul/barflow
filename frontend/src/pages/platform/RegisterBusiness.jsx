@@ -56,7 +56,7 @@ export default function RegisterBusiness() {
     email: '', phone: '', alternatePhone: '',
     address: '', province: '', district: '', sector: '', city: '', country: '',
     currencyCode: 'RWF', timeZone: 'Africa/Kigali',
-    subscriptionPlanId: '', billingCycle: 'annually',
+    subscriptionPlanId: '', billingCycle: 'monthly',
     ownerName: '', ownerEmail: '', ownerPhone: '',
     username: '', password: '', confirmPassword: '',
     description: ''
@@ -378,6 +378,8 @@ export default function RegisterBusiness() {
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-700">Billing Cycle <span className="text-red-500">*</span></label>
                   <select name="billingCycle" value={form.billingCycle} onChange={handleInputChange} className="w-full bg-white border border-slate-200 rounded-lg px-3.5 py-2 text-sm focus:outline-hidden focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] font-medium text-slate-700">
+                    <option value="monthly">Monthly</option>
+                    <option value="quarterly">Quarterly</option>
                     <option value="annually">Annually</option>
                   </select>
                 </div>

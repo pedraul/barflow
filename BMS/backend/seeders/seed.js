@@ -138,9 +138,9 @@ export async function seed() {
       `INSERT INTO subscription_plans (name, description, price_monthly, price_yearly, features, discount_quarterly, discount_annually, is_active, sort_order)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
       [
-        'Annually', 'Full platform access billed annually', 48000, 460800,
+        'Pro', 'Full platform access with monthly, quarterly, or annual billing', 48000, 460800,
         JSON.stringify(['Unlimited branches', 'Unlimited users', 'Full inventory suite', 'Priority support', 'Analytics dashboard', 'Custom integrations']),
-        0, 0, true, 1,
+        8, 14, true, 1,
       ]
     )
     console.log('Subscription plan seeded.')
