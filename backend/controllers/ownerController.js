@@ -445,6 +445,33 @@ export async function deleteUser(req, res) {
       return res.status(404).json({ error: 'User not found.' })
     }
 
+    const { rows: orderReferences } = await client.query(
+      `SELECT EXISTS (
+         SELECT 1 FROM orders
+         WHERE user_id = $1 OR waiter_id = $1
+       ) AS has_orders`,
+      [id]
+    )
+    if (orderReferences[0].has_orders) {
+      await client.query(
+        'UPDATE users SET is_active = FALSE, updated_at = NOW() WHERE id = $1 AND business_id = $2',
+        [id, businessId]
+      )
+      await logAudit({
+        userId: req.user.id,
+        actorName: req.user.full_name || req.user.email,
+        action: `Deactivated user ${rows[0].full_name} because linked orders must be retained`,
+        targetModule: 'Staff Management',
+        ipAddress: getClientIp(req),
+        businessId,
+      })
+      await client.query('COMMIT')
+      return res.json({
+        deactivated: true,
+        message: `${rows[0].full_name} has orders, so the account was deactivated instead of deleted.`,
+      })
+    }
+
     const { rows: requiredReferences } = await client.query(
       `SELECT DISTINCT kcu.table_name, kcu.column_name
        FROM information_schema.table_constraints tc

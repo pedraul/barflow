@@ -38,7 +38,7 @@ export default function UserManagementPage({ accessRole, embedded = false }) {
     setEditing(null)
   }
   const deleteUser = (user) => {
-    if (!canManage(user) || !window.confirm(`Delete ${user.name}'s account?`)) return
+    if (!canManage(user) || !window.confirm(`Deactivate ${user.name}'s account? Historical orders and records will be preserved.`)) return
     removeUser(user.id)
     auditLog({ actor: accessRole, action: `Deleted user ${user.name}'s account`, type: 'user' })
     setSelectedIds((current) => current.filter((id) => id !== user.id))

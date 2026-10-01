@@ -76,8 +76,17 @@ export async function updateUser(req, res) {
 
 export async function removeUser(req, res) {
   try {
-    await query('DELETE FROM users WHERE id = $1', [req.params.id])
-    res.json({ id: req.params.id })
+    const { rows } = await query(
+      `UPDATE users SET is_active = FALSE, updated_at = NOW()
+       WHERE id = $1 RETURNING id, full_name`,
+      [req.params.id]
+    )
+    if (!rows.length) return res.status(404).json({ error: 'User not found.' })
+    res.json({
+      id: rows[0].id,
+      deactivated: true,
+      message: `${rows[0].full_name} was deactivated. Historical records were preserved.`,
+    })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
