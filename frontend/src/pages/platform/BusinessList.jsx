@@ -181,7 +181,7 @@ export default function BusinessList() {
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-xs min-w-[640px]">
+          <table className="w-full text-xs min-w-[1120px]">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-slate-600">
                   <th className="text-left px-3 py-2 font-semibold">Business</th>
@@ -193,7 +193,7 @@ export default function BusinessList() {
                   <th className="text-left px-3 py-2 font-semibold">Registered</th>
                   <th className="text-left px-3 py-2 font-semibold">Status</th>
                   <th className="text-left px-3 py-2 font-semibold">Unpaid access</th>
-                  <th className="text-right px-3 py-2 font-semibold">Actions</th>
+                  <th className="sticky right-0 z-20 text-right px-3 py-2 font-semibold bg-slate-50">Actions</th>
                 </tr>
               </thead>
             <tbody>
@@ -235,8 +235,8 @@ export default function BusinessList() {
                       </button>
                     )}
                   </td>
-                  <td className="px-3 py-2">
-                    <div className="flex justify-end gap-1.5">
+                  <td className="sticky right-0 z-10 px-3 py-2 bg-white">
+                    <div className="flex min-w-max justify-end gap-1.5">
                       <IconBtn title="View" onClick={() => setViewing(b)} color="text-slate-600 hover:bg-slate-100"><Eye size={15} /></IconBtn>
                       <IconBtn title="Edit" onClick={() => openEdit(b)} color="text-blue-600 hover:bg-blue-50"><Pencil size={15} /></IconBtn>
                       {hasPendingRenewal(b) && !b.isSuspended && (
