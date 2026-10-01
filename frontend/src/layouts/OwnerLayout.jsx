@@ -37,7 +37,7 @@ const OWNER_LINKS = [
 const ALLOWED_WITHOUT_SUBSCRIPTION = ['/owner/subscription', '/owner/renew', '/subscription-expired']
 
 export default function OwnerLayout({ children }) {
-  const { user, logout, permissions } = useAuth()
+  const { user, logout, permissions, updateUser } = useAuth()
   const { fetchSubscription } = useOwner()
   const { pathname } = useLocation()
   const navigate = useNavigate()
@@ -55,12 +55,17 @@ export default function OwnerLayout({ children }) {
     let active = true
     const check = async () => {
       try {
-        const sub = await fetchSubscription()
+        const sub = await fetchSubscription({ forceRefresh: true })
         if (!active) return
         const activeSub = !!(sub && sub.isActive)
+        const unpaidAccessGranted = sub?.unpaidAccessGranted === true
+        const subscriptionExpired = !activeSub && !unpaidAccessGranted
+        if (user?.unpaidAccessGranted !== unpaidAccessGranted || user?.subscriptionExpired !== subscriptionExpired) {
+          updateUser({ unpaidAccessGranted, subscriptionExpired })
+        }
         setHasActiveSubscription(activeSub)
         const allowed = ALLOWED_WITHOUT_SUBSCRIPTION.some((p) => pathname.startsWith(p))
-        const isBlocked = !activeSub && !allowed && user?.unpaidAccessGranted !== true
+        const isBlocked = !activeSub && !allowed && !unpaidAccessGranted
         setBlocked(isBlocked)
         if (isBlocked) navigate('/owner/subscription', { replace: true })
       } catch (e) {
@@ -70,8 +75,14 @@ export default function OwnerLayout({ children }) {
       }
     }
     check()
-    return () => { active = false }
-  }, [pathname, fetchSubscription, navigate, user?.unpaidAccessGranted])
+    const interval = window.setInterval(check, 15_000)
+    window.addEventListener('focus', check)
+    return () => {
+      active = false
+      window.clearInterval(interval)
+      window.removeEventListener('focus', check)
+    }
+  }, [pathname, fetchSubscription, navigate, updateUser, user?.unpaidAccessGranted, user?.subscriptionExpired])
 
   const handleLogout = async () => {
     await logout()

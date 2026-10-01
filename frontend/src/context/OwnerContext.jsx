@@ -229,9 +229,9 @@ export function OwnerProvider({ children }) {
   }, [withLoading])
 
   // ── Subscription ──
-  const fetchSubscription = useCallback(async () => {
+  const fetchSubscription = useCallback(async ({ forceRefresh = false } = {}) => {
     const cacheAge = Date.now() - (subscriptionCacheRef.current?.savedAt || 0)
-    if (subscriptionCacheRef.current?.token === token && cacheAge < 30_000) {
+    if (!forceRefresh && subscriptionCacheRef.current?.token === token && cacheAge < 30_000) {
       return subscriptionCacheRef.current.data
     }
 

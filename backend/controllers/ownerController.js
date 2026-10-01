@@ -1300,6 +1300,7 @@ export async function getSubscription(req, res) {
         paymentStatus: null,
         receiptNumber: null,
         amountPaid: 0,
+        unpaidAccessGranted: req.user?.unpaidAccessGranted === true,
       })
     }
 
@@ -1324,6 +1325,7 @@ export async function getSubscription(req, res) {
         paymentStatus: null,
         receiptNumber: null,
         amountPaid: 0,
+        unpaidAccessGranted: req.user?.unpaidAccessGranted === true,
       })
     }
 
@@ -1360,6 +1362,7 @@ export async function getSubscription(req, res) {
       receiptGenerated: sub.receipt_generated === 1,
       amountPaid: Number(sub.amount_paid) || 0,
       createdAt: new Date(sub.created_at).toISOString(),
+      unpaidAccessGranted: req.user?.unpaidAccessGranted === true,
     })
   } catch (error) {
     res.status(500).json({ error: error.message })
