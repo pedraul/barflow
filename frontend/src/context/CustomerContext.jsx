@@ -121,9 +121,18 @@ export function CustomerProvider({ children }) {
           sessionStorage.removeItem('customer_cart')
         }
       }
-      if (selectedBranchId) {
-        setBranchId(String(selectedBranchId))
-        sessionStorage.setItem('customer_branch_id', String(selectedBranchId))
+      const resolvedBranchId = data.branchId ? String(data.branchId) : ''
+      const previousBranchId = sessionStorage.getItem('customer_branch_id') || ''
+      if (previousBranchId && previousBranchId !== resolvedBranchId) {
+        setCart([])
+        sessionStorage.removeItem('customer_cart')
+      }
+      if (resolvedBranchId) {
+        setBranchId(resolvedBranchId)
+        sessionStorage.setItem('customer_branch_id', resolvedBranchId)
+      } else {
+        setBranchId('')
+        sessionStorage.removeItem('customer_branch_id')
       }
     } catch (err) {
       setMenuError(err.message)

@@ -20,6 +20,18 @@ router.get('/menu', async (req, res) => {
       return res.json({ tableNumber, categories: [] })
     }
 
+    const { rows: branchRows } = await query(
+      `SELECT id FROM branches
+       WHERE business_id = $1 AND is_active = TRUE
+         AND ($2::uuid IS NULL OR id = $2::uuid)
+       ORDER BY is_main DESC, created_at ASC LIMIT 1`,
+      [businessId, branchId]
+    )
+    const resolvedBranchId = branchRows[0]?.id
+    if (!resolvedBranchId) {
+      return res.status(400).json({ error: 'No active branch is configured for this QR menu.' })
+    }
+
     const { rows } = await query(
       `SELECT p.id, p.name, p.category, p.selling_price, p.image_url, p.stock_unit,
           COALESCE(bs.quantity, p.quantity) AS quantity
@@ -27,7 +39,7 @@ router.get('/menu', async (req, res) => {
        LEFT JOIN branch_stock bs ON bs.product_id = p.id AND bs.branch_id = $2::uuid
        WHERE p.is_active = true AND p.business_id = $1
        ORDER BY p.category, p.name`,
-      [businessId, branchId]
+      [businessId, resolvedBranchId]
     )
 
     const grouped = new Map()
@@ -47,6 +59,7 @@ router.get('/menu', async (req, res) => {
 
     res.json({
       tableNumber,
+      branchId: resolvedBranchId,
       categories: [...grouped.values()],
     })
   } catch (error) {
@@ -69,11 +82,15 @@ router.post('/order', async (req, res) => {
 
     const { rows: branchRows } = await query(
       `SELECT id FROM branches
-       WHERE business_id = $1 AND ($2::uuid IS NULL OR id = $2::uuid)
-       ORDER BY created_at ASC LIMIT 1`,
+       WHERE business_id = $1 AND is_active = TRUE
+         AND ($2::uuid IS NULL OR id = $2::uuid)
+       ORDER BY is_main DESC, created_at ASC LIMIT 1`,
       [resolvedBusinessId, requestedBranchId || null]
     )
     const branchId = branchRows[0]?.id
+    if (!branchId) {
+      return res.status(400).json({ error: 'No active branch is configured for this QR order.' })
+    }
 
     // Quick dedupe: if a very recent open order for this table exists with
     // exactly the same product quantities, return it instead of creating a
