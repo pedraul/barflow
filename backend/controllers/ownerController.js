@@ -305,21 +305,43 @@ export async function createUser(req, res) {
     const passwordHash = await bcrypt.hash(password, 10)
 
     let branchId = null
+    const { rows: activeBranches } = await query(
+      `SELECT id, name FROM branches
+       WHERE business_id = $1 AND COALESCE(is_active, TRUE) = TRUE
+       ORDER BY created_at ASC`,
+      [businessId]
+    )
     if (branch && String(branch).trim()) {
-      const { rows: existingBranch } = await query(
-        `SELECT id FROM branches
-         WHERE business_id = $1 AND COALESCE(is_active, TRUE) = TRUE
-           AND (id::text = $2 OR LOWER(name) = LOWER($2))
-         LIMIT 1`,
-        [businessId, String(branch).trim()]
+      const requestedBranch = String(branch).trim().toLowerCase()
+      const existingBranch = activeBranches.find((item) =>
+        item.id === branch || item.name.trim().toLowerCase() === requestedBranch
       )
-      if (existingBranch.length) {
-        branchId = existingBranch[0].id
-      } else {
+      if (existingBranch) {
+        branchId = existingBranch.id
+      } else if (activeBranches.length) {
         return res.status(400).json({ error: 'Selected branch was not found in this business.' })
       }
     }
-    if (!branchId) return res.status(400).json({ error: 'A branch is required for this user role.' })
+    if (!branchId && activeBranches.length) {
+      return res.status(400).json({ error: 'A branch is required for this user role.' })
+    }
+    if (!branchId) {
+      const { rows: mainBranch } = await query(
+        `INSERT INTO branches (business_id, name)
+         VALUES ($1, 'Main Branch')
+         RETURNING id`,
+        [businessId]
+      )
+      branchId = mainBranch[0].id
+      await query(
+        `INSERT INTO branch_stock (branch_id, product_id, quantity, updated_at)
+         SELECT $1, p.id, COALESCE(p.quantity, 0), NOW()
+         FROM products p
+         WHERE p.business_id = $2
+         ON CONFLICT (branch_id, product_id) DO NOTHING`,
+        [branchId, businessId]
+      )
+    }
 
     const { rows } = await query(
       `INSERT INTO users (business_id, username, full_name, email, password_hash, role, branch_id, salary, phone)

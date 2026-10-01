@@ -15,6 +15,7 @@ export default function UserManagement() {
   const [resetPwId, setResetPwId] = useState(null)
   const [newPassword, setNewPassword] = useState('')
   const [message, setMessage] = useState('')
+  const activeBranches = branches.filter((branch) => branch.isActive)
 
   useEffect(() => {
     loadUsers()
@@ -207,9 +208,9 @@ export default function UserManagement() {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1.5">Branch</label>
-                <select required value={form.branch || (activeBranchId !== 'all' ? activeBranchId : '')} onChange={(e) => setForm({ ...form, branch: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                  <option value="">Select a branch</option>
-                  {branches.filter((branch) => branch.isActive && branch.name?.toLowerCase() !== 'main branch').map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
+                <select required={activeBranches.length > 0} value={form.branch || (activeBranchId !== 'all' ? activeBranchId : '')} onChange={(e) => setForm({ ...form, branch: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                  <option value="">{activeBranches.length ? 'Select a branch' : 'Main Branch will be created automatically'}</option>
+                  {activeBranches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
                 </select>
               </div>
               <div>
