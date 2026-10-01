@@ -1422,6 +1422,7 @@ export async function selectSubscriptionPlan(req, res) {
     const ussdCode = generateUssdCode()
 
     const now = new Date()
+    const periodEnd = new Date(now)
     periodEnd.setMonth(periodEnd.getMonth() + monthsToAdd)
     const nextRenewal = new Date(periodEnd)
 
