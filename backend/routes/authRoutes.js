@@ -17,6 +17,29 @@ import {
 
 const router = Router()
 
+function slugifyBusinessName(value) {
+  return String(value || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 120) || 'business'
+}
+
+async function createBusinessSlug(name) {
+  const baseSlug = slugifyBusinessName(name)
+  let slug = baseSlug
+  let suffix = 2
+
+  while ((await query('SELECT 1 FROM businesses WHERE slug = $1 LIMIT 1', [slug])).rows.length) {
+    const suffixText = `-${suffix++}`
+    slug = `${baseSlug.slice(0, 120 - suffixText.length)}${suffixText}`
+  }
+
+  return slug
+}
+
 router.get('/permissions', authMiddleware, async (req, res) => {
   try {
     const perms = await getPermissions(req)
@@ -35,9 +58,11 @@ router.post('/login', async (req, res) => {
   try {
     // Support login by username OR email
     const { rows } = await query(
-      `SELECT u.*, b.name AS branch_name, bu.name AS business_name, bu.id AS business_id
+      `SELECT u.*, b.id AS verified_branch_id, b.name AS branch_name,
+              bu.name AS business_name, bu.id AS business_id, bu.slug AS business_slug
        FROM users u
        LEFT JOIN branches b ON b.id = u.branch_id
+         AND b.business_id = u.business_id AND b.is_active = TRUE
        LEFT JOIN businesses bu ON bu.id = u.business_id
        WHERE (u.username = $1 OR u.email = $1) AND u.is_active = TRUE LIMIT 1`,
       [username]
@@ -53,21 +78,36 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid username or password.' })
     }
 
-    // Check if business is suspended
+    const isOwner = String(u.role || '').toLowerCase() === 'owner'
+    if ((u.branch_id && !u.verified_branch_id) || (!u.branch_id && !isOwner)) {
+      return res.status(403).json({
+        error: 'Your account is not assigned to an active branch in this business. Contact your business owner.',
+        code: 'BRANCH_UNAVAILABLE',
+      })
+    }
+
+    let business = null
+    let unpaidAccessGranted = false
     if (u.business_id) {
-      const { rows: biz } = await query('SELECT is_suspended, is_verified FROM businesses WHERE id = $1', [u.business_id])
-      if (biz.length && biz[0].is_suspended) {
+      const { rows: bizRows } = await query(
+        'SELECT is_suspended, is_verified, unpaid_access_granted FROM businesses WHERE id = $1',
+        [u.business_id]
+      )
+      business = bizRows[0] || null
+      if (business?.is_suspended) {
         return res.status(403).json({ error: 'Your business account has been suspended. Contact support.', code: 'BUSINESS_SUSPENDED' })
       }
+      unpaidAccessGranted = business?.unpaid_access_granted === true
     }
 
     // Check business verification and subscription status
     let subscriptionStatus = 'active'
     let subscriptionExpired = false
     if (u.business_id) {
-      const { rows: biz } = await query('SELECT is_verified FROM businesses WHERE id = $1', [u.business_id])
-      if (biz.length && !biz[0].is_verified) {
+      if (business && !business.is_verified && !unpaidAccessGranted) {
         subscriptionExpired = true
+      } else if (unpaidAccessGranted) {
+        subscriptionStatus = 'access_granted'
       } else {
         // A pending renewal must not block an already verified subscription.
         const { rows: subs } = await query(
@@ -81,7 +121,7 @@ router.post('/login', async (req, res) => {
         if (subs.length) {
           const sub = subs[0]
           subscriptionStatus = sub.status
-          if (sub.payment_status !== 'verified') {
+          if (!sub.is_active || sub.payment_status !== 'verified') {
             subscriptionExpired = true
           } else if (sub.current_period_end && new Date(sub.current_period_end) < new Date()) {
             subscriptionExpired = true
@@ -136,15 +176,18 @@ router.post('/login', async (req, res) => {
         phone: u.phone || '',
         role: u.role,
         branch: u.branch_name || '',
+        branchId: u.verified_branch_id || null,
         avatar: u.avatar_url || '',
         businessId: u.business_id,
         businessName: u.business_name,
+        businessSlug: u.business_slug,
         subscriptionStatus,
         subscriptionExpired,
+        unpaidAccessGranted,
         twoFactorPending: true,
       })
 
-      return res.json({ requires2FA: true, tempToken, method: twoFactorMethod, user: { id: u.id, email: u.email, name: u.full_name, phone: u.phone || '', role: u.role, businessId: u.business_id, subscriptionStatus, subscriptionExpired } })
+      return res.json({ requires2FA: true, tempToken, method: twoFactorMethod, user: { id: u.id, email: u.email, name: u.full_name, phone: u.phone || '', role: u.role, branch: u.branch_name || '', branchId: u.verified_branch_id || null, businessId: u.business_id, businessName: u.business_name, businessSlug: u.business_slug, subscriptionStatus, subscriptionExpired, unpaidAccessGranted } })
     }
 
     await query('UPDATE users SET last_login = NOW() WHERE id = $1', [u.id])
@@ -156,11 +199,14 @@ router.post('/login', async (req, res) => {
       phone: u.phone || '',
       role: u.role,
       branch: u.branch_name || '',
+      branchId: u.verified_branch_id || null,
       avatar: u.avatar_url || '',
       businessId: u.business_id,
       businessName: u.business_name,
+      businessSlug: u.business_slug,
       subscriptionStatus,
       subscriptionExpired,
+      unpaidAccessGranted,
     }
     const token = sign(payload)
 
@@ -259,11 +305,13 @@ router.post('/register-business', async (req, res) => {
 
     // Create business
     const regCode = (registrationCode && registrationCode.trim()) || ('BR-' + Date.now().toString(36).toUpperCase())
+    const businessSlug = await createBusinessSlug(businessName)
     const { rows: biz } = await query(
-      `INSERT INTO businesses (name, contact_email, contact_phone, address, city, country, business_type, registration_code, currency_code, is_verified, description, province, district, sector)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`,
+      `INSERT INTO businesses (name, slug, contact_email, contact_phone, address, city, country, business_type, registration_code, currency_code, is_verified, description, province, district, sector)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`,
       [
         businessName,
+        businessSlug,
         contactEmail || ownerEmail,
         contactPhone || ownerPhone,
         address || '',
@@ -343,6 +391,7 @@ router.post('/register-business', async (req, res) => {
       avatar: '',
       businessId: biz[0].id,
       businessName: businessName,
+      businessSlug,
       subscriptionStatus: 'pending',
       subscriptionExpired: true,
     })
@@ -377,6 +426,7 @@ router.post('/register-business', async (req, res) => {
       message: 'Business registered successfully. Please wait for account verification.',
       businessId: biz[0].id,
       registrationCode: regCode,
+      businessSlug,
       ownerUsername: username || ownerEmail,
       ownerEmail,
       token,
@@ -390,6 +440,7 @@ router.post('/register-business', async (req, res) => {
         avatar: '',
         businessId: biz[0].id,
         businessName: businessName,
+        businessSlug,
         subscriptionStatus: 'pending',
         subscriptionExpired: true,
       },

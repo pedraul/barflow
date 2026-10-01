@@ -24,6 +24,7 @@ export const mapOrder = (o) => ({
   id: o.id,
   orderNumber: o.order_number,
   customer: o.table_name || 'Walk-in',
+  customerPhone: o.customer_phone || '',
   items: (o.items || []).map((item) => ({
     productId: item.productId,
     name: item.name,

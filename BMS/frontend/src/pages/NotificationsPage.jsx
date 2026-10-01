@@ -24,8 +24,8 @@ export default function NotificationsPage() {
 
   const [message, setMessage] = useState('')
   const [replyTo, setReplyTo] = useState(null)
-  const [users, setUsers] = useState([])
   const [search, setSearch] = useState('')
+  const [allUsers, setAllUsers] = useState([])
   const [mediaPreview, setMediaPreview] = useState('')
   const messagesEndRef = useRef(null)
   const chatScrollRef = useRef(null)
@@ -34,12 +34,29 @@ export default function NotificationsPage() {
   const [menu, setMenu] = useState(null) // { msg, x, y }
   const [forwardTarget, setForwardTarget] = useState(null) // userId to forward to
   const [editing, setEditing] = useState(null) // msg being edited
+  const [mobileView, setMobileView] = useState('list') // 'list' | 'chat'
+
+  const messageInputRef = useRef(null)
+
+  const autoResize = (e) => {
+    const el = e.target
+    el.style.height = 'auto'
+    el.style.height = Math.min(el.scrollHeight, 160) + 'px'
+  }
+
+  const handleInputKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSend(e)
+    }
+  }
 
   useEffect(() => {
-    api.fetchUsers().then((data) => {
-      setUsers(data.filter((u) => u.id !== user?.id))
-    }).catch(() => {})
-  }, [user])
+    const el = messageInputRef.current
+    if (el) {
+      el.style.height = 'auto'
+    }
+  }, [activeConversation, message])
 
   useEffect(() => {
     if (!autoSelectedGroup.current) {
@@ -48,6 +65,12 @@ export default function NotificationsPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    api.fetchUsers().then((data) => {
+      setAllUsers((data || []).filter((u) => u.id !== user?.id))
+    }).catch(() => {})
+  }, [user])
 
   // Only auto-scroll to the bottom when the user is already near the bottom.
   // This prevents the view from jumping down while reading older history.
@@ -71,13 +94,12 @@ export default function NotificationsPage() {
 
   const canUseMessageActions = !['admin', 'super_admin'].includes((user?.role || '').toLowerCase())
 
-  // List every created staff member (so new users appear immediately) and merge
-  // in conversation metadata (last message, unread count) where available.
+  // conversations now contains all business users from the backend
   const convMap = {}
   for (const c of conversations) {
     convMap[c.userId] = c
   }
-  const chatList = users.map((u) => {
+  const chatList = allUsers.map((u) => {
     const meta = convMap[u.id] || {}
     return {
       userId: u.id,
@@ -100,6 +122,7 @@ export default function NotificationsPage() {
     setMenu(null)
     nearBottomRef.current = true
     loadConversationMessages(conv.userId)
+    setMobileView('chat')
   }
 
   const handleSelectGroup = () => {
@@ -108,6 +131,11 @@ export default function NotificationsPage() {
     nearBottomRef.current = true
     setActiveConversation('staff-group')
     loadGroupMessages()
+    setMobileView('chat')
+  }
+
+  const handleBackToList = () => {
+    setMobileView('list')
   }
 
   const handleSend = async (e) => {
@@ -168,7 +196,7 @@ export default function NotificationsPage() {
     try {
       const target = forwardTarget
       setForwardTarget(null)
-      await api.sendNotification(target.text, userId, null, target.mediaUrl, target.mediaUrl ? 'image' : null)
+      await api.sendNotification(target.text, userId || null, null, target.mediaUrl, target.mediaUrl ? 'image' : null)
       alert('Message forwarded.')
     } catch (err) {
       alert(err.message || 'Could not forward message.')
@@ -275,59 +303,58 @@ export default function NotificationsPage() {
   }
 
   const sidebarStyle = {
-    width: '320px',
-    minWidth: '320px',
+    flex: '0 0 auto',
   }
 
   const headerStyle = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '16px',
+    marginBottom: '12px',
   }
 
   const titleStyle = {
     margin: 0,
-    fontSize: '24px',
+    fontSize: '18px',
     color: 'var(--text)',
     fontWeight: 700,
   }
 
   const searchInputStyle = {
     width: '100%',
-    padding: '14px 18px',
+    padding: '10px 12px',
     border: '1px solid var(--border)',
-    borderRadius: '10px',
-    fontSize: '16px',
+    borderRadius: '8px',
+    fontSize: '13px',
     outline: 'none',
     background: '#f8fafc',
   }
 
   const tabBtnStyle = (isActive) => ({
     flex: 1,
-    padding: '16px',
+    padding: '10px',
     border: 'none',
     background: 'transparent',
     cursor: 'pointer',
     fontWeight: isActive ? 700 : 500,
-    fontSize: '16px',
+    fontSize: '13px',
     color: isActive ? 'var(--brand)' : 'var(--text-3)',
-    borderBottom: isActive ? '3px solid var(--brand)' : '3px solid transparent',
+    borderBottom: isActive ? '2px solid var(--brand)' : '2px solid transparent',
   })
 
   const convItemStyle = {
     display: 'flex',
     alignItems: 'center',
-    gap: '16px',
-    padding: '18px 20px',
+    gap: '8px',
+    padding: '10px 12px',
     cursor: 'pointer',
     borderBottom: '1px solid var(--border)',
     transition: 'background 0.2s ease',
   }
 
   const avatarStyle = {
-    width: '64px',
-    height: '64px',
+    width: '36px',
+    height: '36px',
     borderRadius: '50%',
     background: '#dfe5e7',
     color: 'var(--text)',
@@ -335,20 +362,20 @@ export default function NotificationsPage() {
     alignItems: 'center',
     justifyContent: 'center',
     fontWeight: 600,
-    fontSize: '20px',
+    fontSize: '12px',
     flexShrink: 0,
   }
 
   const nameStyle = {
     fontWeight: 600,
     color: 'var(--text)',
-    fontSize: '18px',
+    fontSize: '13px',
   }
 
   const metaStyle = {
-    fontSize: '13px',
+    fontSize: '11px',
     color: 'var(--text-3)',
-    marginTop: '4px',
+    marginTop: '2px',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
@@ -357,15 +384,15 @@ export default function NotificationsPage() {
   const badgeStyle = {
     background: 'var(--danger)',
     color: '#fff',
-    fontSize: '13px',
+    fontSize: '11px',
     fontWeight: 700,
-    padding: '4px 10px',
+    padding: '2px 8px',
     borderRadius: '9999px',
     flexShrink: 0,
   }
 
   const emptyStyle = {
-    padding: '3rem',
+    padding: '2rem',
     textAlign: 'center',
     color: 'var(--text-4)',
   }
@@ -374,7 +401,7 @@ export default function NotificationsPage() {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '16px 24px',
+    padding: '10px 16px',
     background: '#f0f2f5',
     borderBottom: '1px solid var(--border)',
     zIndex: 10,
@@ -383,17 +410,17 @@ export default function NotificationsPage() {
   const messagesStyle = {
     flex: 1,
     overflowY: 'auto',
-    padding: '24px',
+    padding: '16px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '10px',
+    gap: '8px',
     background: '#e5ddd5',
     backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm34-90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm12 65c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23d1d7db' fill-opacity='0.4' fill-rule='evenodd'/%3E%3C/svg%3E")`,
   }
 
   const bubbleStyle = {
-    maxWidth: '65%',
-    padding: '12px 16px',
+    maxWidth: '75%',
+    padding: '8px 12px',
     borderRadius: '10px',
     position: 'relative',
     boxShadow: '0 1px 1px rgba(0,0,0,0.1)',
@@ -416,17 +443,17 @@ export default function NotificationsPage() {
     display: 'flex',
     alignItems: 'center',
     gap: '12px',
-    padding: '16px 24px',
+    padding: '10px 16px',
     background: '#f0f2f5',
     borderTop: '1px solid var(--border)',
   }
 
   const chatInputStyle = {
     flex: 1,
-    padding: '14px 18px',
+    padding: '10px 14px',
     border: '1px solid var(--border)',
     borderRadius: '10px',
-    fontSize: '16px',
+    fontSize: '14px',
     outline: 'none',
     background: '#fff',
   }
@@ -436,8 +463,8 @@ export default function NotificationsPage() {
     color: '#fff',
     border: 'none',
     borderRadius: '50%',
-    width: '48px',
-    height: '48px',
+    width: '36px',
+    height: '36px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -448,10 +475,10 @@ export default function NotificationsPage() {
   return (
     <div className="page notifications-page">
 
-      <div className="whatsapp-layout" style={{ height: 'calc(100vh - var(--header-h) - 40px)', maxWidth: '1800px', margin: '20px auto', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.12)' }}>
+      <div className={`whatsapp-layout${mobileView === 'chat' ? ' mobile-show-chat' : ' mobile-show-sidebar'}`} style={{ height: 'calc(100vh - var(--header-h) - 20px)', width: '100%', maxWidth: '100%', margin: '10px auto', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 10px 40px rgba(0,0,0,0.12)' }}>
         {/* Left Sidebar */}
         <div className="whatsapp-sidebar" style={{ ...sidebarStyle, flex: '0 0 auto' }}>
-          <div className="whatsapp-sidebar-header" style={{ padding: '24px', borderBottom: '1px solid var(--border)', background: '#fff' }}>
+          <div className="whatsapp-sidebar-header" style={{ padding: '12px', borderBottom: '1px solid var(--border)', background: '#fff' }}>
             <div style={headerStyle}>
               <h1 style={titleStyle}>Messages</h1>
               {unreadCount > 0 && (
@@ -536,6 +563,9 @@ export default function NotificationsPage() {
               {/* Group Chat Header */}
               <div className="chat-header" style={chatHeaderStyle}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <button type="button" onClick={handleBackToList} className="chat-mobile-back" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', borderRadius: '50%', display: 'none', alignItems: 'center', justifyContent: 'center', color: 'var(--text)' }} title="Back">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+                  </button>
                   <div className="chat-header-avatar" style={{ width: '52px', height: '52px', borderRadius: '50%', background: '#e3f2fd', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: '18px' }}>
                     👥
                   </div>
@@ -598,13 +628,16 @@ export default function NotificationsPage() {
                     style={{ display: 'none' }}
                   />
                   <button type="button" onClick={() => fileInputRef.current?.click()} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: '20px', padding: '0 8px' }} title="Attach image">+</button>
-                  <input
-                    type="text"
+                  <textarea
+                    ref={messageInputRef}
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
+                    onInput={autoResize}
+                    onKeyDown={handleInputKeyDown}
                     placeholder="Type a message to the staff group"
                     className="chat-input"
-                    style={{ ...chatInputStyle, flex: 1 }}
+                    rows={1}
+                    style={{ ...chatInputStyle, flex: 1, fontSize: '15px', minHeight: '44px', maxHeight: '160px', resize: 'none', lineHeight: '1.4', overflowY: 'auto' }}
                   />
                   <button type="submit" className="chat-send-btn" disabled={(!message.trim() && !mediaPreview) || sending} style={sendBtnStyle}>
                     <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
@@ -619,6 +652,9 @@ export default function NotificationsPage() {
               {/* 1-on-1 Chat Header */}
               <div className="chat-header" style={chatHeaderStyle}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <button type="button" onClick={handleBackToList} className="chat-mobile-back" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', borderRadius: '50%', display: 'none', alignItems: 'center', justifyContent: 'center', color: 'var(--text)' }} title="Back">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+                  </button>
                   <div className="chat-header-avatar" style={{ width: '52px', height: '52px', borderRadius: '50%', background: '#dfe5e7', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: '18px' }}>
                     {getInitials(activeChat?.userName)}
                   </div>
@@ -664,13 +700,16 @@ export default function NotificationsPage() {
                     style={{ display: 'none' }}
                   />
                   <button type="button" onClick={() => fileInputRef.current?.click()} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: '20px', padding: '0 8px' }} title="Attach image">+</button>
-                  <input
-                    type="text"
+                  <textarea
+                    ref={messageInputRef}
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
+                    onInput={autoResize}
+                    onKeyDown={handleInputKeyDown}
                     placeholder="Type a message"
                     className="chat-input"
-                    style={{ ...chatInputStyle, flex: 1 }}
+                    rows={1}
+                    style={{ ...chatInputStyle, flex: 1, fontSize: '15px', minHeight: '44px', maxHeight: '160px', resize: 'none', lineHeight: '1.4', overflowY: 'auto' }}
                   />
                   <button type="submit" className="chat-send-btn" disabled={(!message.trim() && !mediaPreview) || sending} style={sendBtnStyle}>
                     <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
@@ -751,7 +790,12 @@ export default function NotificationsPage() {
           <div style={{ background: '#fff', borderRadius: '16px', width: '100%', maxWidth: '420px', maxHeight: '80vh', overflowY: 'auto', padding: '20px' }} onClick={(e) => e.stopPropagation()}>
             <h2 style={{ marginTop: 0, fontSize: '20px' }}>Forward message to</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
-              {users.map((u) => (
+              <button key="staff-group" type="button" onClick={() => confirmForward(null)}
+                style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '10px', border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', textAlign: 'left' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#e3f2fd', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: '14px', lineHeight: 1.2 }}>chat</div>
+                <span style={{ fontWeight: 600 }}>Staff Group</span>
+              </button>
+              {allUsers.map((u) => (
                 <button key={u.id} type="button" onClick={() => confirmForward(u.id)}
                   style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '10px', border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', textAlign: 'left' }}>
                   <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#dfe5e7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600 }}>{getInitials(u.full_name || u.name)}</div>
@@ -764,7 +808,7 @@ export default function NotificationsPage() {
         </div>
       )}
 
-      {error && <div className="error-toast" style={{ position: 'fixed', bottom: '24px', right: '24px', background: 'var(--danger)', color: '#fff', padding: '16px 24px', borderRadius: '10px', boxShadow: 'var(--shadow-lg)', fontSize: '15px', zIndex: 1000 }}>{error}</div>}
+      {error && <div className="error-toast" style={{ position: 'fixed', bottom: '24px', right: '24px', background: 'var(--danger)', color: '#fff',     padding: '10px 16px', borderRadius: '10px', boxShadow: 'var(--shadow-lg)', fontSize: '15px', zIndex: 1000 }}>{error}</div>}
     </div>
   )
 }

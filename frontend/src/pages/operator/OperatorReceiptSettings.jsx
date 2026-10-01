@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   ChefHat, CheckCircle2, FileText, Printer, GlassWater,
-  FileSpreadsheet, User, LogOut, Menu, MessageSquare, Save, ArrowLeft
+  FileSpreadsheet, User, LogOut, Menu, Save, ArrowLeft
 } from 'lucide-react'
 import { fetchReceiptSettings, saveReceiptSettings } from '../../api/endpoints'
 
@@ -129,7 +129,7 @@ export default function OperatorReceiptSettings() {
   }
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 text-slate-800 font-sans antialiased">
+    <div className="operator-shell flex flex-col md:flex-row min-h-screen bg-slate-50 text-slate-800 font-sans antialiased">
       {/* Mobile overlay */}
       {mobileMenuOpen && (
         <div className="sidebar-overlay" onClick={() => setMobileMenuOpen(false)} />
@@ -149,7 +149,7 @@ export default function OperatorReceiptSettings() {
       </header>
 
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-64 bg-[#0B132B] text-slate-400 flex flex-col justify-between shrink-0">
+      <aside className="operator-desktop-sidebar hidden md:flex w-64 bg-[#0B132B] text-slate-400 flex flex-col justify-between shrink-0">
         <div>
           <div className="h-16 flex items-center gap-2 px-6 border-b border-slate-800 text-white font-bold text-xl">
             <div className="p-1.5 bg-blue-600 rounded-lg text-white">
@@ -181,7 +181,6 @@ export default function OperatorReceiptSettings() {
               <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Other</p>
               <div className="space-y-1">
                 <SidebarLink icon={<FileSpreadsheet size={18} />} label="Reports" onClick={() => navigate('/operator/reports')} />
-                <SidebarLink icon={<MessageSquare size={18} />} label="Chats" onClick={() => navigate('/notifications')} />
                 <SidebarLink icon={<User size={18} />} label="My Account" onClick={() => navigate('/account')} />
               </div>
             </div>
@@ -231,7 +230,6 @@ export default function OperatorReceiptSettings() {
               <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Other</p>
               <div className="space-y-1">
                 <SidebarLink icon={<FileSpreadsheet size={18} />} label="Reports" onClick={() => navigate('/operator/reports')} />
-                <SidebarLink icon={<MessageSquare size={18} />} label="Chats" onClick={() => navigate('/notifications')} />
                 <SidebarLink icon={<User size={18} />} label="My Account" onClick={() => navigate('/account')} />
               </div>
             </div>
@@ -264,7 +262,7 @@ export default function OperatorReceiptSettings() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="operator-main flex-1 overflow-y-auto p-6">
           {saved && (
             <div className="mb-4 flex items-center gap-3 bg-emerald-50 border border-emerald-300 rounded-xl px-5 py-4">
               <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-lg">✓</div>

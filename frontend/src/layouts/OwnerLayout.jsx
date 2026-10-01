@@ -4,13 +4,14 @@ import { useOwner } from '../context/OwnerContext'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, CreditCard, Smartphone, ArrowLeftRight, Users,
-  TrendingUp, QrCode, UserCheck, FileText, Settings, LogOut, MessageSquare, ArrowLeft
+  TrendingUp, QrCode, UserCheck, FileText, Settings, LogOut, ArrowLeft
 } from 'lucide-react'
 import { SidebarLink } from '../components/ui/SharedComponents'
+import BranchBadge from '../components/BranchBadge'
 
 const OWNER_LINKS = [
   { section: 'Overview', items: [
-    { path: '/dashboard/owner', label: 'Dashboard', icon: <LayoutDashboard size={18} />, perm: null },
+    { path: '/owner/', label: 'Dashboard', icon: <LayoutDashboard size={18} />, perm: null },
   ]},
   { section: 'Orders', items: [
     { path: '/owner/qr-orders', label: 'QR Orders', icon: <QrCode size={18} />, perm: null },
@@ -30,9 +31,6 @@ const OWNER_LINKS = [
   { section: 'Settings', items: [
     { path: '/owner/subscription', label: 'Subscription', icon: <CreditCard size={18} />, perm: null },
     { path: '/settings', label: 'System Settings', icon: <Settings size={18} />, perm: 'canManageSettings', newWindow: true },
-  ]},
-  { section: 'Other', items: [
-    { path: '/notifications', label: 'Chats', icon: <MessageSquare size={18} />, perm: null },
   ]},
 ]
 
@@ -62,7 +60,7 @@ export default function OwnerLayout({ children }) {
         const activeSub = !!(sub && sub.isActive)
         setHasActiveSubscription(activeSub)
         const allowed = ALLOWED_WITHOUT_SUBSCRIPTION.some((p) => pathname.startsWith(p))
-        const isBlocked = !activeSub && !allowed
+        const isBlocked = !activeSub && !allowed && user?.unpaidAccessGranted !== true
         setBlocked(isBlocked)
         if (isBlocked) navigate('/owner/subscription', { replace: true })
       } catch (e) {
@@ -73,7 +71,7 @@ export default function OwnerLayout({ children }) {
     }
     check()
     return () => { active = false }
-  }, [pathname, fetchSubscription, navigate])
+  }, [pathname, fetchSubscription, navigate, user?.unpaidAccessGranted])
 
   const handleLogout = async () => {
     await logout()
@@ -81,7 +79,7 @@ export default function OwnerLayout({ children }) {
   }
 
   const activeItem = OWNER_LINKS.flatMap(s => s.items).find((item) => {
-    if (item.path === '/dashboard/owner') return pathname === '/dashboard/owner'
+    if (item.path === '/owner/') return pathname === '/owner' || pathname === '/owner/'
     return pathname.startsWith(item.path)
   })
 
@@ -165,6 +163,7 @@ export default function OwnerLayout({ children }) {
               {mobileMenuOpen ? '✕' : '☰'}
             </button>
             <div className="mobile-brand">BarFlow</div>
+            <BranchBadge />
             <button type="button" className="mobile-logout-btn" onClick={handleLogout} title="Logout" style={{ marginLeft: 'auto' }}>
               <LogOut size={20} />
             </button>
@@ -175,12 +174,18 @@ export default function OwnerLayout({ children }) {
       <div className="flex flex-1">
         {/* Desktop sidebar */}
         {showSidebar && (
-          <aside className="w-64 bg-[#0B132B] text-slate-400 flex flex-col shrink-0 sticky top-0 h-screen sidebar-desktop">
+          <aside className="w-64 bg-[#0B132B] text-slate-400 flex flex-col shrink-0 h-screen sidebar-desktop owner-desktop-sidebar">
             <div className="flex-1">
-              <div className="p-4 flex items-center justify-between">
+              <div className="p-4 flex items-center justify-between gap-2">
                 <span className="text-sm font-bold text-white">BarFlow</span>
+                <BranchBadge />
               </div>
               {navLinks}
+            </div>
+            <div className="p-4 border-t border-slate-800">
+              <button type="button" className="sidebar-link sidebar-logout w-full" onClick={handleLogout}>
+                <LogOut size={18} /> Logout
+              </button>
             </div>
           </aside>
         )}
@@ -192,16 +197,22 @@ export default function OwnerLayout({ children }) {
             onClick={() => setMobileMenuOpen(false)}
           >
             <div className="flex-1">
-              <div className="p-4 flex items-center justify-between">
+              <div className="p-4 flex items-center justify-between gap-2">
                 <span className="text-sm font-bold text-white">BarFlow</span>
+                <BranchBadge />
               </div>
               {navLinks}
+            </div>
+            <div className="p-4 border-t border-slate-800">
+              <button type="button" className="sidebar-link sidebar-logout w-full" onClick={handleLogout}>
+                <LogOut size={18} /> Logout
+              </button>
             </div>
           </aside>
         )}
 
-        <div className="flex-1 flex flex-col">
-          {!hasActiveSubscription && (
+        <div className={`flex-1 flex flex-col ${showSidebar ? 'owner-main-content' : ''}`}>
+          {!hasActiveSubscription && user?.unpaidAccessGranted !== true && (
             <div className="subscription-notice" style={{ borderRadius: 0, color: 'var(--warning-text)', background: 'var(--warning-bg)', borderColor: '#fde68a' }}>
               ⚠ Your subscription is inactive. System features are locked. Please renew your plan to continue.
             </div>

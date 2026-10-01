@@ -1,11 +1,11 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
 import Layout from '../components/Layout'
 import {
   GlassWater, User, MessageSquare, LogOut
 } from 'lucide-react'
 import { SidebarLink } from '../components/ui/SharedComponents'
+import { useAuth } from '../context/AuthContext'
 
 const BAR_LINKS = [
   { section: 'Bar', items: [
@@ -48,5 +48,9 @@ export default function BarLayout({ children }) {
     </div>
   )
 
-  return <Layout sidebar={sidebar}>{children}</Layout>
+  return <Layout sidebar={sidebar} logoutButton={
+    <button type="button" className="mobile-logout-btn" onClick={handleLogout} title="Logout">
+      <LogOut size={20} />
+    </button>
+  }>{children}</Layout>
 }

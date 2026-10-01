@@ -55,12 +55,13 @@ router.get('/summary', ...accountantOnly, async (req, res) => {
       [businessId]
     )).rows
 
-    const revenue = Number(revenueRows[0]?.revenue || 0)
+    const grossRevenue = Number(revenueRows[0]?.revenue || 0)
     const expenses = Number(expenseRows[0]?.expenses || 0)
     const payments = Number(paymentRows[0]?.payments || 0)
     const refunds = Number(refundRows[0]?.refunds || 0)
+    const revenue = grossRevenue - refunds
     const profit = revenue - expenses
-    const cashInHand = revenue - payments - refunds
+    const cashInHand = revenue - payments
     const bankBalance = Number(bankBalanceRows[0]?.balance || 0)
 
     const recentTransactions = (await safeQuery(
@@ -490,6 +491,11 @@ router.get('/reports', ...accountantOnly, async (req, res) => {
        FROM orders WHERE status IN ('Paid', 'Served') AND business_id = $1`,
       [businessId]
     )
+    const { rows: refundTotalRows } = await query(
+      `SELECT COALESCE(SUM(amount), 0) AS total_refunds
+       FROM refunds WHERE status = 'approved' AND business_id = $1`,
+      [businessId]
+    )
     const { rows: paymentRows } = await query(
       `SELECT COUNT(*) AS payments, COALESCE(SUM(amount), 0) AS total_payments
        FROM payments WHERE business_id = $1`,
@@ -512,9 +518,11 @@ router.get('/reports', ...accountantOnly, async (req, res) => {
        LIMIT 50`
     )
 
+    const netRevenue = (Number(orderRows[0]?.revenue || 0)) - (Number(refundTotalRows[0]?.total_refunds || 0))
+
     res.json({
       orders: Number(orderRows[0]?.orders || 0),
-      revenue: Number(orderRows[0]?.revenue || 0),
+      revenue: netRevenue,
       payments: Number(paymentRows[0]?.payments || 0),
       totalPayments: Number(paymentRows[0]?.total_payments || 0),
       refunds: Number(refundRows[0]?.refunds || 0),

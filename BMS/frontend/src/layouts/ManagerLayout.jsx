@@ -1,6 +1,5 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
 import Layout from '../components/Layout'
 import {
   LayoutDashboard, ShoppingBag, ChefHat, CheckCircle2, BarChart3,
@@ -8,6 +7,7 @@ import {
   FileSpreadsheet, Bell, User, ArrowLeftRight, TrendingUp, Settings, LogOut, Wallet
 } from 'lucide-react'
 import { SidebarLink } from '../components/ui/SharedComponents'
+import { useAuth } from '../context/AuthContext'
 
 const MANAGER_LINKS = [
   { section: 'Manager', items: [
@@ -19,7 +19,6 @@ const MANAGER_LINKS = [
     { path: '/manager/kitchen-menu', label: 'Kitchen menu', icon: <ChefHat size={18} /> },
   ]},
   { section: 'Finance', items: [
-    { path: '/manager/transfer', label: 'Transfer', icon: <ArrowLeftRight size={18} /> },
     { path: '/manager/transfer/transfers', label: 'Approve Transfers', icon: <CheckCircle2 size={18} /> },
     { path: '/manager/withdrawals', label: 'Approve Withdrawals', icon: <Wallet size={18} /> },
     { path: '/manager/transfer/refunds', label: 'Refunds', icon: <FileText size={18} /> },
@@ -67,5 +66,9 @@ export default function ManagerLayout({ children }) {
     </div>
   )
 
-  return <Layout sidebar={sidebar}>{children}</Layout>
+  return <Layout sidebar={sidebar} logoutButton={
+    <button type="button" className="mobile-logout-btn" onClick={handleLogout} title="Logout">
+      <LogOut size={20} />
+    </button>
+  }>{children}</Layout>
 }

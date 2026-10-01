@@ -1,13 +1,14 @@
 import React from 'react'
 import { QrCode, Smartphone } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { PUBLIC_APP_URL } from '../config/publicAppUrl'
 
 /**
  * QR Code Display Component
  * Shows a QR code that customers can scan to access the menu and place orders.
  * Uses qrserver.com API (no external library needed).
  */
-const FRONTEND_URL = window.location.origin || 'http://localhost:5173'
+const FRONTEND_URL = PUBLIC_APP_URL
 const QR_SIZE = 132
 
 export default function QRCodeDisplay() {
@@ -27,10 +28,10 @@ export default function QRCodeDisplay() {
         />
       </div>
       <div className="min-w-0">
-        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-violet-700"><QrCode size={15} /> CUSTOMER MENU</span>
+        <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-violet-700"><QrCode size={15} /> CUSTOMER MENU</span>
         <h2 className="font-bold text-slate-900 mt-1">Scan to order</h2>
         <p className="text-xs leading-5 text-slate-500 mt-1">Customers scan this code to browse the menu and submit their own order.</p>
-        <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 mt-2"><Smartphone size={14} /> Ready to scan</span>
+        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 mt-2"><Smartphone size={14} /> Ready to scan</span>
       </div>
     </aside>
   )

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { fetchOperatorOrders } from '../../api/endpoints'
+import api from '../../api/axios'
 import {
   LayoutDashboard, ShoppingBag, ChefHat, CheckCircle2, BarChart3,
   Clock, FileText, Printer, GlassWater,
@@ -33,15 +34,18 @@ export default function OperatorReceipts() {
   const [tab, setTab] = useState('printed')
   const [receipts, setReceipts] = useState([])
   const [loading, setLoading] = useState(true)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { pathname } = useLocation()
+
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [pathname])
 
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch('/api/operator/orders', {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        const data = await res.json()
-        setReceipts(data || [])
+        const res = await api.get('/operator/orders')
+        setReceipts(res.data || [])
       } catch (e) {
         console.error(e)
       } finally {
@@ -54,9 +58,76 @@ export default function OperatorReceipts() {
   const printedReceipts = receipts.filter((r) => r.status === 'Served' || r.status === 'Paid')
 
   return (
-    <div className="flex min-h-screen bg-slate-50 text-slate-800 font-sans antialiased">
-      {/* SIDEBAR */}
-      <aside className="w-64 bg-[#0B132B] text-slate-400 flex flex-col justify-between shrink-0">
+    <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 text-slate-800 font-sans antialiased">
+      {/* Mobile overlay */}
+      {mobileMenuOpen && (
+        <div className="sidebar-overlay" onClick={() => setMobileMenuOpen(false)} />
+      )}
+
+      {/* Mobile topbar */}
+      <header className="mobile-topbar">
+        <button
+          type="button"
+          className="mobile-menu-button"
+          onClick={() => setMobileMenuOpen((prev) => !prev)}
+          aria-label="Toggle navigation"
+        >
+          {mobileMenuOpen ? '✕' : '☰'}
+        </button>
+        <div className="mobile-brand">BarFlow</div>
+      </header>
+
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex w-64 bg-[#0B132B] text-slate-400 flex flex-col justify-between shrink-0">
+        <div>
+          <div className="h-16 flex items-center gap-2 px-6 border-b border-slate-800 text-white font-bold text-xl">
+            <div className="p-1.5 bg-blue-600 rounded-lg text-white">
+              <GlassWater size={20} className="transform rotate-180" />
+            </div>
+            <span>BarFlow</span>
+          </div>
+
+          <nav className="p-4 space-y-6 text-sm">
+            <div>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Order Management</p>
+              <div className="space-y-1">
+                <SidebarLink icon={<FileText size={18} />} label="New Orders" onClick={() => navigate('/operator/orders')} />
+                <SidebarLink icon={<ChefHat size={18} />} label="Preparing" onClick={() => navigate('/operator/orders')} />
+                <SidebarLink icon={<CheckCircle2 size={18} />} label="Ready" onClick={() => navigate('/operator/orders')} />
+                <SidebarLink icon={<FileText size={18} />} label="All Orders" onClick={() => navigate('/operator/orders')} />
+              </div>
+            </div>
+
+            <div>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Receipts</p>
+              <div className="space-y-1">
+                <SidebarLink icon={<Printer size={18} />} label="Printed Receipts" active={tab === 'printed'} onClick={() => setTab('printed')} />
+              </div>
+            </div>
+
+            <div>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Other</p>
+              <div className="space-y-1">
+                <SidebarLink icon={<FileSpreadsheet size={18} />} label="Reports" onClick={() => navigate('/operator/reports')} />
+                <SidebarLink icon={<MessageSquare size={18} />} label="Chats" onClick={() => navigate('/notifications')} />
+                <SidebarLink icon={<User size={18} />} label="My Account" onClick={() => navigate('/account')} />
+              </div>
+            </div>
+          </nav>
+        </div>
+
+        <div className="p-4 border-t border-slate-800">
+          <button onClick={() => { navigate('/login') }} className="flex items-center gap-3 px-3 py-2.5 text-red-400 hover:bg-red-950/30 rounded-lg font-medium transition w-full">
+            <LogOut size={18} /> Logout
+          </button>
+        </div>
+      </aside>
+
+      {/* Mobile sidebar drawer */}
+      <aside
+        className={`operator-sidebar-mobile ${mobileMenuOpen ? 'operator-sidebar-open' : ''}`}
+        onClick={() => setMobileMenuOpen(false)}
+      >
         <div>
           <div className="h-16 flex items-center gap-2 px-6 border-b border-slate-800 text-white font-bold text-xl">
             <div className="p-1.5 bg-blue-600 rounded-lg text-white">
@@ -105,9 +176,6 @@ export default function OperatorReceipts() {
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
           <div className="flex items-center gap-4">
-            <button className="text-slate-500 hover:text-slate-700">
-              <Menu size={20} />
-            </button>
             <h1 className="text-lg font-semibold text-slate-900">Receipts</h1>
           </div>
           <div className="flex items-center gap-6">

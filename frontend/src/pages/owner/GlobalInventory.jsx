@@ -13,7 +13,7 @@ export default function GlobalInventory() {
   useEffect(() => {
     loadInventory()
     loadMovements()
-  }, [])
+  }, [fetchGlobalInventory, fetchStockMovements])
 
   const loadInventory = async () => {
     try { setInventory(await fetchGlobalInventory()) } catch (e) { console.error(e) }
@@ -52,7 +52,7 @@ export default function GlobalInventory() {
             </div>
             <select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} className="px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:border-indigo-500">
               <option value="">All Branches</option>
-              {branches.map((b) => <option key={b} value={b}>{b}</option>)}
+              {branches.filter((b) => b.toLowerCase() !== 'main branch').map((b) => <option key={b} value={b}>{b}</option>)}
             </select>
           </div>
 

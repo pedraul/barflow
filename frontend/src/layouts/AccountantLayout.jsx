@@ -11,10 +11,9 @@ import { useAuth } from '../context/AuthContext'
 
 const ACCOUNTANT_LINKS = [
   { section: 'Main', items: [
-    { path: '/accountant/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
+    { path: '/accountant/', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
     { path: '/accountant/reconciliations', label: 'Reconciliation', icon: <Scale size={18} /> },
     { path: '/accountant/qr', label: 'QR Orders', icon: <QrCode size={18} /> },
-    { path: '/notifications', label: 'Chats', icon: <MessageSquare size={18} /> },
   ]},
   { section: 'Operations', items: [
     { path: '/accountant/orders', label: 'Orders', icon: <ShoppingBag size={18} /> },

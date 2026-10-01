@@ -13,7 +13,6 @@ const BAR_LINKS = [
   ]},
   { section: 'Other', items: [
     { path: '/account', label: 'My account', icon: <User size={18} /> },
-    { path: '/notifications', label: 'Chats', icon: <MessageSquare size={18} /> },
   ]},
 ]
 

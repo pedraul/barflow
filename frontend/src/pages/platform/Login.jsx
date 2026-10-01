@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { login, platformLogin } from '../../api/endpoints'
+import { buildWorkspaceUrl } from '../../config/workspaceUrl'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -48,23 +49,23 @@ export default function Login() {
         // Route based on role
         const role = data.user.role
         if (data.user.subscriptionExpired && role !== 'owner') {
-          navigate('/subscription-expired')
+          window.location.assign(buildWorkspaceUrl(data.user, '/subscription-expired'))
           return
         }
         if (data.user.subscriptionExpired && role === 'owner') {
-          navigate('/owner/subscription')
+            window.location.assign(buildWorkspaceUrl(data.user, '/owner/subscription'))
           return
         }
         const roleRoutes = {
-          owner: '/dashboard/owner',
-          manager: '/manager/dashboard',
-          accountant: '/accountant/dashboard',
-          waiter: '/waiter/dashboard',
-          operator: '/operator/orders',
-          kitchen: '/kitchen',
-          bar: '/bar',
+          owner: '/owner/',
+          manager: '/manager/',
+          accountant: '/accountant/',
+          waiter: '/waiter/',
+          operator: '/operator/',
+          kitchen: '/kitchen/',
+          bar: '/bar/',
         }
-        navigate(roleRoutes[role] || '/')
+        window.location.assign(buildWorkspaceUrl(data.user, roleRoutes[role] || '/'))
       }
     } catch (err) {
       const status = err.response?.status
@@ -88,8 +89,8 @@ export default function Login() {
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-400 flex items-center justify-center">
               <span className="text-white font-bold text-lg">B</span>
             </div>
-            <h1 className="text-3xl font-black text-white tracking-tight">
-              Bar<span className="text-amber-300">Flow</span>
+            <h1 className="text-5xl sm:text-6xl leading-none font-black uppercase">
+              <span className="text-yellow-300">BAR</span><span className="text-emerald-400">FLOW</span>
             </h1>
           </div>
           <p className="text-slate-400 text-sm">Multi-business management platform</p>

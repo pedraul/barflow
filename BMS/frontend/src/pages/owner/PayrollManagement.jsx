@@ -79,8 +79,8 @@ export default function PayrollManagement() {
       </div>
 
       {/* Payroll Table */}
-      <div style={{ background: '#fff', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <div style={{ background: '#fff', borderRadius: 12, overflow: 'auto', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+        <table style={{ borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
               {['Employee', 'Email', 'Phone', 'Role', 'Branch', 'Gross', 'Tax', 'Insurance', 'Net Paid', 'Status', 'Payment Date'].map((h) => (
@@ -122,7 +122,7 @@ export default function PayrollManagement() {
       {/* Payout Confirmation Modal */}
       {showConfirm && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: '#fff', borderRadius: 12, padding: 24, width: 400, boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }}>
+          <div className="responsive-modal" style={{ background: '#fff', borderRadius: 12, padding: 24, boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }}>
             <h3 style={{ margin: '0 0 8px' }}>Confirm Payroll Payout</h3>
             <p style={{ color: '#6b7280', fontSize: 13, margin: '0 0 16px' }}>
               This will process payroll for all active employees. Rwanda PAYE tax and 2,000 RWF insurance will be deducted from each payment.
@@ -131,11 +131,11 @@ export default function PayrollManagement() {
               <label style={{ fontSize: 12, color: '#6b7280' }}>Pay Period Start</label>
               <input type="date" value={payPeriod.payPeriodStart}
                 onChange={(e) => setPayPeriod({ ...payPeriod, payPeriodStart: e.target.value })}
-                style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13 }} />
+                style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13, width: '100%', boxSizing: 'border-box' }} />
               <label style={{ fontSize: 12, color: '#6b7280' }}>Pay Period End</label>
               <input type="date" value={payPeriod.payPeriodEnd}
                 onChange={(e) => setPayPeriod({ ...payPeriod, payPeriodEnd: e.target.value })}
-                style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13 }} />
+                style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13, width: '100%', boxSizing: 'border-box' }} />
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={() => setShowConfirm(false)} style={{ background: '#e5e7eb', border: 'none', borderRadius: 6, padding: '8px 16px', cursor: 'pointer' }}>Cancel</button>

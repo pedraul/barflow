@@ -2,6 +2,7 @@ import React from 'react'
 import { createContext, useContext, useState, useEffect } from 'react'
 
 import { logoutUser } from '../api/endpoints'
+import api from '../api/axios'
 
 const AuthContext = createContext(null)
 
@@ -65,13 +66,8 @@ export function AuthProvider({ children }) {
   const fetchPermissions = async () => {
     if (!token) return
     try {
-      const res = await fetch('/api/auth/permissions', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setPermissions(data)
-      }
+      const res = await api.get('/auth/permissions')
+      setPermissions(res.data)
     } catch (e) {
       console.error('Failed to fetch permissions:', e)
     }

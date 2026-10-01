@@ -18,10 +18,10 @@ import customerRoutes from './customerRoutes.js'
 import operatorRoutes from './operatorRoutes.js'
 import receiptSettingsRoutes from './receiptSettingsRoutes.js'
 import kitchenBarRoutes from './kitchenBarRoutes.js'
-import notificationRoutes from './notificationRoutes.js'
 import managerRoutes from './managerRoutes.js'
 import platformRoutes from './platformRoutes.js'
 import accountantRoutes from './accountantRoutes.js'
+import branchRoutes from './branchRoutes.js'
 import { seed } from '../seeders/seed.js'
 
 const router = Router()
@@ -175,6 +175,7 @@ router.post('/audit-logs', async (req, res) => {
 
 router.use('/auth', authRoutes)
 router.use('/users', userRoutes)
+router.use('/branches', branchRoutes)
 router.use('/orders', orderRoutes)
 router.use('/salary-payments', salaryRoutes)
 router.use('/subscription', subscriptionRoutes)
@@ -193,7 +194,6 @@ router.use('/operator', operatorRoutes)
 router.use('/operator', receiptSettingsRoutes)
 router.use('/kitchen', kitchenBarRoutes)
 router.use('/bar', kitchenBarRoutes)
-router.use('/notifications', notificationRoutes)
 
 // Manager approval routes
 router.use('/manager', managerRoutes)

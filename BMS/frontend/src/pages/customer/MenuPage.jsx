@@ -5,8 +5,12 @@ import { useCustomer } from '../../context/CustomerContext'
 
 const money = (value) => `${Number(value || 0).toLocaleString('en-RW')} RWF`
 
-const BAR_CATEGORIES = ['Beer', 'Wine', 'Spirits', 'Cocktails', 'Mocktails', 'Soft Drinks', 'Juices', 'Water', 'Energy Drinks', 'Tea and Coffee']
-const FOOD_CATEGORIES = ['Appetizers', 'Snacks', 'BBQ & Grills', 'Chicken Dishes', 'Beef Dishes', 'Pork Dishes', 'Fish & Seafood', 'Burgers', 'Pizza', 'Sandwiches', 'Fries & Chips', 'Main Meals', 'Local Dishes', 'Salads', 'Desserts']
+const BAR_KEYWORDS = ['beer', 'wine', 'spirits', 'cocktails', 'mocktails', 'soft drinks', 'juices', 'water', 'energy drinks', 'tea and coffee', 'coffee', 'tea']
+
+function isBarCategory(name) {
+  const lower = String(name || '').toLowerCase().trim()
+  return BAR_KEYWORDS.some((kw) => lower === kw || lower.startsWith(kw))
+}
 
 
 export default function MenuPage() {
@@ -50,14 +54,16 @@ export default function MenuPage() {
 
   const barCategories = useMemo(() => {
     if (!selectedSection || selectedSection !== 'bar') return []
-    const itemsByCat = new Map(categories.map((group) => [group.name.toLowerCase().trim(), group.items || []]))
-    return BAR_CATEGORIES.map((cat) => ({ name: cat, items: itemsByCat.get(cat.toLowerCase().trim()) || [] }))
+    return categories
+      .filter((group) => isBarCategory(group.name))
+      .sort((a, b) => a.name.localeCompare(b.name))
   }, [selectedSection, categories])
 
   const foodCategories = useMemo(() => {
     if (!selectedSection || selectedSection !== 'food') return []
-    const itemsByCat = new Map(categories.map((group) => [group.name.toLowerCase().trim(), group.items || []]))
-    return FOOD_CATEGORIES.map((cat) => ({ name: cat, items: itemsByCat.get(cat.toLowerCase().trim()) || [] }))
+    return categories
+      .filter((group) => !isBarCategory(group.name))
+      .sort((a, b) => a.name.localeCompare(b.name))
   }, [selectedSection, categories])
 
   const cartItem = (id) => cart.find((item) => item.productId === id)
@@ -66,8 +72,8 @@ export default function MenuPage() {
   if (menuError) return <div className="min-h-screen grid place-items-center text-red-600">Unable to load the menu. <button className="underline" onClick={() => loadMenu()}>Try again</button></div>
 
   return <div className="min-h-screen bg-white text-slate-900">
-    <header className="h-[90px] px-6 md:px-10 border-b border-slate-200 flex items-center gap-6 sticky top-0 bg-white z-20">
-      <div className="flex items-center gap-3 min-w-max"><UtensilsCrossed className="text-amber-500" size={38} /><div><h1 className="font-extrabold tracking-wide text-xl">{menu?.businessName || 'BARFLOW'}</h1><p className="text-[10px] tracking-[.25em] text-slate-500">RESTAURANT & BAR</p></div></div>
+    <header className="customer-menu-header h-[90px] px-6 md:px-10 border-b border-slate-200 flex items-center gap-6 sticky top-0 bg-white z-20">
+      <div className="customer-menu-brand flex items-center gap-3 min-w-max"><UtensilsCrossed className="text-amber-500" size={38} /><div><h1 className="font-extrabold tracking-wide text-xl">{menu?.businessName || 'BARFLOW'}</h1><p className="text-[10px] tracking-[.25em] text-slate-500">RESTAURANT & BAR</p></div></div>
       <div className="hidden md:flex flex-1 max-w-md ml-auto relative"><Search className="absolute left-4 top-3 text-slate-400" size={20} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search for food or drinks..." className="w-full rounded-xl border border-slate-300 py-3 pl-11 pr-4 outline-none focus:border-amber-500" /></div>
       <button onClick={() => navigate('/cart')} className="ml-auto md:ml-0 relative rounded-xl bg-slate-950 text-white px-5 py-3 flex gap-2 items-center font-semibold"><ShoppingCart size={19} /> View cart {getCartCount() > 0 && <span className="rounded-full bg-emerald-500 w-5 h-5 grid place-items-center text-xs">{getCartCount()}</span>}</button>
     </header>
@@ -80,27 +86,27 @@ export default function MenuPage() {
           </button>
           <h2 className="text-2xl font-extrabold">{selectedCategory}</h2>
           <p className="text-slate-500 text-sm mt-1">Choose your favorite from our menu</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 mt-4">
+          <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4 mt-4">
             {categoryItems.map((item) => {
               const inCart = cartItem(item.id)
               const soldOut = Number(item.quantity) <= 0
               return (
                   <article key={item.id} className="overflow-hidden border border-slate-200 rounded-xl shadow-sm bg-white w-full">
-                  <div className="relative h-44 bg-slate-100 flex items-center justify-center overflow-hidden">
-                    <div className="absolute inset-0 grid place-items-center text-slate-400"><UtensilsCrossed size={30} /><span className="text-xs mt-1">No image</span></div>
+                  <div className="relative h-28 sm:h-36 bg-slate-100 flex items-center justify-center overflow-hidden">
+                    <div className="absolute inset-0 grid place-items-center text-slate-400"><UtensilsCrossed size={24} /><span className="text-[10px] mt-1">No image</span></div>
                     {item.imageUrl && <img src={item.imageUrl} alt={item.name} className="relative z-10 w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} />}
                   </div>
-                    <div className="p-2.5">
-                      <h3 className="font-bold text-sm text-slate-900 leading-tight line-clamp-1">{item.name}</h3>
-                      <p className="font-bold text-sm mt-1 text-slate-900">{money(item.price)}</p>
-                      <button disabled={soldOut} onClick={() => addToCart(item)} className="mt-2 w-full border border-slate-300 rounded-md py-1.5 flex justify-between px-2 font-semibold text-xs hover:border-amber-500 disabled:opacity-50">
-                        {soldOut ? 'Sold out' : 'Add'} <Plus className="rounded bg-amber-600 text-white p-0.5" size={16} />
+                    <div className="p-2 sm:p-2.5">
+                      <h3 className="font-bold text-[11px] sm:text-sm text-slate-900 leading-tight line-clamp-1">{item.name}</h3>
+                      <p className="font-bold text-xs sm:text-sm mt-0.5 text-slate-900">{money(item.price)}</p>
+                      <button disabled={soldOut} onClick={() => addToCart(item)} className="mt-1.5 w-full border border-slate-300 rounded-md py-1 flex justify-between px-1.5 font-semibold text-[11px] hover:border-amber-500 disabled:opacity-50">
+                        {soldOut ? 'Sold out' : 'Add'} <Plus className="rounded bg-amber-600 text-white p-0.5" size={14} />
                       </button>
                       {inCart && (
-                        <div className="mt-2 flex items-center justify-between border border-slate-200 rounded-md px-2 py-1">
-                          <button onClick={() => updateQuantity(item.id, inCart.quantity - 1)} className="text-slate-600 hover:text-red-600 font-bold text-sm leading-none">−</button>
-                          <span className="text-xs font-semibold">{inCart.quantity}</span>
-                          <button onClick={() => updateQuantity(item.id, inCart.quantity + 1)} className="text-slate-600 hover:text-emerald-700 font-bold text-sm leading-none">+</button>
+                        <div className="mt-1.5 flex items-center justify-between border border-slate-200 rounded-md px-1.5 py-0.5">
+                          <button onClick={() => updateQuantity(item.id, inCart.quantity - 1)} className="text-slate-600 hover:text-red-600 font-bold text-xs leading-none">−</button>
+                          <span className="text-[11px] font-semibold">{inCart.quantity}</span>
+                          <button onClick={() => updateQuantity(item.id, inCart.quantity + 1)} className="text-slate-600 hover:text-emerald-700 font-bold text-xs leading-none">+</button>
                         </div>
                       )}
                     </div>
@@ -131,7 +137,7 @@ export default function MenuPage() {
           </button>
           <h2 className="text-3xl font-extrabold mb-2">{selectedSection === 'bar' ? 'Bar menu' : 'Food menu'} — Categories</h2>
           <p className="text-slate-500 mt-1">Select a category to browse items</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-5">
+          <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4 mt-5">
             {(selectedSection === 'bar' ? barCategories : foodCategories).map((group) => (
               <button key={group.name} onClick={() => setSelectedCategory(group.name)} className="border border-slate-200 rounded-xl shadow-sm bg-white p-5 text-left hover:border-amber-500 hover:shadow-md transition">
                 <div className="text-xl font-bold text-slate-900">{group.name}</div>
@@ -148,27 +154,27 @@ export default function MenuPage() {
           {searchItems.length === 0 ? (
             <p className="text-slate-500">No items found matching "{search}"</p>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
               {searchItems.map((item) => {
                 const inCart = cartItem(item.id)
                 const soldOut = Number(item.quantity) <= 0
                 return (
                 <article key={item.id} className="overflow-hidden border border-slate-200 rounded-xl shadow-sm bg-white w-full">
-                  <div className="relative h-44 bg-slate-100 flex items-center justify-center overflow-hidden">
-                    <div className="absolute inset-0 grid place-items-center text-slate-400"><UtensilsCrossed size={30} /><span className="text-xs mt-1">No image</span></div>
+                  <div className="relative h-28 sm:h-36 bg-slate-100 flex items-center justify-center overflow-hidden">
+                    <div className="absolute inset-0 grid place-items-center text-slate-400"><UtensilsCrossed size={24} /><span className="text-[10px] mt-1">No image</span></div>
                     {item.imageUrl && <img src={item.imageUrl} alt={item.name} className="relative z-10 w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} />}
                   </div>
-                    <div className="p-2.5">
-                      <h3 className="font-bold text-sm text-slate-900 leading-tight line-clamp-1">{item.name}</h3>
-                      <p className="font-bold text-sm mt-1 text-slate-900">{money(item.price)}</p>
-                      <button disabled={soldOut} onClick={() => addToCart(item)} className="mt-2 w-full border border-slate-300 rounded-md py-1.5 flex justify-between px-2 font-semibold text-xs hover:border-amber-500 disabled:opacity-50">
-                        {soldOut ? 'Sold out' : 'Add'} <Plus className="rounded bg-amber-600 text-white p-0.5" size={16} />
+                    <div className="p-2 sm:p-2.5">
+                      <h3 className="font-bold text-[11px] sm:text-sm text-slate-900 leading-tight line-clamp-1">{item.name}</h3>
+                      <p className="font-bold text-xs sm:text-sm mt-0.5 text-slate-900">{money(item.price)}</p>
+                      <button disabled={soldOut} onClick={() => addToCart(item)} className="mt-1.5 w-full border border-slate-300 rounded-md py-1 flex justify-between px-1.5 font-semibold text-[11px] hover:border-amber-500 disabled:opacity-50">
+                        {soldOut ? 'Sold out' : 'Add'} <Plus className="rounded bg-amber-600 text-white p-0.5" size={14} />
                       </button>
                       {inCart && (
-                        <div className="mt-2 flex items-center justify-between border border-slate-200 rounded-md px-2 py-1">
-                          <button onClick={() => updateQuantity(item.id, inCart.quantity - 1)} className="text-slate-600 hover:text-red-600 font-bold text-sm leading-none">−</button>
-                          <span className="text-xs font-semibold">{inCart.quantity}</span>
-                          <button onClick={() => updateQuantity(item.id, inCart.quantity + 1)} className="text-slate-600 hover:text-emerald-700 font-bold text-sm leading-none">+</button>
+                        <div className="mt-1.5 flex items-center justify-between border border-slate-200 rounded-md px-1.5 py-0.5">
+                          <button onClick={() => updateQuantity(item.id, inCart.quantity - 1)} className="text-slate-600 hover:text-red-600 font-bold text-xs leading-none">−</button>
+                          <span className="text-[11px] font-semibold">{inCart.quantity}</span>
+                          <button onClick={() => updateQuantity(item.id, inCart.quantity + 1)} className="text-slate-600 hover:text-emerald-700 font-bold text-xs leading-none">+</button>
                         </div>
                       )}
                     </div>

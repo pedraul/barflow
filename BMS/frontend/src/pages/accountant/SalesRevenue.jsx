@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react'
-import { fetchAccountantSales } from '../../api/endpoints'
+import React, { useEffect, useState, useMemo } from 'react'
+import { fetchAccountantSales, fetchRefunds } from '../../api/endpoints'
 
 const money = (value) => `${Number(value || 0).toLocaleString()} RWF`
 
 export default function SalesRevenue() {
   const [sales, setSales] = useState([])
+  const [refunds, setRefunds] = useState([])
   const [loading, setLoading] = useState(true)
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
@@ -15,10 +16,15 @@ export default function SalesRevenue() {
       const params = {}
       if (from) params.from = from
       if (to) params.to = to
-      const data = await fetchAccountantSales(params)
-      setSales(data || [])
+      const [salesData, refundsData] = await Promise.all([
+        fetchAccountantSales(params),
+        fetchRefunds(),
+      ])
+      setSales(salesData || [])
+      setRefunds(refundsData || [])
     } catch (err) {
       setSales([])
+      setRefunds([])
     } finally {
       setLoading(false)
     }
@@ -28,13 +34,11 @@ export default function SalesRevenue() {
     load()
   }, [])
 
-  const totals = sales.reduce(
-    (acc, s) => {
-      acc.revenue += Number(s.total) || 0
-      return acc
-    },
-    { revenue: 0 }
-  )
+  const totals = useMemo(() => {
+    const revenue = sales.reduce((acc, s) => acc + (Number(s.total) || 0), 0)
+    const refundTotal = refunds.reduce((acc, r) => acc + (Number(r.amount) || 0), 0)
+    return { revenue, refundTotal, netRevenue: revenue - refundTotal }
+  }, [sales, refunds])
 
   return (
     <div className="page accountant-sales">
@@ -53,8 +57,12 @@ export default function SalesRevenue() {
           <span>Orders</span>
         </div>
         <div className="summary-card">
-          <strong>{money(totals.revenue)}</strong>
-          <span>Total Revenue</span>
+          <strong>{money(totals.netRevenue)}</strong>
+          <span>Net Revenue</span>
+        </div>
+        <div className="summary-card">
+          <strong>{money(totals.refundTotal)}</strong>
+          <span>Refunds</span>
         </div>
       </div>
 

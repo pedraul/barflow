@@ -12,6 +12,8 @@ export default function WaiterOrders() {
   const [delivering, setDelivering] = useState(null)
   const [restockOrder, setRestockOrder] = useState(null)
   const [addItemsOrder, setAddItemsOrder] = useState(null)
+  const [refunding, setRefunding] = useState(null)
+  const [refundMsg, setRefundMsg] = useState(null)
   const [activeTab, setActiveTab] = useState('all')
   const { trackOrder } = useOrders()
   const { user } = useAuth()
@@ -82,6 +84,25 @@ export default function WaiterOrders() {
     }
   }
 
+  const handleRefund = async (order) => {
+    if (!window.confirm(`Refund ${formatCurrency(order.total)} for order ${formatOrderNumber(order.orderNumber)} back to the client's phone?`)) return
+    setRefunding(order.id)
+    setRefundMsg(null)
+    try {
+      await api.createManagerRefund({
+        orderId: order.id,
+        amount: order.total,
+        reason: 'Refunded by waiter',
+      })
+      setRefundMsg(`Refund of ${formatCurrency(order.total)} for order ${formatOrderNumber(order.orderNumber)} sent back to the client's phone.`)
+      loadOrders()
+    } catch (err) {
+      alert('Error refunding order: ' + err.message)
+    } finally {
+      setRefunding(null)
+    }
+  }
+
   return (
     <div className="page waiter-orders">
       <div className="user-page-heading">
@@ -93,6 +114,7 @@ export default function WaiterOrders() {
       </div>
 
       {error && <div className="subscription-lock" style={{ padding: '12px' }}>Error: {error}</div>}
+      {refundMsg && <div className="subscription-lock" style={{ padding: '12px', background: '#e7f5ff', color: '#004085' }}>{refundMsg}</div>}
 
       {loading && orders.length === 0 ? (
         <div className="emptyState" style={{ padding: '60px', textAlign: 'center', color: '#6c757d' }}>
@@ -215,6 +237,26 @@ export default function WaiterOrders() {
                       disabled={delivering === order.id}
                     >
                       {delivering === order.id ? 'Delivering...' : '✓ Pick up & deliver'}
+                    </button>
+                  )}
+                  {order.status === 'Paid' && (
+                    <button
+                      type="button"
+                      style={{
+                        flex: 1,
+                        padding: '12px',
+                        backgroundColor: '#dc3545',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '16px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                      onClick={() => handleRefund(order)}
+                      disabled={refunding === order.id}
+                    >
+                      {refunding === order.id ? 'Refunding...' : '↩ Refund'}
                     </button>
                   )}
                 </div>

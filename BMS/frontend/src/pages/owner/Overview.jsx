@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useOwner } from '../../context/OwnerContext'
-import MenuQRWidget from '../../components/MenuQRWidget'
 import {
   TrendingUp, PieChart, CreditCard,
   Bell, MoreHorizontal
@@ -130,7 +129,6 @@ export default function Overview() {
         </div>
       </div>
 
-      <MenuQRWidget />
     </div>
   )
 }

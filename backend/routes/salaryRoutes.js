@@ -3,14 +3,19 @@ import { query } from '../config/database.js'
 import { logAudit, getClientIp } from '../utils/audit.js'
 import { getTaxBreakdown } from '../utils/taxCalculator.js'
 import authMiddleware from '../middleware/authMiddleware.js'
+import { getBranchContext } from '../middleware/branchContext.js'
 
 const router = Router()
 
-router.get('/', authMiddleware, async (_req, res) => {
+router.get('/', authMiddleware, async (req, res) => {
   try {
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
+    const branchFilter = scope.branchId ? 'WHERE business_id = $1 AND branch_id = $2' : 'WHERE business_id = $1'
+    const params = scope.branchId ? [scope.businessId, scope.branchId] : [scope.businessId]
     const { rows } = await query(
       `SELECT id, name, phone, gross_amount, tax_amount, insurance_amount, net_amount, amount, method, actor, paid_at, bonus, promotion, status
-       FROM salary_payments ORDER BY paid_at DESC`
+       FROM salary_payments ${branchFilter} ORDER BY paid_at DESC`,
+      params
     )
     res.json(
       rows.map((r) => ({
@@ -45,10 +50,11 @@ router.post('/', authMiddleware, async (req, res) => {
   const { grossAmount, taxAmount: tax, insuranceAmount: insurance, netAmount: net } = getTaxBreakdown(gross)
 
   try {
+    const scope = await getBranchContext(req, { requestedBranchId: req.body.branchId, allowOwnerAll: false })
     const { rows } = await query(
-      `INSERT INTO salary_payments (business_id, user_id, name, phone, gross_amount, tax_amount, insurance_amount, net_amount, amount, method, actor, bonus, promotion, status, pay_period_start)
-       VALUES ((SELECT id FROM businesses LIMIT 1), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'pending', $13) RETURNING id`,
-      [user_id || null, name, phone || '', gross, tax, insurance, net, net, method, actor, bonus || 0, promotion || '', pay_period_start || null]
+      `INSERT INTO salary_payments (business_id, branch_id, user_id, name, phone, gross_amount, tax_amount, insurance_amount, net_amount, amount, method, actor, bonus, promotion, status, pay_period_start)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'pending', $15) RETURNING id`,
+      [scope.businessId, scope.branchId, user_id || null, name, phone || '', gross, tax, insurance, net, net, method, actor, bonus || 0, promotion || '', pay_period_start || null]
     )
 
     await logAudit({

@@ -9,8 +9,7 @@ import { useAuth } from '../context/AuthContext'
 
 const WAITER_LINKS = [
   { section: 'Waiter', items: [
-    { path: '/waiter/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
-    { path: '/notifications', label: 'Chats', icon: <MessageSquare size={18} /> },
+    { path: '/waiter/', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
   ]},
   { section: 'Orders', items: [
     { path: '/waiter/new-order', label: 'Bar menu', icon: <Plus size={18} /> },

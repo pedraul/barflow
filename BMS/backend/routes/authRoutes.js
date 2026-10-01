@@ -69,9 +69,13 @@ router.post('/login', async (req, res) => {
       if (biz.length && !biz[0].is_verified) {
         subscriptionExpired = true
       } else {
+        // A pending renewal must not block an already verified subscription.
         const { rows: subs } = await query(
           `SELECT is_active, current_period_end, status, payment_status
-           FROM subscriptions WHERE business_id = $1 AND is_active = TRUE ORDER BY created_at DESC LIMIT 1`,
+           FROM subscriptions
+           WHERE business_id = $1
+           ORDER BY (is_active = TRUE AND payment_status = 'verified') DESC, created_at DESC
+           LIMIT 1`,
           [u.business_id]
         )
         if (subs.length) {
@@ -239,7 +243,7 @@ router.put('/profile/avatar', authMiddleware, async (req, res) => {
 
 // Business registration (self-service signup)
 router.post('/register-business', async (req, res) => {
-  const { businessName, contactEmail, contactPhone, address, city, country, businessType, currencyCode, timeZone, registrationCode, ownerName, ownerEmail, ownerPhone, username, password, planId, billingCycle, description } = req.body
+  const { businessName, contactEmail, contactPhone, address, city, country, businessType, currencyCode, timeZone, registrationCode, ownerName, ownerEmail, ownerPhone, username, password, planId, billingCycle, description, province, district, sector } = req.body
   if (!businessName || !ownerEmail || !password) {
     return res.status(400).json({ error: 'Business name, owner email, and password are required.' })
   }
@@ -256,8 +260,8 @@ router.post('/register-business', async (req, res) => {
     // Create business
     const regCode = (registrationCode && registrationCode.trim()) || ('BR-' + Date.now().toString(36).toUpperCase())
     const { rows: biz } = await query(
-      `INSERT INTO businesses (name, contact_email, contact_phone, address, city, country, business_type, registration_code, currency_code, is_verified, description)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+      `INSERT INTO businesses (name, contact_email, contact_phone, address, city, country, business_type, registration_code, currency_code, is_verified, description, province, district, sector)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`,
       [
         businessName,
         contactEmail || ownerEmail,
@@ -270,6 +274,9 @@ router.post('/register-business', async (req, res) => {
         currencyCode || 'RWF',
         false, // not verified until super admin approves
         description || '',
+        province || '',
+        district || '',
+        sector || '',
       ]
     )
 
@@ -297,7 +304,7 @@ router.post('/register-business', async (req, res) => {
       return res.status(400).json({ error: 'Selected subscription plan is not available.' })
     }
 
-    const cycle = String(billingCycle || 'monthly').toLowerCase()
+    const cycle = String(billingCycle || 'annually').toLowerCase()
     let amount = Number(selectedPlan.price_monthly) || 0
     let monthsToAdd = 1
     let discountPercent = 0

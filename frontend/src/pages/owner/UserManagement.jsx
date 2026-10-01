@@ -6,8 +6,9 @@ const ROLES = ['manager', 'accountant', 'waiter', 'kitchen', 'bar', 'operator']
 const fmt = (v) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'RWF', minimumFractionDigits: 0 }).format(v || 0)
 
 export default function UserManagement() {
-  const { fetchUsers, createUser, updateUser, deleteUser, resetUserPassword, loading } = useOwner()
+  const { fetchUsers, createUser, updateUser, deleteUser, resetUserPassword, fetchBranches, activeBranchId, setActiveBranchId, loading } = useOwner()
   const [users, setUsers] = useState([])
+  const [branches, setBranches] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [editingUser, setEditingUser] = useState(null)
   const [form, setForm] = useState({ username: '', fullName: '', email: '', phone: '', password: '', role: 'waiter', branch: '', salary: '', isActive: true, avatar: '' })
@@ -15,7 +16,10 @@ export default function UserManagement() {
   const [newPassword, setNewPassword] = useState('')
   const [message, setMessage] = useState('')
 
-  useEffect(() => { loadUsers() }, [])
+  useEffect(() => {
+    loadUsers()
+    fetchBranches().then(setBranches).catch(() => setBranches([]))
+  }, [activeBranchId])
 
   const loadUsers = async () => {
     try { setUsers(await fetchUsers()) } catch (e) { console.error(e) }
@@ -29,7 +33,7 @@ export default function UserManagement() {
 
   const openEdit = (u) => {
     setEditingUser(u)
-    setForm({ username: u.username || '', fullName: u.fullName || u.name, email: u.email, phone: u.phone || '', password: '', role: u.role, branch: u.branchName || u.branch || '', salary: (u.salary || 0).toString(), isActive: u.isActive !== false, avatar: u.avatar || '' })
+    setForm({ username: u.username || '', fullName: u.fullName || u.name, email: u.email, phone: u.phone || '', password: '', role: u.role, branch: u.branchId || '', salary: (u.salary || 0).toString(), isActive: u.isActive !== false, avatar: u.avatar || '' })
     setShowModal(true)
   }
 
@@ -67,10 +71,10 @@ export default function UserManagement() {
   }
 
   const handleDelete = async (u) => {
-    if (!window.confirm(`Delete ${u.fullName || u.name}'s account? This cannot be undone.`)) return
+    if (!window.confirm(`Permanently delete ${u.fullName || u.name}'s account? This cannot be undone.`)) return
     try {
       await deleteUser(u.id)
-      setMessage('User deleted successfully.')
+      setMessage('User permanently deleted successfully.')
       await loadUsers()
     } catch (e) { setMessage(e.message) }
   }
@@ -91,9 +95,15 @@ export default function UserManagement() {
           <h1 className="text-2xl font-black text-slate-900">Staff Registry</h1>
           <p className="text-sm text-slate-500">Create, edit, activate/deactivate and reset passwords for all staff accounts.</p>
         </div>
-        <button onClick={openCreate} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition shadow-sm">
-          <Plus size={18} /> Register New Employee
-        </button>
+        <div className="flex items-center gap-3">
+          <select value={activeBranchId} onChange={(e) => setActiveBranchId(e.target.value)} className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
+            <option value="all">All branches</option>
+            {branches.filter((branch) => branch.name?.toLowerCase() !== 'main branch').map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
+          </select>
+          <button onClick={openCreate} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition shadow-sm">
+            <Plus size={18} /> Register New Employee
+          </button>
+        </div>
       </div>
 
       {message && <div className="p-4 bg-blue-50 border border-blue-200 text-blue-800 rounded-xl text-sm font-medium">{message}</div>}
@@ -197,7 +207,10 @@ export default function UserManagement() {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1.5">Branch</label>
-                <input value={form.branch} onChange={(e) => setForm({ ...form, branch: e.target.value })} placeholder="Type branch name" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500" />
+                <select required value={form.branch || (activeBranchId !== 'all' ? activeBranchId : '')} onChange={(e) => setForm({ ...form, branch: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                  <option value="">Select a branch</option>
+                  {branches.filter((branch) => branch.isActive && branch.name?.toLowerCase() !== 'main branch').map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1.5">Salary</label>

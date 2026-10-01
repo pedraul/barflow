@@ -9,7 +9,7 @@ const LIFECYCLE = ['Open', 'Preparing', 'Ready', 'Served', 'Paid']
 const money = (v) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'RWF', minimumFractionDigits: 0 }).format(v || 0)
 
 export default function OwnerQRWorkspace() {
-  const { fetchQROrders, fetchOrderHistory, loading } = useOwner()
+  const { fetchQROrders, fetchOrderHistory, activeBranchId, loading } = useOwner()
   const [orders, setOrders] = useState([])
   const [status, setStatus] = useState('')
   const [expandedId, setExpandedId] = useState(null)
@@ -21,7 +21,7 @@ export default function OwnerQRWorkspace() {
     setOrders(data || [])
   }
 
-  useEffect(() => { load() }, [status])
+  useEffect(() => { load() }, [status, activeBranchId])
 
   const summary = useMemo(() => {
     const total = orders.reduce((s, o) => s + (Number(o.total) || 0), 0)

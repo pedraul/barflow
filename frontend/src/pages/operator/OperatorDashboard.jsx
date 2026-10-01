@@ -6,7 +6,7 @@ import QRCode from '../../components/QRCode'
 import {
   LayoutDashboard, ShoppingBag, ChefHat, CheckCircle2, BarChart3,
   Clock, FileText, Printer, Utensils, GlassWater, Users,
-  FileSpreadsheet, User, LogOut, Menu, Share2, MessageSquare
+  FileSpreadsheet, User, LogOut, Menu, Share2
 } from 'lucide-react'
 import { SidebarLink, StatCard, OrderListItem, StepIcon, StepLine, QuickActionButton } from '../../components/ui/SharedComponents'
 
@@ -214,7 +214,7 @@ export default function OperatorDashboard() {
   const readyOrders = dashboard.orders.filter((o) => o.status === 'Ready')
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 text-slate-800 font-sans antialiased">
+    <div className="operator-shell flex flex-col md:flex-row min-h-screen bg-slate-50 text-slate-800 font-sans antialiased">
       {/* Mobile overlay */}
       {mobileMenuOpen && (
         <div className="sidebar-overlay" onClick={() => setMobileMenuOpen(false)} />
@@ -234,7 +234,7 @@ export default function OperatorDashboard() {
       </header>
 
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-64 bg-[#0B132B] text-slate-400 flex flex-col justify-between shrink-0">
+      <aside className="operator-desktop-sidebar hidden md:flex w-64 bg-[#0B132B] text-slate-400 flex flex-col justify-between shrink-0">
         <div>
           <div className="h-16 flex items-center gap-2 px-6 border-b border-slate-800 text-white font-bold text-xl">
             <div className="p-1.5 bg-blue-600 rounded-lg text-white">
@@ -265,7 +265,6 @@ export default function OperatorDashboard() {
               <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Other</p>
               <div className="space-y-1">
                 <SidebarLink icon={<FileSpreadsheet size={18} />} label="Reports" onClick={() => navigate('/operator/reports')} />
-                <SidebarLink icon={<MessageSquare size={18} />} label="Chats" onClick={() => navigate('/notifications')} />
                 <SidebarLink icon={<User size={18} />} label="My Account" onClick={() => navigate('/account')} />
               </div>
             </div>
@@ -314,7 +313,6 @@ export default function OperatorDashboard() {
               <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Other</p>
               <div className="space-y-1">
                 <SidebarLink icon={<FileSpreadsheet size={18} />} label="Reports" onClick={() => navigate('/operator/reports')} />
-                <SidebarLink icon={<MessageSquare size={18} />} label="Chats" onClick={() => navigate('/notifications')} />
                 <SidebarLink icon={<User size={18} />} label="My Account" onClick={() => navigate('/account')} />
               </div>
             </div>
@@ -350,7 +348,7 @@ export default function OperatorDashboard() {
         </header>
 
         {/* DASHBOARD BODY */}
-        <main className="flex-1 overflow-y-auto p-6 space-y-6">
+        <main className="operator-main flex-1 overflow-y-auto p-6 space-y-6">
           {routingNotice && (
             <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 shadow-sm" role="status">
               <div className="flex items-center gap-2 text-sm font-semibold">
@@ -764,7 +762,6 @@ export default function OperatorDashboard() {
                 <div className="grid grid-cols-2 gap-2">
                   <QuickActionButton icon={<ChefHat size={16} className="text-emerald-600" />} label="View Kitchen Screen" onClick={() => navigate('/kitchen')} />
                   <QuickActionButton icon={<GlassWater size={16} className="text-purple-600" />} label="View Bar Screen" onClick={() => navigate('/bar')} />
-                  <QuickActionButton icon={<Users size={16} className="text-blue-600" />} label="Call Waiter" onClick={() => navigate('/notifications')} />
                   <QuickActionButton icon={<LayoutDashboard size={16} className="text-slate-600" />} label="All Tables" onClick={async () => { const d = await fetchQRCodes(); setQrCodes(d); setQrOpen(true) }} />
                 </div>
               </div>

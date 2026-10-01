@@ -1,8 +1,9 @@
 import { Router } from 'express'
-import { query } from '../config/database.js'
+import { query, pool } from '../config/database.js'
 import { generateQRCodeData } from '../services/qrService.js'
 import { logAudit, getClientIp } from '../utils/audit.js'
 import authMiddleware from '../middleware/authMiddleware.js'
+import { getBranchContext } from '../middleware/branchContext.js'
 
 const router = Router()
 
@@ -12,7 +13,7 @@ const router = Router()
   */
 router.get('/orders', authMiddleware, async (req, res) => {
   try {
-    const currentBusinessId = req.user.businessId
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
     const { rows } = await query(
       `SELECT o.id, o.order_number, o.table_number, o.order_type, o.status, o.source,
               o.total_amount, o.subtotal, o.tax_amount, o.created_at, o.station, o.user_id,
@@ -43,13 +44,14 @@ router.get('/orders', authMiddleware, async (req, res) => {
        LEFT JOIN users u ON u.id = o.user_id
        LEFT JOIN businesses b ON b.id = o.business_id
        WHERE o.source IN ('qr', 'waiter') AND o.business_id = $1
+         AND ($2::uuid IS NULL OR o.branch_id = $2)
        ORDER BY o.created_at DESC`,
-      [currentBusinessId]
+      [scope.businessId, scope.branchId]
     )
 
     res.json(rows.map((o) => ({ ...mapOperatorOrder(o), source: o.source })))
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    res.status(error.statusCode || 500).json({ error: error.message })
   }
 })
 
@@ -59,7 +61,7 @@ router.get('/orders', authMiddleware, async (req, res) => {
   */
 router.get('/orders/active', authMiddleware, async (req, res) => {
   try {
-    const currentBusinessId = req.user.businessId
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
     const { rows } = await query(
       `SELECT o.id, o.order_number, o.table_number, o.status, 
               o.total_amount, o.created_at, o.station, o.user_id,
@@ -78,13 +80,14 @@ router.get('/orders/active', authMiddleware, async (req, res) => {
        FROM orders o
        LEFT JOIN users u ON u.id = o.user_id
        WHERE o.source IN ('qr', 'waiter') AND o.status IN ('Open', 'Preparing', 'Paid') AND o.business_id = $1
+         AND ($2::uuid IS NULL OR o.branch_id = $2)
        ORDER BY o.created_at ASC`,
-      [currentBusinessId]
+      [scope.businessId, scope.branchId]
     )
 
     res.json(rows.map(mapOperatorOrder))
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    res.status(error.statusCode || 500).json({ error: error.message })
   }
 })
 
@@ -151,9 +154,9 @@ router.patch('/orders/:id/status', authMiddleware, async (req, res) => {
   const { id } = req.params
   const currentBusinessId = req.user.businessId
 
-  const validStatuses = ['Ready', 'Served', 'Paid', 'Cancelled']
+  const validStatuses = ['Ready', 'Served', 'Cancelled']
   if (!status || !validStatuses.includes(status)) {
-    return res.status(400).json({ error: `Status must be one of: ${validStatuses.join(', ')}` })
+    return res.status(400).json({ error: `Status must be one of: ${validStatuses.join(', ')}. Use the payment endpoint to mark an order paid.` })
   }
 
   try {
@@ -189,7 +192,7 @@ await logAudit({
   */
 router.get('/orders/ready', authMiddleware, async (req, res) => {
   try {
-    const currentBusinessId = req.user.businessId
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
     const { rows } = await query(
       `SELECT o.id, o.order_number, o.table_number, o.order_type, o.status, o.source,
               o.total_amount, o.subtotal, o.tax_amount, o.created_at, o.station, o.user_id,
@@ -211,13 +214,14 @@ router.get('/orders/ready', authMiddleware, async (req, res) => {
        FROM orders o
        LEFT JOIN users u ON u.id = o.user_id
        WHERE o.status = 'Ready' AND o.source IN ('qr', 'waiter') AND o.business_id = $1
+         AND ($2::uuid IS NULL OR o.branch_id = $2)
        ORDER BY o.created_at ASC`,
-      [currentBusinessId]
+      [scope.businessId, scope.branchId]
     )
 
     res.json(rows.map((o) => ({ ...mapOperatorOrder(o), source: o.source, waiterId: o.user_id })))
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    res.status(error.statusCode || 500).json({ error: error.message })
   }
 })
 
@@ -227,24 +231,43 @@ router.get('/orders/ready', authMiddleware, async (req, res) => {
   */
 router.post('/orders/:id/mark-paid', authMiddleware, async (req, res) => {
   const { id } = req.params
-  const currentBusinessId = req.user.businessId
+  const method = String(req.body.method || '').trim().toLowerCase()
+  if (!['cash', 'card'].includes(method)) {
+    return res.status(400).json({ error: 'Payment method must be cash or card.' })
+  }
 
+  let client
   try {
-    const result = await query(
-      `UPDATE orders SET status = 'Paid' WHERE id = $1 AND source IN ('qr', 'waiter') AND business_id = $2 RETURNING id, source, user_id, table_number, order_number`,
-      [id, currentBusinessId]
+    const scope = await getBranchContext(req)
+    client = await pool.connect()
+    await client.query('BEGIN')
+    const result = await client.query(
+      `UPDATE orders
+       SET status = 'Paid', payment_method = $1, completed_at = NOW()
+       WHERE id = $2 AND source IN ('qr', 'waiter') AND business_id = $3
+         AND branch_id = $4 AND status <> 'Paid'
+       RETURNING id, source, user_id, table_number, order_number, total_amount`,
+      [method, id, scope.businessId, scope.branchId]
     )
     if (!result.rows.length) {
-      return res.status(404).json({ error: 'Order not found in your business' })
+      await client.query('ROLLBACK')
+      return res.status(404).json({ error: 'Order not found in your branch or already paid.' })
     }
 
     const order = result.rows[0]
-
-    await query(
-      `INSERT INTO order_status_history (order_id, status, changed_by, note)
-       VALUES ($1, 'Paid', 'operator', 'Marked as paid by operator')`,
-      [id]
+    const reference = `POS-${order.id}-${Date.now().toString(36).toUpperCase()}`
+    await client.query(
+      `INSERT INTO payments (order_id, business_id, branch_id, received_by, method, amount, reference, paid_at, provider_status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), 'SUCCESS')`,
+      [order.id, scope.businessId, scope.branchId, req.user.id, method, order.total_amount, reference]
     )
+
+    await client.query(
+      `INSERT INTO order_status_history (order_id, status, changed_by, note)
+       VALUES ($1, 'Paid', $2, 'Marked as paid by operator via ' || $3)`,
+      [id, req.user.full_name || req.user.email || 'operator', method]
+    )
+    await client.query('COMMIT')
 
 await logAudit({
        userId: req.user?.id,
@@ -257,7 +280,10 @@ await logAudit({
 
     res.json({ id, status: 'Paid', source: order.source, waiterId: order.user_id })
   } catch (error) {
+    if (client) await client.query('ROLLBACK').catch(() => {})
     res.status(500).json({ error: error.message })
+  } finally {
+    client?.release()
   }
 })
 router.get('/qr-codes', authMiddleware, async (req, res) => {
@@ -275,7 +301,7 @@ router.get('/qr-codes', authMiddleware, async (req, res) => {
           tableNumber: table,
           branchName: branch.name,
           qrData: generateQRCodeData(table, branch.name, businessId),
-          url: `/menu?table=${table}&businessId=${businessId}`,
+          url: `/menu?table=${table}&businessId=${businessId}&branchId=${branch.id}`,
         })
       }
     }
@@ -294,7 +320,7 @@ router.get('/qr-codes', authMiddleware, async (req, res) => {
  */
 router.get('/routed-report', authMiddleware, async (req, res) => {
   try {
-    const currentBusinessId = req.user.businessId
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
     const { rows } = await query(
       `SELECT h.id AS event_id, h.order_id, h.note, h.created_at AS routed_at,
               o.order_number, o.total_amount, o.station,
@@ -305,8 +331,9 @@ router.get('/routed-report', authMiddleware, async (req, res) => {
        JOIN order_items oi ON oi.order_id = o.id
        JOIN products p ON p.id = oi.product_id
        WHERE h.changed_by = 'operator' AND h.note LIKE 'Routed to %' AND o.business_id = $1
+         AND ($2::uuid IS NULL OR o.branch_id = $2)
        ORDER BY h.created_at DESC`,
-      [currentBusinessId]
+      [scope.businessId, scope.branchId]
     )
 
     const events = rows.map((r) => ({
@@ -328,45 +355,45 @@ router.get('/routed-report', authMiddleware, async (req, res) => {
 
     res.json({ count: events.length, totalAmount: Number(totalAmount.toFixed(2)), events })
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    res.status(error.statusCode || 500).json({ error: error.message })
   }
 })
 
 router.get('/dashboard', authMiddleware, async (req, res) => {
   try {
-    const currentBusinessId = req.user.businessId
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
     const counts = await query(
       `SELECT UPPER(LEFT(TRIM(status), 1)) || LOWER(SUBSTRING(TRIM(status) FROM 2)) AS status,
               COALESCE(source, 'other') AS source,
               COUNT(*) AS count
        FROM orders
-       WHERE business_id = $1
+      WHERE business_id = $1 AND ($2::uuid IS NULL OR branch_id = $2)
        GROUP BY UPPER(LEFT(TRIM(status), 1)) || LOWER(SUBSTRING(TRIM(status) FROM 2)), COALESCE(source, 'other')`,
-      [currentBusinessId]
+          [scope.businessId, scope.branchId]
     )
     const todaySales = await query(
-      `SELECT COALESCE(SUM(total_amount), 0) AS total FROM orders WHERE created_at::date = CURRENT_DATE AND status IN ('Paid', 'Served') AND business_id = $1`,
-      [currentBusinessId]
+      `SELECT COALESCE(SUM(total_amount), 0) AS total FROM orders WHERE created_at::date = CURRENT_DATE AND status IN ('Paid', 'Served') AND business_id = $1 AND ($2::uuid IS NULL OR branch_id = $2)`,
+      [scope.businessId, scope.branchId]
     )
     const todayRefunds = await query(
-      `SELECT COALESCE(SUM(amount), 0) AS total FROM refunds WHERE status = 'approved' AND created_at::date = CURRENT_DATE AND business_id = $1`,
-      [currentBusinessId]
+      `SELECT COALESCE(SUM(amount), 0) AS total FROM refunds WHERE status = 'approved' AND created_at::date = CURRENT_DATE AND business_id = $1 AND ($2::uuid IS NULL OR branch_id = $2)`,
+      [scope.businessId, scope.branchId]
     )
     const totalOrders = await query(
-      `SELECT COUNT(*) AS count FROM orders WHERE business_id = $1`,
-      [currentBusinessId]
+      `SELECT COUNT(*) AS count FROM orders WHERE business_id = $1 AND ($2::uuid IS NULL OR branch_id = $2)`,
+      [scope.businessId, scope.branchId]
     )
     const paidOrders = await query(
-      `SELECT COALESCE(SUM(total_amount), 0) AS total, COUNT(*) AS count FROM orders WHERE status = 'Paid' AND created_at::date = CURRENT_DATE AND business_id = $1`,
-      [currentBusinessId]
+      `SELECT COALESCE(SUM(total_amount), 0) AS total, COUNT(*) AS count FROM orders WHERE status = 'Paid' AND created_at::date = CURRENT_DATE AND business_id = $1 AND ($2::uuid IS NULL OR branch_id = $2)`,
+      [scope.businessId, scope.branchId]
     )
     const qrSales = await query(
-      `SELECT COALESCE(SUM(total_amount), 0) AS total FROM orders WHERE source = 'qr' AND status IN ('Paid', 'Served') AND business_id = $1`,
-      [currentBusinessId]
+      `SELECT COALESCE(SUM(total_amount), 0) AS total FROM orders WHERE source = 'qr' AND status IN ('Paid', 'Served') AND business_id = $1 AND ($2::uuid IS NULL OR branch_id = $2)`,
+      [scope.businessId, scope.branchId]
     )
     const waiterSales = await query(
-      `SELECT COALESCE(SUM(total_amount), 0) AS total FROM orders WHERE source = 'waiter' AND status IN ('Paid', 'Served') AND business_id = $1`,
-      [currentBusinessId]
+      `SELECT COALESCE(SUM(total_amount), 0) AS total FROM orders WHERE source = 'waiter' AND status IN ('Paid', 'Served') AND business_id = $1 AND ($2::uuid IS NULL OR branch_id = $2)`,
+      [scope.businessId, scope.branchId]
     )
     const recent = await query(
       `SELECT o.id, o.order_number, o.table_number, o.status, o.total_amount, o.created_at, o.station, o.source,
@@ -380,14 +407,14 @@ router.get('/dashboard', authMiddleware, async (req, res) => {
         ) AS items
        FROM orders o
        LEFT JOIN users u ON u.id = o.user_id
-       WHERE o.business_id = $1
+      WHERE o.business_id = $1 AND ($2::uuid IS NULL OR o.branch_id = $2)
        ORDER BY o.created_at DESC LIMIT 20`,
-      [currentBusinessId]
+          [scope.businessId, scope.branchId]
     )
     const { rows: business } = await query(
       `SELECT name, currency_code, address, city, country, contact_phone, contact_email, registration_code, tax_id, description
        FROM businesses WHERE id = $1`,
-      [currentBusinessId]
+      [scope.businessId]
     )
 
     const stats = { newOrders: 0, preparing: 0, ready: 0 }
@@ -432,7 +459,7 @@ router.get('/dashboard', authMiddleware, async (req, res) => {
       orders: recent.rows.map((o) => ({ ...mapOperatorOrder(o), source: o.source })),
     })
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    res.status(error.statusCode || 500).json({ error: error.message })
   }
 })
 

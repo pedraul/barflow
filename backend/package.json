@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
-    "db:bootstrap": "node scripts/bootstrap.js"
+    "db:bootstrap": "node scripts/bootstrap.js",
+    "db:migrate": "node scripts/migrate.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

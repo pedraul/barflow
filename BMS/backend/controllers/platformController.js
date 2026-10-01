@@ -189,15 +189,29 @@ export async function verifyPlatform2FA(req, res) {
 
 export async function listBusinesses(req, res) {
   try {
+    const { province, district } = req.query
+    const where = []
+    const params = []
+    let idx = 1
+    if (province) { where.push(`province = $${idx++}`); params.push(province) }
+    if (district) { where.push(`district = $${idx++}`); params.push(district) }
+    const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : ''
     const { rows } = await query(
       `SELECT b.*, 
-        s.plan, s.status AS sub_status, s.current_period_end,
+        s.plan, s.status AS sub_status, s.current_period_end, s.payment_status AS sub_payment_status,
         sp.name AS plan_name,
         (SELECT COUNT(*) FROM users u WHERE u.business_id = b.id) AS user_count
        FROM businesses b
-       LEFT JOIN subscriptions s ON s.business_id = b.id AND s.is_active = TRUE
+       LEFT JOIN LATERAL (
+         SELECT * FROM subscriptions
+         WHERE business_id = b.id
+         ORDER BY created_at DESC
+         LIMIT 1
+       ) s ON TRUE
        LEFT JOIN subscription_plans sp ON sp.id = s.plan_id
-       ORDER BY b.created_at DESC`
+       ${whereSql}
+       ORDER BY b.created_at DESC`,
+      params
     )
     res.json(
   rows.map((r) => ({
@@ -207,6 +221,9 @@ export async function listBusinesses(req, res) {
     contactEmail: r.contact_email,
     contactPhone: r.contact_phone,
     address: r.address,
+    province: r.province,
+    district: r.district,
+    sector: r.sector,
     city: r.city,
     country: r.country,
     businessType: r.business_type,
@@ -214,6 +231,7 @@ export async function listBusinesses(req, res) {
     isSuspended: r.is_suspended,
     plan: r.plan_name || r.plan || 'N/A',
     subStatus: r.sub_status || 'inactive',
+    subPaymentStatus: r.sub_payment_status || 'pending',
     userCount: Number(r.user_count) || 0,
     createdAt: r.created_at,
   }))
@@ -295,13 +313,37 @@ export async function toggleBusinessStatus(req, res) {
       )
 
       if (action === 'verify' && bizData.length) {
-        await query(
-          `UPDATE subscriptions SET status = 'active', is_active = TRUE, payment_status = 'verified',
-           receipt_number = 'ADMIN-' || UPPER(SUBSTR(MD5(RANDOM()::text), 1, 8)),
-           receipt_generated = 1
-           WHERE business_id = $1 AND is_active = FALSE`,
+        const { rows: subRows } = await query(
+          `WITH pending_subscription AS (
+             SELECT id
+             FROM subscriptions
+             WHERE business_id = $1 AND is_active = FALSE AND payment_status = 'pending'
+             ORDER BY created_at DESC
+             LIMIT 1
+           ), deactivate_previous AS (
+             UPDATE subscriptions
+             SET is_active = FALSE
+             WHERE business_id = $1 AND is_active = TRUE
+               AND id <> (SELECT id FROM pending_subscription)
+           )
+           UPDATE subscriptions SET status = 'active', is_active = TRUE, payment_status = 'verified',
+             receipt_number = 'ADMIN-' || UPPER(SUBSTR(MD5(RANDOM()::text), 1, 8)),
+             receipt_generated = 1
+           WHERE id = (SELECT id FROM pending_subscription)
+           RETURNING id, plan, billing_cycle, amount_paid, payment_method`,
           [id]
         )
+
+        // Record the payment in platform_payments for platform admin control
+        if (subRows.length) {
+          const sub = subRows[0]
+          const transactionId = 'ADMIN-' + Date.now().toString(36).toUpperCase() + '-' + crypto.randomBytes(3).toString('hex').toUpperCase()
+          await query(
+            `INSERT INTO platform_payments (business_id, subscription_id, plan, billing_cycle, amount, payment_method, transaction_id, status, paid_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, 'paid', NOW())`,
+            [id, sub.id, sub.plan, sub.billing_cycle, sub.amount_paid, sub.payment_method || 'admin', transactionId]
+          )
+        }
 
         const b = bizData[0]
         sendSubscriptionActivation({
@@ -520,7 +562,7 @@ export async function platformStats(req, res) {
 
 export async function updateBusiness(req, res) {
   const { id } = req.params
-  const { name, contactEmail, contactPhone, address, city, country, businessType, registrationCode } = req.body
+  const { name, contactEmail, contactPhone, address, city, country, businessType, registrationCode, province, district, sector } = req.body
   try {
     const fields = []
     const params = []
@@ -534,6 +576,9 @@ export async function updateBusiness(req, res) {
     add('country', country)
     add('business_type', businessType)
     add('registration_code', registrationCode)
+    add('province', province)
+    add('district', district)
+    add('sector', sector)
     if (!fields.length) return res.status(400).json({ error: 'No fields to update.' })
     params.push(id)
     const { rows } = await query(`UPDATE businesses SET ${fields.join(', ')} WHERE id = $${i} RETURNING id, name`, params)
@@ -724,14 +769,15 @@ export async function paymentStats(req, res) {
   try {
     const { rows } = await query(
       `SELECT
-         COALESCE(SUM(amount) FILTER (WHERE status = 'paid'), 0)::numeric AS collected,
+         COALESCE(SUM(amount) FILTER (WHERE status IN ('paid', 'settled')), 0)::numeric AS collected,
          COUNT(*) FILTER (WHERE status = 'pending')::int AS pending,
          COUNT(*) FILTER (WHERE status = 'failed')::int AS failed,
-         COUNT(*) FILTER (WHERE status = 'refunded')::int AS refunded
+         COUNT(*) FILTER (WHERE status = 'refunded')::int AS refunded,
+         COUNT(*) FILTER (WHERE status = 'settled')::int AS settled
        FROM platform_payments`
     )
     const r = rows[0]
-    res.json({ collected: Number(r.collected) || 0, pending: r.pending, failed: r.failed, refunded: r.refunded })
+    res.json({ collected: Number(r.collected) || 0, pending: r.pending, failed: r.failed, refunded: r.refunded, settled: r.settled })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
@@ -751,6 +797,21 @@ export async function refundPayment(req, res) {
       [id, p.business_id, p.amount, reason || 'Refund issued by admin', req.user?.name || 'Platform Admin']
     )
     await logPlatformActivity({ req, actorName: req.user?.name, action: `Refunded payment ${p.transaction_id || id}`, module: 'Payments' })
+    res.json({ success: true })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+}
+
+export async function settlePayment(req, res) {
+  const { id } = req.params
+  try {
+    const { rows: pay } = await query('SELECT * FROM platform_payments WHERE id = $1', [id])
+    if (!pay.length) return res.status(404).json({ error: 'Payment not found.' })
+    const p = pay[0]
+    if (p.status === 'settled') return res.status(400).json({ error: 'Payment is already settled.' })
+    await query('UPDATE platform_payments SET status = \'settled\', paid_at = COALESCE(paid_at, NOW()) WHERE id = $1', [id])
+    await logPlatformActivity({ req, actorName: req.user?.name, action: `Settled payment ${p.transaction_id || id}`, module: 'Payments' })
     res.json({ success: true })
   } catch (error) {
     res.status(500).json({ error: error.message })

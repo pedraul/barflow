@@ -277,6 +277,7 @@ router.patch('/mark-all-read', authMiddleware, async (req, res) => {
     )
     res.json({ success: true })
   } catch (error) {
+    console.error('Error marking all read:', error)
     res.status(500).json({ error: error.message })
   }
 })

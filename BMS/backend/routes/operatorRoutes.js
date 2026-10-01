@@ -348,6 +348,10 @@ router.get('/dashboard', authMiddleware, async (req, res) => {
       `SELECT COALESCE(SUM(total_amount), 0) AS total FROM orders WHERE created_at::date = CURRENT_DATE AND status IN ('Paid', 'Served') AND business_id = $1`,
       [currentBusinessId]
     )
+    const todayRefunds = await query(
+      `SELECT COALESCE(SUM(amount), 0) AS total FROM refunds WHERE status = 'approved' AND created_at::date = CURRENT_DATE AND business_id = $1`,
+      [currentBusinessId]
+    )
     const totalOrders = await query(
       `SELECT COUNT(*) AS count FROM orders WHERE business_id = $1`,
       [currentBusinessId]
@@ -400,13 +404,17 @@ router.get('/dashboard', authMiddleware, async (req, res) => {
 
     const activeOrders = stats.newOrders + stats.preparing + stats.ready
 
+    const totalTodayRefunds = Number(todayRefunds.rows[0]?.total || 0)
+    const netTodaySales = (Number(todaySales.rows[0]?.total || 0)) - totalTodayRefunds
+    const netPaidOrdersTotal = (Number(paidOrders.rows[0]?.total || 0)) - totalTodayRefunds
+
     res.json({
       stats,
       activeOrders,
-      todaySales: Number(todaySales.rows[0]?.total || 0),
+      todaySales: netTodaySales,
       totalOrders: Number(totalOrders.rows[0]?.count || 0),
       paidOrdersCount: Number(paidOrders.rows[0]?.count || 0),
-      paidOrdersTotal: Number(paidOrders.rows[0]?.total || 0),
+      paidOrdersTotal: netPaidOrdersTotal,
       qrSales: Number(qrSales.rows[0]?.total || 0),
       waiterSales: Number(waiterSales.rows[0]?.total || 0),
       sourceBreakdown,

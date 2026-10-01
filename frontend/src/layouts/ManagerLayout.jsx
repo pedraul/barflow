@@ -11,7 +11,7 @@ import { useAuth } from '../context/AuthContext'
 
 const MANAGER_LINKS = [
   { section: 'Manager', items: [
-    { path: '/manager/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
+    { path: '/manager/', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
   ]},
   { section: 'Order Management', items: [
     { path: '/manager/orders', label: 'Orders', icon: <ShoppingBag size={18} /> },
@@ -30,7 +30,6 @@ const MANAGER_LINKS = [
   ]},
   { section: 'Other', items: [
     { path: '/manager/settings', label: 'System settings', icon: <Settings size={18} />, perm: 'canManageSettings' },
-    { path: '/notifications', label: 'Chats', icon: <Bell size={18} /> },
     { path: '/account', label: 'My account', icon: <User size={18} /> },
   ]},
 ]

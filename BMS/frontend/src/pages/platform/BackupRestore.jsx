@@ -159,27 +159,27 @@ export default function BackupRestore() {
           <button onClick={load} className="text-xs font-bold text-[#4F46E5] hover:underline inline-flex items-center gap-1"><RefreshCw size={12} /> Refresh</button>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-xs">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-600">
-                <th className="text-left px-4 py-3 font-semibold">Backup Name</th>
-                <th className="text-left px-4 py-3 font-semibold">Type</th>
-                <th className="text-left px-4 py-3 font-semibold">Size</th>
-                <th className="text-left px-4 py-3 font-semibold">Status</th>
-                <th className="text-left px-4 py-3 font-semibold">Created</th>
-                <th className="text-right px-4 py-3 font-semibold">Actions</th>
+                <th className="text-left px-3 py-2 font-semibold">Backup Name</th>
+                <th className="text-left px-3 py-2 font-semibold">Type</th>
+                <th className="text-left px-3 py-2 font-semibold">Size</th>
+                <th className="text-left px-3 py-2 font-semibold">Status</th>
+                <th className="text-left px-3 py-2 font-semibold">Created</th>
+                <th className="text-right px-3 py-2 font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {history.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-400">No backups yet. Create your first backup above.</td></tr>}
+              {history.length === 0 && <tr><td colSpan={6} className="px-3 py-3 text-center text-slate-400">No backups yet. Create your first backup above.</td></tr>}
               {history.map((h) => (
                 <tr key={h.id} className="border-b border-slate-100 hover:bg-slate-50">
-                  <td className="px-4 py-3 font-semibold text-slate-900 font-mono text-xs">{h.name}</td>
-                  <td className="px-4 py-3 text-slate-700 capitalize">{h.type}</td>
-                  <td className="px-4 py-3 text-slate-700">{h.size}</td>
-                  <td className="px-4 py-3"><span className="px-2 py-0.5 text-xs font-semibold bg-emerald-100 text-emerald-700 rounded-full capitalize">{h.status}</span></td>
-                  <td className="px-4 py-3 text-slate-400">{new Date(h.createdAt).toLocaleString()}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2 font-semibold text-slate-900 font-mono text-xs">{h.name}</td>
+                  <td className="px-3 py-2 text-slate-700 capitalize">{h.type}</td>
+                  <td className="px-3 py-2 text-slate-700">{h.size}</td>
+                  <td className="px-3 py-2"><span className="px-2 py-0.5 text-[10px] font-semibold bg-emerald-100 text-emerald-700 rounded-full capitalize">{h.status}</span></td>
+                  <td className="px-3 py-2 text-slate-400">{new Date(h.createdAt).toLocaleString()}</td>
+                  <td className="px-3 py-2">
                     <div className="flex justify-end gap-1.5">
                       <button title="Download" onClick={() => handleDownload(h)} className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100"><Download size={15} /></button>
                       <button title="Restore" onClick={() => handleRestore(h)} className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50"><Upload size={15} /></button>

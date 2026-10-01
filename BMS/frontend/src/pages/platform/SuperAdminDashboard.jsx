@@ -6,7 +6,7 @@ import {
   Users, BarChart3, ClipboardList, Settings, LogOut,
   Menu, ChevronDown, Building2, CheckCircle2, XCircle,
   Clock, Ban, CalendarDays, Plus, FileText, Send, ShieldAlert,
-  HardDriveDownload
+  HardDriveDownload, ArrowLeft
 } from 'lucide-react'
 import { fetchPlatformStats, fetchBusinesses, fetchPlatformReports, fetchAdmins, createAdmin, sendNotification } from '../../api/endpoints'
 
@@ -39,6 +39,7 @@ export default function SuperAdminDashboard() {
   const [exporting, setExporting] = useState(false)
   const [noticeMsg, setNoticeMsg] = useState('')
   const [adminMsg, setAdminMsg] = useState('')
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     if (!user?.isPlatformAdmin) {
@@ -72,6 +73,14 @@ export default function SuperAdminDashboard() {
     localStorage.removeItem('auth_user')
     localStorage.removeItem('auth_permissions')
     navigate('/login')
+  }
+
+  const handleBack = () => {
+    if (location.pathname === '/admin/settings' || location.pathname.startsWith('/admin/settings/')) {
+      navigate('/admin/dashboard')
+      return
+    }
+    navigate(-1)
   }
 
   const handleCreateAdmin = async () => {
@@ -164,6 +173,8 @@ export default function SuperAdminDashboard() {
   const getStatus = (b) => {
     if (b.isSuspended) return 'Suspended'
     if (!b.isVerified) return 'Pending'
+    // Business was verified before but its renewed subscription is still pending admin verification
+    if (b.subPaymentStatus === 'pending') return 'Pending'
     return 'Active'
   }
   const getStatusColor = (status) =>
@@ -202,8 +213,15 @@ export default function SuperAdminDashboard() {
   return (
     <div className="flex min-h-screen bg-[#F8FAFC] text-[#0F172A] font-sans antialiased selection:bg-indigo-500 selection:text-white">
 
+      {mobileMenuOpen && (
+        <div className="admin-sidebar-overlay" onClick={() => setMobileMenuOpen(false)} />
+      )}
+
       {/* 1. LEFT FIXED MANAGEMENT SIDEBAR */}
-      <aside className="w-64 bg-[#0A1128] text-slate-400 flex flex-col justify-between shrink-0 border-r border-slate-900">
+      <aside
+        className={`admin-sidebar w-64 bg-[#0A1128] text-slate-400 flex flex-col justify-between shrink-0 border-r border-slate-900 ${mobileMenuOpen ? 'admin-sidebar-open' : ''}`}
+        onClick={() => setMobileMenuOpen(false)}
+      >
         <div>
           {/* Platform Branding Context */}
           <div className="h-20 flex flex-col justify-center px-6 border-b border-slate-900">
@@ -262,7 +280,22 @@ export default function SuperAdminDashboard() {
           {/* TOP SYSTEM HEAD NAVBAR */}
           <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0">
             <div className="flex items-center gap-4">
-              <button className="text-slate-500 hover:text-slate-800 transition"><Menu size={20} /></button>
+              {(location.pathname === '/admin/settings' || location.pathname.startsWith('/admin/settings/')) && (
+                <button
+                  type="button"
+                  className="text-slate-500 hover:text-slate-800 transition flex items-center gap-1"
+                  onClick={handleBack}
+                  aria-label="Back"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+              )}
+              <button
+                type="button"
+                className="text-slate-500 hover:text-slate-800 transition"
+                onClick={() => setMobileMenuOpen((open) => !open)}
+                aria-label="Toggle navigation"
+              ><Menu size={20} /></button>
               <div className="flex flex-col">
                 <h1 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
                   Welcome back, Super Admin
@@ -398,7 +431,7 @@ export default function SuperAdminDashboard() {
               </h2>
               <button onClick={() => setViewing(null)} className="text-slate-400 hover:text-slate-700"><XCircle size={20} /></button>
             </div>
-            <div className="p-6 grid grid-cols-2 gap-4 text-sm">
+            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <BusinessDetail label="Name" value={viewing.name} />
               <BusinessDetail label="Registration Code" value={viewing.registrationCode || '—'} />
               <BusinessDetail label="Business Type" value={viewing.businessType || '—'} />
@@ -467,12 +500,12 @@ function Overview({ metrics, recentBusinesses, chartData, pendingVerification, e
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
-                    <th className="p-4 pl-6">Business Name</th>
-                    <th className="p-4">Owner</th>
-                    <th className="p-4">Plan</th>
-                    <th className="p-4">Status</th>
-                    <th className="p-4">Created Date</th>
-                    <th className="p-4 pr-6 text-right">Actions</th>
+                    <th className="p-2 pl-6">Business Name</th>
+                    <th className="p-2">Owner</th>
+                    <th className="p-2">Plan</th>
+                    <th className="p-2">Status</th>
+                    <th className="p-2">Created Date</th>
+                    <th className="p-2 pr-6 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -485,26 +518,26 @@ function Overview({ metrics, recentBusinesses, chartData, pendingVerification, e
                   )}
                   {recentBusinesses.map((b, idx) => (
                     <tr key={idx} className="hover:bg-slate-50/50 transition">
-                      <td className="p-4 pl-6 font-bold text-slate-900 flex items-center gap-2">
+                      <td className="p-2 pl-6 font-bold text-slate-900 flex items-center gap-2">
                         <span className={`w-5 h-5 rounded flex items-center justify-center text-[10px] ${
                           b.status === 'Active' ? 'bg-emerald-50 text-emerald-600' : b.status === 'Expired' ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-600'
                         }`}><Building2 size={10} /></span>
                         {b.name}
                       </td>
-                      <td className="p-4 text-slate-500">{b.owner}</td>
-                      <td className="p-4">
+                      <td className="p-2 text-slate-500">{b.owner}</td>
+                      <td className="p-2">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${b.planBg}`}>
                           {b.plan}
                         </span>
                       </td>
-                      <td className="p-4">
+                      <td className="p-2">
                         <span className="flex items-center gap-1.5">
                           <span className={`w-1.5 h-1.5 rounded-full ${b.statusColor}`}></span>
                           {b.status}
                         </span>
                       </td>
-                      <td className="p-4 text-slate-400">{b.date}</td>
-                      <td className="p-4 pr-6 text-right">
+                      <td className="p-2 text-slate-400">{b.date}</td>
+                      <td className="p-2 pr-6 text-right">
                         <button
                           onClick={() => {
                             const full = businesses.find((x) => x.name === b.name || x.contactEmail === b.owner)

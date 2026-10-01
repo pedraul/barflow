@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useCustomer } from '../../context/CustomerContext'
 import * as api from '../../api/endpoints'
 import CustomerAddItemsModal from '../../components/CustomerAddItemsModal'
@@ -13,7 +13,7 @@ const PAYMENT_METHODS = [
 export default function PaymentPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { currentOrder, tableNumber, resetSession, setCurrentOrder } = useCustomer()
+  const { currentOrder, tableNumber, businessId, branchId, resetSession, setCurrentOrder } = useCustomer()
   const [selectedMethod, setSelectedMethod] = useState(null)
   const [phoneNumber, setPhoneNumber] = useState('')
   const [processing, setProcessing] = useState(false)
@@ -30,7 +30,8 @@ export default function PaymentPage() {
   const [reloading, setReloading] = useState(false)
 
   const navOrder = location.state?.order
-  const activeOrder = currentOrder || navOrder
+  const activeOrder = navOrder || currentOrder
+  const returnTo = location.state?.returnTo || '/cart'
 
   useEffect(() => {
     if (navOrder && !currentOrder) {
@@ -210,10 +211,10 @@ export default function PaymentPage() {
     }
   }
 
-  const handleNewOrder = () => {
-    resetSession()
-    navigate('/menu')
-  }
+  const menuParams = new URLSearchParams({ table: String(activeOrder?.tableNumber || tableNumber || '1') })
+  if (businessId) menuParams.set('businessId', businessId)
+  if (branchId) menuParams.set('branchId', branchId)
+  const newOrderPath = `/menu?${menuParams.toString()}`
 
   const reloadOrder = async (orderId) => {
     setReloading(true)
@@ -355,9 +356,9 @@ export default function PaymentPage() {
             <p style={styles.smsSentText}>📱 Receipt sent to your phone</p>
           )}
 
-          <button style={styles.primaryBtn} onClick={handleNewOrder}>
+          <Link to={newOrderPath} style={styles.primaryBtn} onClick={resetSession}>
             Start New Order
-          </button>
+          </Link>
         </div>
       </div>
     )
@@ -367,7 +368,7 @@ export default function PaymentPage() {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <button style={styles.backBtn} onClick={() => navigate('/cart')}>
+        <button style={styles.backBtn} onClick={() => navigate(returnTo)}>
           ← Back
         </button>
         <h1 style={styles.title}>Payment</h1>

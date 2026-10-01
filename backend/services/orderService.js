@@ -18,13 +18,20 @@ export async function createOrderCore({
     err.statusCode = 400
     throw err
   }
+  if (!branchId) {
+    const err = new Error('A branch is required to create an order')
+    err.statusCode = 400
+    throw err
+  }
 
   const productIds = items.map((i) => i.productId).filter(Boolean)
-const productsResult = await query(
-      `SELECT id, name, category, selling_price, quantity
-       FROM products
-       WHERE business_id = $1 AND (id = ANY($2) OR name = ANY($3))`,
-      [businessId, productIds, items.map((i) => i.name)]
+  const productsResult = await query(
+      `SELECT p.id, p.name, p.category, p.selling_price,
+              COALESCE(bs.quantity, 0) AS quantity
+       FROM products p
+       LEFT JOIN branch_stock bs ON bs.product_id = p.id AND bs.branch_id = $2
+       WHERE p.business_id = $1 AND (p.id = ANY($3) OR p.name = ANY($4))`,
+      [businessId, branchId, productIds, items.map((i) => i.name)]
     )
   const productMap = {}
   for (const p of productsResult.rows) {
@@ -178,9 +185,11 @@ const productsResult = await query(
        VALUES ($1, $2, $3, $4, $5)`,
       [orderId, r.product.id, r.quantity, r.unitPrice, lineTotal]
     )
-    await query(
-      `UPDATE products SET quantity = GREATEST(0, quantity - $1) WHERE id = $2`,
-      [r.quantity, r.product.id]
+      await query(
+        `UPDATE branch_stock
+         SET quantity = GREATEST(0, quantity - $1), updated_at = NOW()
+         WHERE branch_id = $2 AND product_id = $3`,
+        [r.quantity, branchId, r.product.id]
     )
     if (branchId) {
       await query(
@@ -343,8 +352,10 @@ const productsResult = await query(
 
       // Deduct stock
       await client.query(
-        'UPDATE products SET quantity = GREATEST(0, quantity - $1) WHERE id = $2',
-        [r.quantity, r.product.id]
+        `UPDATE branch_stock
+         SET quantity = GREATEST(0, quantity - $1), updated_at = NOW()
+         WHERE branch_id = $2 AND product_id = $3`,
+        [r.quantity, branchId, r.product.id]
       )
 
       if (branchId) {
@@ -422,8 +433,8 @@ export async function restockOrderItems({ orderId, items, reason, req }) {
   }
   const order = orderResult.rows[0]
 
-  const modifiableStatuses = ['Open', 'Preparing', 'Pending', 'Waiting for Preparation']
-  if (!modifiableStatuses.includes(order.status)) {
+  const modifiableStatuses = ['open']
+  if (!modifiableStatuses.includes(String(order.status || '').trim().toLowerCase())) {
     const err = new Error(`Order cannot be modified because it is already ${order.status}`)
     err.statusCode = 400
     throw err
@@ -477,8 +488,10 @@ export async function restockOrderItems({ orderId, items, reason, req }) {
       }
 
       await client.query(
-        'UPDATE products SET quantity = GREATEST(0, quantity + $1) WHERE id = $2',
-        [restockQty, item.productId]
+        `UPDATE branch_stock
+         SET quantity = quantity + $1, updated_at = NOW()
+         WHERE branch_id = $2 AND product_id = $3`,
+        [restockQty, order.branch_id, item.productId]
       )
 
       const movementBranchId = order.branch_id || null

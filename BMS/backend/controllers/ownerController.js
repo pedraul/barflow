@@ -148,7 +148,7 @@ export async function ownerLogin(req, res) {
       } else {
         const { rows: subs } = await query(
           `SELECT is_active, current_period_end, status, payment_status
-           FROM subscriptions WHERE business_id = $1 AND is_active = TRUE ORDER BY created_at DESC LIMIT 1`,
+           FROM subscriptions WHERE business_id = $1 ORDER BY created_at DESC LIMIT 1`,
           [user.business_id]
         )
         if (subs.length) {
@@ -787,6 +787,10 @@ export async function getRevenue(req, res) {
       `SELECT COALESCE(SUM(total_amount), 0) AS total FROM orders WHERE status IN ('Paid', 'Served') AND business_id = $1`,
       [businessId]
     )
+    const { rows: refundTotalRows } = await query(
+      `SELECT COALESCE(SUM(amount), 0) AS total FROM refunds WHERE status = 'approved' AND business_id = $1`,
+      [businessId]
+    )
 
     const { rows: stockAvailable } = await query(
       `SELECT COUNT(*) AS total_items, COALESCE(SUM(quantity), 0) AS total_quantity FROM products WHERE is_active = TRUE AND business_id = $1`,
@@ -813,7 +817,7 @@ export async function getRevenue(req, res) {
     )
 
     res.json({
-      revenueReceived: Number(revenueReceived[0].total) || 0,
+      revenueReceived: (Number(revenueReceived[0].total) || 0) - (Number(refundTotalRows[0]?.total) || 0),
       stockAvailable: {
         items: Number(stockAvailable[0].total_items) || 0,
         quantity: Number(stockAvailable[0].total_quantity) || 0,
@@ -927,7 +931,14 @@ export async function getReportSummary(req, res) {
       })
     }
 
-    // Total Sales
+    // Refunds total (money returned to clients - removed from revenue)
+    const { rows: refundTotal } = await query(
+      `SELECT COALESCE(SUM(amount), 0) AS total FROM refunds WHERE status = 'approved' AND business_id = $1`,
+      [businessId]
+    )
+    const totalRefunds = Number(refundTotal[0]?.total || 0)
+
+    // Total Sales (net of refunds)
     const { rows: salesData } = await query(
       `SELECT COALESCE(SUM(total_amount), 0) AS total_sales,
               COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN total_amount ELSE 0 END), 0) AS cash_sales,
@@ -947,8 +958,8 @@ export async function getReportSummary(req, res) {
       [businessId]
     )
 
-    // VAT Due (simplified: 18% of total sales)
-    const totalSales = Number(salesData[0].total_sales) || 0
+    // VAT Due (simplified: 18% of net sales)
+    const totalSales = (Number(salesData[0].total_sales) || 0) - totalRefunds
     const totalCost = Number(costData[0].total_cost) || 0
     const netProfit = totalSales - totalCost
     const vatDue = totalSales * 0.18
@@ -1004,7 +1015,7 @@ export async function getReportSummary(req, res) {
         managers: stats.manager || 0,
         accountants: stats.accountant || 0,
         qrOrders: parseInt(qrOrders[0].count) || 0,
-        qrRevenue: Number(qrOrders[0].total) || 0,
+        qrRevenue: (Number(qrOrders[0].total) || 0) - totalRefunds,
       },
       branchPerformance: branchPerformance.map((b) => ({
         id: b.id,
@@ -1040,7 +1051,11 @@ export async function exportReport(req, res) {
        FROM orders WHERE status IN ('Paid', 'Served') AND business_id = $1`,
       [businessId]
     )
-    const totalSales = Number(salesData[0].total_sales) || 0
+    const { rows: refundRows } = await query(
+      `SELECT COALESCE(SUM(amount), 0) AS total FROM refunds WHERE status = 'approved' AND business_id = $1`,
+      [businessId]
+    )
+    const totalSales = (Number(salesData[0].total_sales) || 0) - (Number(refundRows[0]?.total) || 0)
     const vatDue = totalSales * 0.18
     const netProfit = totalSales * 0.3
 
@@ -1232,7 +1247,8 @@ export async function getSubscription(req, res) {
        FROM subscriptions s
        LEFT JOIN businesses b ON b.id = s.business_id
        WHERE s.business_id = $1
-       ORDER BY s.created_at DESC LIMIT 1`,
+       ORDER BY (s.is_active = TRUE AND s.payment_status = 'verified') DESC, s.created_at DESC
+       LIMIT 1`,
       [businessId]
     )
 
@@ -1252,7 +1268,7 @@ export async function getSubscription(req, res) {
 
     const sub = rows[0]
     const now = new Date()
-    const expiry = new Date(sub.period_end || sub.expiration_date || sub.next_renewal_date || now)
+    const expiry = new Date(sub.current_period_end || sub.expiration_date || sub.next_renewal_date || now)
     const daysRemaining = Math.max(0, Math.floor((expiry - now) / (1000 * 60 * 60 * 24)))
 
     const { rows: settings } = await query(
@@ -1269,7 +1285,7 @@ export async function getSubscription(req, res) {
       status: sub.payment_status === 'verified' ? 'active' : sub.status,
       isActive: sub.is_active && sub.payment_status === 'verified' && daysRemaining > 0,
       startDate: sub.start_date ? new Date(sub.start_date).toISOString() : null,
-      periodEnd: sub.period_end ? new Date(sub.period_end).toISOString() : null,
+      periodEnd: sub.current_period_end ? new Date(sub.current_period_end).toISOString() : null,
       expirationDate: sub.expiration_date ? new Date(sub.expiration_date).toISOString() : null,
       daysRemaining,
       remainingDays: daysRemaining,
@@ -1345,7 +1361,6 @@ export async function selectSubscriptionPlan(req, res) {
     const ussdCode = generateUssdCode()
 
     const now = new Date()
-    const periodEnd = new Date(now)
     periodEnd.setMonth(periodEnd.getMonth() + monthsToAdd)
     const nextRenewal = new Date(periodEnd)
 
@@ -1434,6 +1449,14 @@ export async function verifySubscriptionPayment(req, res) {
     if (sub.business_id) {
       await query('UPDATE businesses SET is_verified = TRUE WHERE id = $1', [sub.business_id])
     }
+
+    // Record the payment in platform_payments for platform admin control
+    const transactionId = 'SUB-' + Date.now().toString(36).toUpperCase() + '-' + crypto.randomBytes(3).toString('hex').toUpperCase()
+    await query(
+      `INSERT INTO platform_payments (business_id, subscription_id, plan, billing_cycle, amount, payment_method, transaction_id, status, paid_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'paid', NOW())`,
+      [sub.business_id, sub.id, sub.plan, sub.billing_cycle, sub.amount_paid, sub.payment_method, transactionId]
+    )
 
     // Send subscription activation emails after successful verification
     try {
@@ -1544,20 +1567,35 @@ export async function renewSubscription(req, res) {
     }
 
     const now = new Date()
-    const periodEnd = new Date(now)
 
     let selectedPlan = null
     if (planId) {
       const { rows } = await query('SELECT * FROM subscription_plans WHERE id = $1 AND is_active = TRUE', [planId])
       selectedPlan = rows[0]
     } else if (plan) {
-      const { rows } = await query('SELECT * FROM subscription_plans WHERE LOWER(name) = $1 AND is_active = TRUE', [String(plan).toLowerCase()])
-      selectedPlan = rows[0]
+      const normalized = String(plan).toLowerCase()
+      if (['monthly', 'quarterly', 'annually', 'yearly'].includes(normalized)) {
+        const { rows: current } = await query(
+          `SELECT s.plan_id, sp.name AS plan_name
+           FROM subscriptions s
+           LEFT JOIN subscription_plans sp ON sp.id = s.plan_id
+           WHERE s.business_id = $1 AND s.is_active = TRUE AND s.payment_status = 'verified'
+           ORDER BY s.created_at DESC
+           LIMIT 1`,
+          [businessId]
+        )
+        if (current.length) {
+          selectedPlan = current[0].plan_id ? { id: current[0].plan_id, name: current[0].plan_name } : null
+        }
+      } else {
+        const { rows } = await query('SELECT * FROM subscription_plans WHERE LOWER(name) = $1 AND is_active = TRUE', [normalized])
+        selectedPlan = rows[0]
+      }
     }
 
     let amount, monthsToAdd, cycle, discountPercent
     if (selectedPlan) {
-      cycle = String(billingCycle || 'monthly').toLowerCase()
+      cycle = String(billingCycle || 'annually').toLowerCase()
       const monthlyPrice = Number(selectedPlan.price_monthly) || 0
       if (cycle === 'quarterly') {
         monthsToAdd = 3
@@ -1578,8 +1616,6 @@ export async function renewSubscription(req, res) {
       cycle = 'monthly'
       discountPercent = 0
     }
-    periodEnd.setMonth(periodEnd.getMonth() + monthsToAdd)
-
     const planName = selectedPlan ? selectedPlan.name : plan
 
     const businessId = req.user?.businessId
@@ -1587,38 +1623,29 @@ export async function renewSubscription(req, res) {
       return res.status(400).json({ error: 'No business associated with this account.' })
     }
 
-    const { rows } = await query(
-      `UPDATE subscriptions
-         SET plan = $1, billing_cycle = $4, discount_percent = $5, amount_paid = $6, status = 'pending', is_active = FALSE, payment_status = 'pending',
-            start_date = COALESCE(start_date, NOW()),
-            current_period_end = $2,
-            expiration_date = $2,
-            next_renewal_date = $2,
-            remaining_days = $3,
-            cancelled_at = NULL
-         WHERE id = (SELECT id FROM subscriptions WHERE business_id = $7 ORDER BY created_at DESC LIMIT 1)
-         RETURNING id, plan, billing_cycle, discount_percent, amount_paid, status, current_period_end, next_renewal_date`,
-      [plan, periodEnd, monthsToAdd * 30, billingCycle, discountPercent, amount, businessId]
+    const { rows: activeRows } = await query(
+      `SELECT current_period_end
+       FROM subscriptions
+       WHERE business_id = $1 AND is_active = TRUE AND payment_status = 'verified'
+       ORDER BY current_period_end DESC NULLS LAST
+       LIMIT 1`,
+      [businessId]
     )
+    const renewalStart = activeRows[0]?.current_period_end && new Date(activeRows[0].current_period_end) > now
+      ? new Date(activeRows[0].current_period_end)
+      : now
+    const periodEnd = new Date(renewalStart)
+    periodEnd.setMonth(periodEnd.getMonth() + monthsToAdd)
 
-    if (!rows.length) {
-      const { rows: newSub } = await query(
-        `INSERT INTO subscriptions (business_id, plan, billing_cycle, discount_percent, amount_paid, status, is_active, payment_status, start_date, current_period_end, expiration_date, next_renewal_date, remaining_days)
-         VALUES ($1, $2, $4, $5, $6, 'pending', FALSE, 'pending', NOW(), $3, $3, $3, 30) RETURNING id, plan, billing_cycle, discount_percent, amount_paid, status, current_period_end, next_renewal_date`,
-        [businessId, plan, periodEnd, billingCycle, discountPercent, amount]
-      )
-
-      await logAudit({
-        userId: req.user.id,
-        actorName: req.user.full_name || req.user.email,
-        action: `Renewed subscription to ${plan} plan for ${amount} (${discountPercent}% off)`,
-        targetModule: 'Subscription',
-        ipAddress: getClientIp(req),
-        businessId: req.user?.businessId,
-      })
-
-      return res.status(201).json(newSub[0])
-    }
+    // Keep the verified subscription live until the pending renewal is approved.
+    const { rows } = await query(
+      `INSERT INTO subscriptions (business_id, plan_id, plan, billing_cycle, discount_percent, amount_paid,
+                                  status, is_active, payment_status, start_date, current_period_end,
+                                  expiration_date, next_renewal_date, remaining_days)
+       VALUES ($1, $2, $3, $4, $5, $6, 'pending', FALSE, 'pending', $7, $8, $8, $8, $9)
+       RETURNING id, plan, billing_cycle, discount_percent, amount_paid, status, current_period_end, next_renewal_date`,
+      [businessId, selectedPlan?.id || null, planName, cycle, discountPercent, amount, renewalStart, periodEnd, monthsToAdd * 30]
+    )
 
     await logAudit({
       userId: req.user.id,
@@ -1629,7 +1656,7 @@ export async function renewSubscription(req, res) {
       businessId: req.user?.businessId,
     })
 
-    res.json(rows[0])
+    res.status(201).json(rows[0])
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

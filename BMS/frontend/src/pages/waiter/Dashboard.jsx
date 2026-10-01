@@ -4,7 +4,6 @@ import { useAuth } from '../../context/AuthContext'
 import { useOrders } from '../../context/OrdersContext'
 import { ClipboardList, Clock, CheckCircle, DollarSign, MoreHorizontal } from 'lucide-react'
 import { StatCard } from '../../components/ui/SharedComponents'
-import MenuQRWidget from '../../components/MenuQRWidget'
 
 export default function WaiterDashboard() {
   const { user } = useAuth()
@@ -41,23 +40,23 @@ export default function WaiterDashboard() {
         </div>
         {waiterOrders.length ? (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-slate-200">
-                  <th className="text-left p-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">Order</th>
-                  <th className="text-left p-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">Items</th>
-                  <th className="text-left p-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">Total</th>
-                  <th className="text-left p-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">Status</th>
+                  <th className="text-left p-2 font-semibold text-slate-500 text-xs uppercase tracking-wider">Order</th>
+                  <th className="text-left p-2 font-semibold text-slate-500 text-xs uppercase tracking-wider">Items</th>
+                  <th className="text-left p-2 font-semibold text-slate-500 text-xs uppercase tracking-wider">Total</th>
+                  <th className="text-left p-2 font-semibold text-slate-500 text-xs uppercase tracking-wider">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {waiterOrders.slice().reverse().map((order) => (
                   <tr key={order.id} className="hover:bg-slate-50 transition">
-                    <td className="p-4 font-medium text-slate-900">{order.orderNumber || order.order_number || '—'}</td>
-                    <td className="p-4 text-slate-600">{(order.items || []).map((i) => `${i.name} ×${i.quantity}`).join(', ') || '—'}</td>
-                    <td className="p-4 font-medium text-slate-900">{money(order.total)}</td>
-                    <td className="p-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${order.status === 'Paid' ? 'bg-emerald-100 text-emerald-800' : order.status === 'Served' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
+                    <td className="p-2 font-medium text-slate-900">{order.orderNumber || order.order_number || '—'}</td>
+                    <td className="p-2 text-slate-600">{(order.items || []).map((i) => `${i.name} ×${i.quantity}`).join(', ') || '—'}</td>
+                    <td className="p-2 font-medium text-slate-900">{money(order.total)}</td>
+                    <td className="p-2">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-medium ${order.status === 'Paid' ? 'bg-emerald-100 text-emerald-800' : order.status === 'Served' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
                         {order.status}
                       </span>
                     </td>
@@ -71,7 +70,6 @@ export default function WaiterDashboard() {
         )}
       </div>
 
-      <MenuQRWidget />
     </div>
   )
 }

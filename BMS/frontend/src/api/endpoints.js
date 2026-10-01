@@ -55,7 +55,12 @@ export async function updateAvatar(avatarUrl) {
 
 // ===== USERS =====
 export async function fetchUsers() {
-  const { data } = await api.get('/users')
+  const { data } = await api.get('/notifications/users')
+  return data
+}
+
+export async function fetchMySalaryStatus() {
+  const { data } = await api.get('/users/me/salary-status')
   return data
 }
 
@@ -448,6 +453,14 @@ export async function rejectRefund(id) {
   const { data } = await api.post(`/manager/refunds/${id}/approve`, { action: 'rejected' })
   return data
 }
+export async function createManagerRefund(payload) {
+  const { data } = await api.post('/manager/refunds', payload)
+  return data
+}
+export async function fetchManagerRefunds() {
+  const { data } = await api.get('/manager/refunds')
+  return data
+}
 export async function fetchPendingPayrolls() {
   const { data } = await api.get('/manager/payrolls/pending')
   return data
@@ -486,8 +499,9 @@ export async function fetchManagerTransferReport() {
   const { data } = await api.get('/manager/reports/transfers')
   return data
 }
-export async function fetchManagerPayrollReport() {
-  const { data } = await api.get('/manager/reports/payrolls')
+export async function fetchManagerPayrollReport(params = {}) {
+  const qs = new URLSearchParams(params).toString()
+  const { data } = await api.get(`/manager/reports/payrolls${qs ? `?${qs}` : ''}`)
   return data
 }
 export async function fetchManagerRefundReport() {
@@ -569,8 +583,12 @@ export async function fetchPlatformStats() {
   return data
 }
 
-export async function fetchBusinesses() {
-  const { data } = await api.get('/platform/businesses')
+export async function fetchBusinesses({ province, district } = {}) {
+  const params = new URLSearchParams()
+  if (province) params.set('province', province)
+  if (district) params.set('district', district)
+  const qs = params.toString()
+  const { data } = await api.get(`/platform/businesses${qs ? `?${qs}` : ''}`)
   return data
 }
 
@@ -649,6 +667,11 @@ export async function fetchPaymentStats() {
 
 export async function refundPayment(id, reason) {
   const { data } = await api.post(`/platform/payments/${id}/refund`, { reason })
+  return data
+}
+
+export async function settlePayment(id) {
+  const { data } = await api.post(`/platform/payments/${id}/settle`)
   return data
 }
 

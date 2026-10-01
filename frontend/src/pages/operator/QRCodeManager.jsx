@@ -50,7 +50,8 @@ export default function QRCodeManager() {
       <div className="qr-grid">
         {tables.map((t) => {
           const bizParam = user?.businessId ? `&businessId=${user.businessId}` : ''
-          const url = `${PUBLIC_APP_URL}/menu?table=${t}${bizParam}`
+          const branchParam = user?.branchId ? `&branchId=${user.branchId}` : ''
+          const url = `${PUBLIC_APP_URL}/menu?table=${t}${bizParam}${branchParam}`
           return (
             <div className="qr-card" key={t}>
               <QRCode value={url} size={190} level="M" />

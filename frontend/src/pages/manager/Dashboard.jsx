@@ -24,7 +24,11 @@ export default function ManagerDashboard() {
     }
   }
 
-  useEffect(() => { fetchRevenue() }, [])
+  useEffect(() => {
+    fetchRevenue()
+    const refreshTimer = window.setInterval(fetchRevenue, 30000)
+    return () => window.clearInterval(refreshTimer)
+  }, [])
 
   const stats = useMemo(() => {
     const paid = orders.filter((o) => o.status === 'Paid' || o.status === 'Served')
@@ -61,9 +65,11 @@ export default function ManagerDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard icon={<ShoppingBag size={24} className="text-blue-600" />} iconBg="bg-blue-50" label="Total Orders" value={String(stats.totalOrders)} linkText="View orders" onClick={() => navigate('/manager/orders')} />
         <StatCard icon={<TrendingUp size={24} className="text-emerald-600" />} iconBg="bg-emerald-50" label="Revenue" value={money(stats.revenue)} linkText="View report" onClick={() => navigate('/manager/revenue')} />
+        <StatCard icon={<TrendingUp size={24} className="text-indigo-600" />} iconBg="bg-indigo-50" label="Net Profit" value={money(revenueData?.netProfit)} linkText="View report" onClick={() => navigate('/manager/revenue')} />
+        <StatCard icon={<TrendingUp size={24} className="text-amber-600" />} iconBg="bg-amber-50" label="VAT Total" value={money(revenueData?.vatTotal)} linkText="View report" onClick={() => navigate('/manager/revenue')} />
         <StatCard icon={<Clock size={24} className="text-amber-600" />} iconBg="bg-amber-50" label="Pending Orders" value={String(stats.pending)} linkText="View all" onClick={() => navigate('/manager/orders')} />
       </div>
 

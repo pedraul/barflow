@@ -60,7 +60,6 @@ import OwnerQRWorkspace from '../pages/owner/OwnerQRWorkspace'
 import OwnerWaiterOrders from '../pages/owner/OwnerWaiterOrders'
 import OwnerAuditLogViewer from '../pages/owner/AuditLogViewer'
 import { CustomerProvider } from '../context/CustomerContext'
-import { NotificationProvider } from '../context/NotificationContext'
 import MenuPage from '../pages/customer/MenuPage'
 import CartPage from '../pages/customer/CartPage'
 import PaymentPage from '../pages/customer/PaymentPage'
@@ -79,7 +78,6 @@ import WaiterCart from '../pages/waiter/WaiterCart'
 import WaiterCheckout from '../pages/waiter/WaiterCheckout'
 import WaiterUnpaidOrders from '../pages/waiter/UnpaidOrders'
 import WaiterOrderHistory from '../pages/waiter/WaiterOrderHistory'
-import NotificationsPage from '../pages/NotificationsPage'
 
 export default function AppRoutes() {
   return (
@@ -126,6 +124,17 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute checkSubscription allow={['Owner']}>
             <Settings />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/owner"
+        element={
+          <ProtectedRoute checkSubscription allow={['Owner']}>
+            <OwnerLayout>
+              <OwnerOverview />
+            </OwnerLayout>
           </ProtectedRoute>
         }
       />
@@ -247,6 +256,17 @@ export default function AppRoutes() {
       />
 
       {/* Manager Routes */}
+      <Route
+        path="/manager"
+        element={
+          <ProtectedRoute checkSubscription allow={['Manager']}>
+            <ManagerLayout>
+              <ManagerDashboard />
+            </ManagerLayout>
+          </ProtectedRoute>
+        }
+      />
+
       <Route
         path="/dashboard/manager"
         element={
@@ -455,6 +475,17 @@ export default function AppRoutes() {
 
       {/* Accountant Routes */}
       <Route
+        path="/accountant"
+        element={
+          <ProtectedRoute checkSubscription allow={['Accountant']}>
+            <AccountantLayout>
+              <AccountantDashboard />
+            </AccountantLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
         path="/dashboard/accountant"
         element={
           <ProtectedRoute checkSubscription allow={['Accountant']}>
@@ -610,6 +641,17 @@ export default function AppRoutes() {
 
       {/* Waiter Routes */}
       <Route
+        path="/waiter"
+        element={
+          <ProtectedRoute checkSubscription allow={['Waiter']}>
+            <WaiterLayout>
+              <WaiterDashboard />
+            </WaiterLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
         path="/dashboard/waiter"
         element={
           <ProtectedRoute checkSubscription allow={['Waiter']}>
@@ -759,6 +801,17 @@ export default function AppRoutes() {
 
       {/* Operator: route incoming QR orders to kitchen / bar */}
       <Route
+        path="/operator"
+        element={
+          <ProtectedRoute checkSubscription allow={['Operator', 'Manager', 'Owner']}>
+            <OperatorLayout>
+              <OperatorOrderManagement />
+            </OperatorLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
         path="/operator/orders"
         element={
           <ProtectedRoute checkSubscription allow={['Operator', 'Manager', 'Owner']}>
@@ -872,11 +925,6 @@ export default function AppRoutes() {
         }
       />
 
-      <Route path="/notifications" element={
-        <ProtectedRoute>
-          <NotificationsPage />
-        </ProtectedRoute>
-      } />
 
       <Route path="*" element={<NotFoundPage />} />
       <Route

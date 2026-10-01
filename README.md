@@ -38,3 +38,13 @@ psql -d barflow -f database/001_initial_schema.sql
 
 2. Copy `.env.example` to `.env` and set `DATABASE_URL`.
 3. Add authenticated API endpoints and enforce role permissions on every request.
+
+### Business subdomains
+
+Business workspaces use the registered business name as a URL-safe subdomain, for example:
+
+```text
+https://business-one.your-app.com
+```
+
+Set `VITE_WORKSPACE_DOMAIN=your-app.com` when building the frontend. Configure wildcard DNS (`*.your-app.com`) and make the frontend host serve the SPA for every subdomain. The backend migration `20260923_add_business_slug.sql` creates unique business slugs.

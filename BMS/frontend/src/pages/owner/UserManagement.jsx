@@ -100,32 +100,32 @@ export default function UserManagement() {
 
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-slate-200">
                 {['Name', 'Username', 'Email', 'Phone', 'Role', 'Branch', 'Salary', 'Status', 'Actions'].map((h) => (
-                  <th key={h} className="text-left p-4 font-semibold text-slate-500 text-xs uppercase tracking-wider">{h}</th>
+                  <th key={h} className="text-left p-2 font-semibold text-slate-500 text-xs uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {users.map((u) => (
                 <tr key={u.id} className="hover:bg-slate-50 transition">
-                  <td className="p-4 font-medium text-slate-900">{u.fullName || u.name}</td>
-                  <td className="p-4 text-slate-600">{u.username || '—'}</td>
-                  <td className="p-4 text-slate-600">{u.email}</td>
-                  <td className="p-4 text-slate-600">{u.phone || '—'}</td>
-                  <td className="p-4">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium role-pill role-${u.role}`}>{u.role}</span>
+                  <td className="p-2 font-medium text-slate-900">{u.fullName || u.name}</td>
+                  <td className="p-2 text-slate-600">{u.username || '—'}</td>
+                  <td className="p-2 text-slate-600">{u.email}</td>
+                  <td className="p-2 text-slate-600">{u.phone || '—'}</td>
+                  <td className="p-2">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-medium role-pill role-${u.role}`}>{u.role}</span>
                   </td>
-                  <td className="p-4 text-slate-600">{u.branchName || u.branch || '—'}</td>
-                  <td className="p-4 font-medium text-slate-900">{fmt(u.salary)}</td>
-                  <td className="p-4">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${u.isActive !== false ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+                  <td className="p-2 text-slate-600">{u.branchName || u.branch || '—'}</td>
+                  <td className="p-2 font-medium text-slate-900">{fmt(u.salary)}</td>
+                  <td className="p-2">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-medium ${u.isActive !== false ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
                       {u.isActive !== false ? 'Active' : 'Inactive'}
                     </span>
                   </td>
-                  <td className="p-4">
+                  <td className="p-2">
                     <div className="flex items-center gap-2">
                       <button onClick={() => openEdit(u)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit"><Edit3 size={16} /></button>
                       <button onClick={() => handleDelete(u)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition" title="Delete"><Trash2 size={16} /></button>

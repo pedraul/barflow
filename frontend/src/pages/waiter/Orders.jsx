@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import * as api from '../../api/endpoints'
 import { useOrders } from '../../context/OrdersContext'
 import { useAuth } from '../../context/AuthContext'
@@ -7,6 +8,7 @@ import AddItemsToOrderModal from '../../components/AddItemsToOrderModal'
 
 export default function WaiterOrders() {
   const [orders, setOrders] = useState([])
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [delivering, setDelivering] = useState(null)
@@ -135,7 +137,9 @@ export default function WaiterOrders() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
           {displayOrders.map((order) => {
-            const canRestock = ['Open', 'Preparing'].includes(order.status)
+            const normalizedStatus = String(order.status || '').trim().toLowerCase()
+            const canReturnItems = normalizedStatus === 'open'
+            const canAddItems = ['open', 'preparing', 'pending', 'waiting for preparation'].includes(normalizedStatus)
             const canDeliver = order.status === 'Ready'
             const statusColor = order.status === 'Ready' ? '#28a745' : order.status === 'Preparing' ? '#ffc107' : '#17a2b8'
             const isPaidByOperator = order.status === 'Paid' && order.waiterId === currentWaiterId
@@ -181,7 +185,7 @@ export default function WaiterOrders() {
                 </div>
 
                 <div style={{ display: 'flex', gap: 8 }}>
-                  {canRestock && (
+                  {canReturnItems && (
                     <button
                       type="button"
                       style={{
@@ -200,7 +204,7 @@ export default function WaiterOrders() {
                       Return Items
                     </button>
                   )}
-                  {canRestock && (
+                  {canAddItems && (
                     <button
                       type="button"
                       style={{
@@ -237,6 +241,37 @@ export default function WaiterOrders() {
                       disabled={delivering === order.id}
                     >
                       {delivering === order.id ? 'Delivering...' : '✓ Pick up & deliver'}
+                    </button>
+                  )}
+                  {order.status === 'Served' && (
+                    <button
+                      type="button"
+                      style={{
+                        flex: 1,
+                        padding: '12px',
+                        backgroundColor: '#0d6efd',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '16px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                      onClick={() => navigate('/payment', {
+                        state: {
+                          order: {
+                            orderId: order.id,
+                            orderNumber: order.orderNumber,
+                            tableNumber: order.tableNumber,
+                            total: order.total,
+                            items: order.items,
+                            status: order.status,
+                          },
+                          returnTo: '/waiter/orders',
+                        },
+                      })}
+                    >
+                      Pay
                     </button>
                   )}
                   {order.status === 'Paid' && (

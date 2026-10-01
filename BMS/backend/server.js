@@ -24,26 +24,30 @@ app.use('/api', apiRouter)
 
 // Prepare the database, then start the server
 async function start() {
-  try {
-    console.log('Initializing database migrations...')
-    await migrate()
-    
-    console.log('Running database seeders...')
-    await seed()
-    
-    console.log('Database preparation complete!')
-  } catch (error) {
-    // Check if the error is simply because the tables/relations already exist in PostgreSQL
-    if (error.message.includes('already exists') || error.code === '42P07') {
-      console.log('Database already initialized (tables already exist). Skipping migrations and seeders.')
-    } else {
-      // Log any actual connection or critical configuration failures
-      console.error('Database setup failed (is PostgreSQL running and DATABASE_URL set?):', error.message)
+  if (process.env.RUN_DB_BOOTSTRAP === 'true') {
+    try {
+      console.log('Initializing database migrations...')
+      await migrate()
+
+      console.log('Running database seeders...')
+      await seed()
+
+      console.log('Database preparation complete!')
+    } catch (error) {
+      // Check if the error is simply because the tables/relations already exist in PostgreSQL
+      if (error.message.includes('already exists') || error.code === '42P07') {
+        console.log('Database already initialized (tables already exist). Skipping migrations and seeders.')
+      } else {
+        // Log any actual connection or critical configuration failures
+        console.error('Database setup failed (is PostgreSQL running and DATABASE_URL set?):', error.message)
+      }
     }
+  } else {
+    console.log('Skipping database bootstrap. Set RUN_DB_BOOTSTRAP=true only for an intentional database setup.')
   }
 
   const server = app.listen(port, () => {
-    console.log(`Server listening on http://localhost:${port}`)
+   console.log(`Server listening on port ${port}`)
   })
 
   server.on('error', (error) => {

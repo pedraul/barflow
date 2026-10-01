@@ -5,10 +5,10 @@ import {
   LayoutDashboard, Briefcase, PlusCircle, RefreshCw, CreditCard,
   Users, BarChart3, ClipboardList, Settings, LogOut,
   Menu, ChevronDown, Building2, CheckCircle2, XCircle,
-  Clock, Ban, CalendarDays, Plus, FileText, Send, ShieldAlert,
+  Clock, Ban, CalendarDays, Plus, FileText, ShieldAlert,
   HardDriveDownload, ArrowLeft
 } from 'lucide-react'
-import { fetchPlatformStats, fetchBusinesses, fetchPlatformReports, fetchAdmins, createAdmin, sendNotification } from '../../api/endpoints'
+import { fetchPlatformStats, fetchBusinesses, fetchPlatformReports, fetchAdmins, createAdmin } from '../../api/endpoints'
 
 const CURRENCY = 'RWF'
 const formatCurr = (v) => new Intl.NumberFormat('en-RW', { style: 'currency', currency: CURRENCY, minimumFractionDigits: 0 }).format(v || 0)
@@ -30,14 +30,10 @@ export default function SuperAdminDashboard() {
   const [businesses, setBusinesses] = useState([])
   const [loading, setLoading] = useState(true)
   const [viewing, setViewing] = useState(null)
-  const [noticeOpen, setNoticeOpen] = useState(false)
-  const [noticeText, setNoticeText] = useState('')
-  const [noticeSending, setNoticeSending] = useState(false)
   const [adminOpen, setAdminOpen] = useState(false)
   const [adminForm, setAdminForm] = useState({ name: '', email: '', phone: '', password: '', role: 'admin', permissions: ['businesses', 'subscriptions', 'payments', 'reports'] })
   const [adminSaving, setAdminSaving] = useState(false)
   const [exporting, setExporting] = useState(false)
-  const [noticeMsg, setNoticeMsg] = useState('')
   const [adminMsg, setAdminMsg] = useState('')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
@@ -99,25 +95,6 @@ export default function SuperAdminDashboard() {
       setAdminMsg('❌ ' + (e.response?.data?.error || e.message || 'Failed to create admin.'))
     } finally {
       setAdminSaving(false)
-    }
-  }
-
-  const handleSendNotice = async () => {
-    if (!noticeText.trim()) {
-      setNoticeMsg('❌ Please enter a notice message.')
-      return
-    }
-    setNoticeSending(true)
-    setNoticeMsg('')
-    try {
-      await sendNotification(noticeText.trim())
-      setNoticeMsg('✅ Notice sent to all platform users.')
-      setNoticeText('')
-      setTimeout(() => setNoticeOpen(false), 1200)
-    } catch (e) {
-      setNoticeMsg('❌ ' + (e.response?.data?.error || e.message || 'Failed to send notice.'))
-    } finally {
-      setNoticeSending(false)
     }
   }
 
@@ -321,7 +298,7 @@ export default function SuperAdminDashboard() {
           {/* WORKSPACE APP BODY OVERFLOW SCROLL */}
           <main className="flex-1 overflow-y-auto p-8 space-y-6">
             {location.pathname === '/admin' || location.pathname === '/admin/dashboard' ? (
-              <Overview metrics={metrics} recentBusinesses={recentBusinesses} chartData={chartData} pendingVerification={pendingVerification} expiringSoon={expiringSoon} businesses={businesses} onViewBusiness={setViewing} onAddAdmin={() => setAdminOpen(true)} onSendNotice={() => setNoticeOpen(true)} onExportReports={handleExportReports} exporting={exporting} />
+              <Overview metrics={metrics} recentBusinesses={recentBusinesses} chartData={chartData} pendingVerification={pendingVerification} expiringSoon={expiringSoon} businesses={businesses} onViewBusiness={setViewing} onAddAdmin={() => setAdminOpen(true)} onExportReports={handleExportReports} exporting={exporting} />
             ) : location.pathname === '/admin/businesses' ? (
               <BusinessList />
             ) : location.pathname === '/admin/plans' ? (
@@ -337,7 +314,7 @@ export default function SuperAdminDashboard() {
             ) : location.pathname === '/admin/backup' ? (
               <BackupRestore />
             ) : (
-              <Overview metrics={metrics} recentBusinesses={recentBusinesses} chartData={chartData} pendingVerification={pendingVerification} expiringSoon={expiringSoon} businesses={businesses} onViewBusiness={setViewing} onAddAdmin={() => setAdminOpen(true)} onSendNotice={() => setNoticeOpen(true)} onExportReports={handleExportReports} exporting={exporting} />
+              <Overview metrics={metrics} recentBusinesses={recentBusinesses} chartData={chartData} pendingVerification={pendingVerification} expiringSoon={expiringSoon} businesses={businesses} onViewBusiness={setViewing} onAddAdmin={() => setAdminOpen(true)} onExportReports={handleExportReports} exporting={exporting} />
             )}
           </main>
         </div>
@@ -397,30 +374,6 @@ export default function SuperAdminDashboard() {
         </div>
       )}
 
-      {/* Send Notice Modal */}
-      {noticeOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setNoticeOpen(false)}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white">
-              <h2 className="font-bold text-slate-900 flex items-center gap-2"><Send size={18} className="text-[#4F46E5]" /> Send Notice</h2>
-              <button onClick={() => setNoticeOpen(false)} className="text-slate-400 hover:text-slate-700"><XCircle size={20} /></button>
-            </div>
-            <div className="p-6 space-y-4">
-              {noticeMsg && <div className={`p-3 rounded-lg text-sm font-medium border ${noticeMsg.startsWith('❌') ? 'bg-red-50 border-red-300 text-red-800' : 'bg-emerald-50 border-emerald-300 text-emerald-800'}`}>{noticeMsg}</div>}
-              <div className="space-y-1.5">
-                <label className="block text-sm font-semibold text-slate-700">Notice Message</label>
-                <textarea value={noticeText} onChange={(e) => setNoticeText(e.target.value)} rows={5} placeholder="Type your notice to all platform users..." className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none" />
-              </div>
-              <p className="text-xs text-slate-400">This notice is broadcast to all platform users.</p>
-            </div>
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-100">
-              <button onClick={() => setNoticeOpen(false)} className="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50">Cancel</button>
-              <button onClick={handleSendNotice} disabled={noticeSending || !noticeText.trim()} className="px-5 py-2 text-sm bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-50">{noticeSending ? 'Sending...' : 'Send Notice'}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* View Business Details Modal */}
       {viewing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setViewing(null)}>
@@ -455,7 +408,7 @@ export default function SuperAdminDashboard() {
   )
 }
 
-function Overview({ metrics, recentBusinesses, chartData, pendingVerification, expiringSoon, businesses = [], onViewBusiness, onAddAdmin, onSendNotice, onExportReports, exporting }) {
+function Overview({ metrics, recentBusinesses, chartData, pendingVerification, expiringSoon, businesses = [], onViewBusiness, onAddAdmin, onExportReports, exporting }) {
 
   return (
     <div className="space-y-6">
@@ -623,9 +576,6 @@ function Overview({ metrics, recentBusinesses, chartData, pendingVerification, e
             </Link>
             <button onClick={onAddAdmin} className="border border-slate-200 hover:bg-slate-50 text-slate-700 py-2.5 px-4 rounded-lg font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition bg-white">
               <Users size={14} className="text-indigo-600" /> Add Super Admin
-            </button>
-            <button onClick={onSendNotice} className="border border-slate-200 hover:bg-slate-50 text-slate-700 py-2.5 px-4 rounded-lg font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition bg-white">
-              <Send size={14} className="text-indigo-600" /> Send Notice
             </button>
             <button onClick={onExportReports} disabled={exporting} className="col-span-2 border border-slate-200 hover:bg-slate-50 text-slate-700 py-2.5 px-4 rounded-lg font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition bg-white mt-1 disabled:opacity-50">
               <BarChart3 size={14} className="text-indigo-600" /> {exporting ? 'Exporting...' : 'Export Reports'}

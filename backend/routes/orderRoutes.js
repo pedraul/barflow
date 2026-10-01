@@ -4,6 +4,7 @@ import { mapOrder } from './helpers.js'
 import { logAudit, getClientIp } from '../utils/audit.js'
 import { createOrderCore, restockOrderItems, addItemsToOrder } from '../services/orderService.js'
 import authMiddleware from '../middleware/authMiddleware.js'
+import { getBranchContext } from '../middleware/branchContext.js'
 
 const router = Router()
 
@@ -35,9 +36,14 @@ function ordersSelect(where = '', params = []) {
 router.get('/', authMiddleware, async (req, res) => {
   const { status, source, branchId, from, to, table } = req.query
   try {
+    const scope = await getBranchContext(req, { requestedBranchId: branchId, allowOwnerAll: true })
     const clauses = [`o.business_id = $${1}`]
-    const params = [req.user.businessId]
+    const params = [scope.businessId]
     let idx = 2
+    if (scope.branchId) {
+      clauses.push(`o.branch_id = $${idx++}`)
+      params.push(scope.branchId)
+    }
     if (status) {
       clauses.push(`o.status = $${idx++}`)
       params.push(status)
@@ -46,7 +52,7 @@ router.get('/', authMiddleware, async (req, res) => {
       clauses.push(`o.source = $${idx++}`)
       params.push(source)
     }
-    if (branchId) {
+    if (branchId && !scope.branchId && String(branchId).toLowerCase() !== 'all') {
       clauses.push(`o.branch_id = $${idx++}`)
       params.push(branchId)
     }
@@ -75,6 +81,7 @@ router.get('/', authMiddleware, async (req, res) => {
 // Full order detail (header + line items) for any authenticated role.
 router.get('/:id', authMiddleware, async (req, res) => {
   try {
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
     const { rows } = await query(
       `SELECT o.*, (
          SELECT COALESCE(json_agg(json_build_object(
@@ -87,15 +94,17 @@ router.get('/:id', authMiddleware, async (req, res) => {
          FROM order_items oi JOIN products p ON p.id = oi.product_id
          WHERE oi.order_id = o.id
        ) AS items
-       FROM orders o WHERE o.id = $1 AND o.business_id = $2`,
-      [req.params.id, req.user.businessId]
+       FROM orders o
+       WHERE o.id = $1 AND o.business_id = $2
+         AND ($3::uuid IS NULL OR o.branch_id = $3)`,
+      [req.params.id, scope.businessId, scope.branchId]
     )
     if (!rows.length) {
       return res.status(404).json({ error: 'Order not found' })
     }
     res.json(mapOrder(rows[0]))
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    res.status(error.statusCode || 500).json({ error: error.message })
   }
 })
 
@@ -110,11 +119,17 @@ router.post('/', authMiddleware, async (req, res) => {
     source = 'waiter',
     orderType,
     paymentMethod,
+    branchId: requestedBranchId,
   } = req.body
 
-  const businessId = req.user?.businessId
-  const branchResult = await query('SELECT id FROM branches WHERE business_id = $1 LIMIT 1', [businessId])
-  const branchId = branchResult.rows[0]?.id
+  let scope
+  try {
+    scope = await getBranchContext(req, { requestedBranchId, allowOwnerAll: false })
+  } catch (error) {
+    return res.status(error.statusCode || 403).json({ error: error.message })
+  }
+  const businessId = scope.businessId
+  const branchId = scope.branchId
 
   try {
     // Quick dedupe protection: if the same waiter submits the same items
@@ -173,7 +188,12 @@ router.post('/', authMiddleware, async (req, res) => {
 router.patch('/:id', authMiddleware, async (req, res) => {
   const { status } = req.body
   try {
-    await query('UPDATE orders SET status = $1 WHERE id = $2', [status, req.params.id])
+    const scope = await getBranchContext(req)
+    const result = await query(
+      'UPDATE orders SET status = $1 WHERE id = $2 AND business_id = $3 AND ($4::uuid IS NULL OR branch_id = $4) RETURNING id',
+      [status, req.params.id, scope.businessId, scope.branchId]
+    )
+    if (!result.rows.length) return res.status(404).json({ error: 'Order not found in your branch.' })
 
     await logAudit({
       userId: req.user?.id,
@@ -292,13 +312,13 @@ router.delete('/:id', authMiddleware, async (req, res) => {
  */
 router.get('/waiter/history', authMiddleware, async (req, res) => {
   try {
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
     const userId = req.user.id
-    const businessId = req.user.businessId
     const { period = 'all', from, to } = req.query
 
     const dateClauses = []
-    const params = [userId, businessId]
-    let idx = 3
+    const params = [userId, scope.businessId, scope.branchId]
+    let idx = 4
 
     if (from) {
       dateClauses.push(`o.created_at >= $${idx++}`)
@@ -342,6 +362,7 @@ router.get('/waiter/history', authMiddleware, async (req, res) => {
               ) AS items
        FROM orders o
        WHERE o.user_id = $1 AND o.source = 'waiter' AND o.business_id = $2
+         AND ($3::uuid IS NULL OR o.branch_id = $3)
          ${dateFilter}
        ORDER BY o.created_at DESC`,
       params
@@ -379,7 +400,7 @@ router.get('/waiter/history', authMiddleware, async (req, res) => {
 
     res.json({ orders, totalRevenue: netRevenue, totalOrders: orders.length })
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    res.status(error.statusCode || 500).json({ error: error.message })
   }
 })
 

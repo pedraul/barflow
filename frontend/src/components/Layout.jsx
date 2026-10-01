@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useSubscription } from '../context/SubscriptionContext'
+import BranchBadge from './BranchBadge'
 
 export default function Layout({ children, navLinks, sidebar, logoutButton }) {
   const { status } = useSubscription()
@@ -26,7 +27,7 @@ export default function Layout({ children, navLinks, sidebar, logoutButton }) {
     '/accountant/transfers', '/accountant/profit', '/accountant/orders', '/accountant/qr',
   ])
 
-  const showSidebarDesktop = sidebar && dashboardPaths.has(pathname)
+  const showSidebarDesktop = Boolean(sidebar)
   const closeMobileMenu = useCallback(() => setMobileMenuOpen(false), [])
 
   const handleBack = () => {
@@ -53,6 +54,7 @@ export default function Layout({ children, navLinks, sidebar, logoutButton }) {
             </svg>
           </button>
           <div className="desktop-brand">BarFlow</div>
+          <BranchBadge />
           {logoutButton && <div className="desktop-logout-wrapper">{logoutButton}</div>}
         </header>
       )}
@@ -76,13 +78,14 @@ export default function Layout({ children, navLinks, sidebar, logoutButton }) {
               {mobileMenuOpen ? '✕' : '☰'}
             </button>
             <div className="mobile-brand">BarFlow</div>
+            <BranchBadge />
             {logoutButton && <div className="mobile-logout-wrapper">{logoutButton}</div>}
           </header>
         </>
       )}
 
-      <div className="layout-body">
-        {/* Desktop sidebar: only on dashboard paths */}
+      <div className={`layout-body ${showSidebarDesktop ? 'has-fixed-sidebar' : ''}`}>
+        {/* Desktop sidebar */}
         {showSidebarDesktop && (
           <aside className="sidebar sidebar-desktop">
             {sidebar}

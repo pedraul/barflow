@@ -366,7 +366,18 @@ router.get('/waiter/history', authMiddleware, async (req, res) => {
 
     const totalRevenue = orders.reduce((s, o) => s + o.total, 0)
 
-    res.json({ orders, totalRevenue, totalOrders: orders.length })
+    const orderIds = orders.map((o) => o.id)
+    let refundTotal = 0
+    if (orderIds.length) {
+      const { rows: refundRows } = await query(
+        `SELECT COALESCE(SUM(amount), 0) AS total FROM refunds WHERE order_id = ANY($1::uuid[]) AND status = 'approved'`,
+        [orderIds]
+      )
+      refundTotal = Number(refundRows[0]?.total) || 0
+    }
+    const netRevenue = totalRevenue - refundTotal
+
+    res.json({ orders, totalRevenue: netRevenue, totalOrders: orders.length })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

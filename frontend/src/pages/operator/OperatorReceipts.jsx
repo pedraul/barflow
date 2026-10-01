@@ -6,7 +6,7 @@ import api from '../../api/axios'
 import {
   LayoutDashboard, ShoppingBag, ChefHat, CheckCircle2, BarChart3,
   Clock, FileText, Printer, GlassWater,
-  FileSpreadsheet, User, LogOut, Menu, MessageSquare
+  FileSpreadsheet, User, LogOut, Menu
 } from 'lucide-react'
 
 const MONEY = (v) => `${Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
@@ -58,7 +58,7 @@ export default function OperatorReceipts() {
   const printedReceipts = receipts.filter((r) => r.status === 'Served' || r.status === 'Paid')
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 text-slate-800 font-sans antialiased">
+    <div className="operator-shell flex flex-col md:flex-row min-h-screen bg-slate-50 text-slate-800 font-sans antialiased">
       {/* Mobile overlay */}
       {mobileMenuOpen && (
         <div className="sidebar-overlay" onClick={() => setMobileMenuOpen(false)} />
@@ -78,7 +78,7 @@ export default function OperatorReceipts() {
       </header>
 
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-64 bg-[#0B132B] text-slate-400 flex flex-col justify-between shrink-0">
+      <aside className="operator-desktop-sidebar hidden md:flex w-64 bg-[#0B132B] text-slate-400 flex flex-col justify-between shrink-0">
         <div>
           <div className="h-16 flex items-center gap-2 px-6 border-b border-slate-800 text-white font-bold text-xl">
             <div className="p-1.5 bg-blue-600 rounded-lg text-white">
@@ -109,7 +109,6 @@ export default function OperatorReceipts() {
               <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Other</p>
               <div className="space-y-1">
                 <SidebarLink icon={<FileSpreadsheet size={18} />} label="Reports" onClick={() => navigate('/operator/reports')} />
-                <SidebarLink icon={<MessageSquare size={18} />} label="Chats" onClick={() => navigate('/notifications')} />
                 <SidebarLink icon={<User size={18} />} label="My Account" onClick={() => navigate('/account')} />
               </div>
             </div>
@@ -158,7 +157,6 @@ export default function OperatorReceipts() {
               <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Other</p>
               <div className="space-y-1">
                 <SidebarLink icon={<FileSpreadsheet size={18} />} label="Reports" onClick={() => navigate('/operator/reports')} />
-                <SidebarLink icon={<MessageSquare size={18} />} label="Chats" onClick={() => navigate('/notifications')} />
                 <SidebarLink icon={<User size={18} />} label="My Account" onClick={() => navigate('/account')} />
               </div>
             </div>
@@ -194,7 +192,7 @@ export default function OperatorReceipts() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="operator-main flex-1 overflow-y-auto p-6">
           <div className="bg-white border border-slate-200 rounded-xl shadow-sm">
             <div className="flex border-b border-slate-200">
               <button onClick={() => setTab('printed')} className={`px-6 py-3 text-sm font-semibold transition ${tab === 'printed' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-600 hover:text-slate-900'}`}>

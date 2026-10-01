@@ -41,6 +41,13 @@ export function CustomerProvider({ children }) {
       return ''
     }
   })
+  const [branchId, setBranchId] = useState(() => {
+    try {
+      return sessionStorage.getItem('customer_branch_id') || ''
+    } catch {
+      return ''
+    }
+  })
   const [currentOrder, setCurrentOrder] = useState(() => {
     try {
       const stored = sessionStorage.getItem('current_order')
@@ -99,11 +106,11 @@ export function CustomerProvider({ children }) {
     }
   }, [deferredOrder])
 
-  const loadMenu = useCallback(async (table, bizId) => {
+  const loadMenu = useCallback(async (table, bizId, selectedBranchId) => {
     setMenuLoading(true)
     setMenuError(null)
     try {
-      const data = await api.fetchMenu(table || tableNumber, bizId)
+      const data = await api.fetchMenu(table || tableNumber, bizId, selectedBranchId)
       setMenu(data)
       if (table) setTableNumber(String(table))
       if (bizId) {
@@ -114,12 +121,16 @@ export function CustomerProvider({ children }) {
           sessionStorage.removeItem('customer_cart')
         }
       }
+      if (selectedBranchId) {
+        setBranchId(String(selectedBranchId))
+        sessionStorage.setItem('customer_branch_id', String(selectedBranchId))
+      }
     } catch (err) {
       setMenuError(err.message)
     } finally {
       setMenuLoading(false)
     }
-  }, [api, tableNumber, businessId])
+  }, [tableNumber, businessId])
 
   const addToCart = (product) => {
     setCart((prev) => {
@@ -195,12 +206,13 @@ export function CustomerProvider({ children }) {
         price: item.price,
       })),
       businessId: businessId || undefined,
+      branchId: branchId || undefined,
     }
     try {
       const result = await api.placeCustomerOrder(payload)
       setCurrentOrder(result)
       clearCart()
-      await loadMenu(tableNumber, businessId)
+      await loadMenu(tableNumber, businessId, branchId)
       return result
     } finally {
       placingRef.current = false

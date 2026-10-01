@@ -6,6 +6,7 @@ import {
   listBusinesses,
   getBusiness,
   toggleBusinessStatus,
+  setUnpaidBusinessAccess,
   updateBusiness,
   deleteBusiness,
   listPlans,
@@ -62,6 +63,7 @@ router.get('/stats', platformStats)
 router.get('/businesses', listBusinesses)
 router.get('/businesses/:id', getBusiness)
 router.patch('/businesses/:id/status', toggleBusinessStatus)
+router.patch('/businesses/:id/access', setUnpaidBusinessAccess)
 router.put('/businesses/:id', updateBusiness)
 router.delete('/businesses/:id', deleteBusiness)
 

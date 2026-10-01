@@ -80,7 +80,7 @@ export default function SystemSettings() {
   const { fetchPermissions } = useAuth()
   const {
     fetchSystemSettings, updateSystemSettings, triggerBackup, fetchBackups,
-    restoreBackup, updatePermissions, loading,
+    restoreBackup, updatePermissions, fetchBranches, createBranch, updateBranch, setActiveBranchId, branches, loading,
     fetchPaymentSettings, updatePaymentSettings, generateMerchantQRPayment,
   } = useOwner()
 
@@ -98,12 +98,17 @@ export default function SystemSettings() {
     }
   }, [pathname])
   const [data, setData] = useState({
-    business: { name: '', address: '', phone: '', email: '', currency: 'RWF', taxRate: 18 },
+    business: {
+      name: '', address: '', phone: '', email: '', city: '', country: '', province: '',
+      district: '', sector: '', businessType: '', registrationCode: '', description: '',
+      currency: 'RWF', taxRate: 18,
+    },
     settings: {}, permissions: [], backups: [],
   })
   const [backupName, setBackupName] = useState('')
   const [backupType, setBackupType] = useState('full')
   const [backups, setBackups] = useState([])
+  const [newBranch, setNewBranch] = useState({ name: '', address: '' })
   const [restoreId, setRestoreId] = useState('')
   const [restoreMsg, setRestoreMsg] = useState('')
   const [permDraft, setPermDraft] = useState([])
@@ -125,12 +130,20 @@ export default function SystemSettings() {
     } catch (e) { /* ignore */ }
   }, [fetchBackups])
 
+  const loadBranches = useCallback(async () => {
+    try { await fetchBranches() } catch (e) { console.error('Failed to load branches:', e) }
+  }, [fetchBranches])
+
   const load = useCallback(async () => {
     try {
       const d = await fetchSystemSettings()
       const settingsData = d && typeof d === 'object' ? d : {}
       setData({
-        business: settingsData.business || { name: '', address: '', phone: '', email: '', currency: 'RWF', taxRate: 18 },
+        business: settingsData.business || {
+          name: '', address: '', phone: '', email: '', city: '', country: '', province: '',
+          district: '', sector: '', businessType: '', registrationCode: '', description: '',
+          currency: 'RWF', taxRate: 18,
+        },
         settings: settingsData.settings || {},
         permissions: Array.isArray(settingsData.permissions) ? settingsData.permissions : [],
         backups: Array.isArray(settingsData.backups) ? settingsData.backups : [],
@@ -142,13 +155,14 @@ export default function SystemSettings() {
 
   useEffect(() => {
     load()
+    loadBranches()
     const refresh = window.setInterval(load, 30000)
     window.addEventListener('focus', load)
     return () => {
       window.clearInterval(refresh)
       window.removeEventListener('focus', load)
     }
-  }, [load])
+  }, [load, loadBranches])
 
   const flash = (m) => { setMessage(m); setTimeout(() => setMessage(''), 4000) }
 
@@ -164,6 +178,30 @@ export default function SystemSettings() {
   }
   const handleBusinessChange = (field, value) =>
     setData({ ...data, business: { ...data.business, [field]: value } })
+
+  const handleCreateBranch = async (event) => {
+    event.preventDefault()
+    if (!newBranch.name.trim()) return
+    try {
+      await createBranch({ name: newBranch.name.trim(), address: newBranch.address.trim() })
+      setNewBranch({ name: '', address: '' })
+      await loadBranches()
+      flash('✅ Branch created successfully.')
+    } catch (e) { flash('❌ ' + e.message) }
+  }
+
+  const handleToggleBranch = async (branch) => {
+    try {
+      await updateBranch(branch.id, { isActive: !branch.isActive })
+      await loadBranches()
+      flash(`✅ Branch ${branch.isActive ? 'deactivated' : 'activated'}.`)
+    } catch (e) { flash('❌ ' + e.message) }
+  }
+
+  const handleOpenBranch = (branch) => {
+    setActiveBranchId(branch.id)
+    navigate('/dashboard/owner')
+  }
 
   const handleTriggerBackup = async () => {
     try {
@@ -311,28 +349,28 @@ export default function SystemSettings() {
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
 
         {/* 2. TOP BANNER HEADER */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 shadow-xs">
-          <div className="flex items-center gap-4">
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-3 sm:px-6 shrink-0 shadow-xs">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             <button onClick={goBack} className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition" title="Back to Dashboard">
               <ArrowLeft size={22} />
             </button>
             <button className="text-slate-600 hover:text-slate-900 transition">
               <Menu size={20} />
             </button>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400 tracking-wider">
+            <div className="flex flex-col min-w-0">
+              <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-bold text-slate-400 tracking-wider truncate">
                 <span className="text-[#0066FF]">OWNER WORKSPACE</span>
                 <span className="text-slate-300 font-normal">&gt;</span>
                 <span className="text-slate-800">SYSTEM SETTINGS</span>
               </div>
-               <p className="text-xs text-slate-500 mt-0.5">
+               <p className="hidden sm:block text-xs text-slate-500 mt-0.5 truncate">
                  Configure account, backup, subscription, payments, permissions, security &amp; recovery.
                </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <button onClick={goBack} className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition" title="Back to Dashboard">
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+            <button onClick={goBack} className="hidden sm:flex w-10 h-10 items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition" title="Back to Dashboard">
               <ArrowLeft size={22} />
             </button>
             <div className="relative cursor-pointer p-1.5 hover:bg-slate-100 rounded-full transition">
@@ -376,7 +414,7 @@ export default function SystemSettings() {
           </div>
 
           {/* RIGHT COLUMN: Settings Viewport Canvas */}
-          <div className="flex-1 bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden min-w-0">
+          <div className="flex-1 w-full bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden min-w-0">
             {message && (
               <div className={`m-6 p-3 rounded-lg text-sm font-medium border ${message.startsWith('❌') ? 'bg-red-50 border-red-300 text-red-800' : 'bg-emerald-50 border-emerald-300 text-emerald-800'}`}>{message}</div>
             )}
@@ -426,6 +464,14 @@ export default function SystemSettings() {
                   <Field label="Email" name="email" value={data.business.email} onChange={(v) => handleBusinessChange('email', v)} />
                   <Field label="Address" name="address" value={data.business.address} onChange={(v) => handleBusinessChange('address', v)} />
                   <Field label="Phone" name="phone" value={data.business.phone} onChange={(v) => handleBusinessChange('phone', v)} />
+                  <Field label="Business Type" name="businessType" value={data.business.businessType} onChange={(v) => handleBusinessChange('businessType', v)} />
+                  <Field label="Registration Code" name="registrationCode" value={data.business.registrationCode} onChange={(v) => handleBusinessChange('registrationCode', v)} />
+                  <Field label="City" name="city" value={data.business.city} onChange={(v) => handleBusinessChange('city', v)} />
+                  <Field label="Country" name="country" value={data.business.country} onChange={(v) => handleBusinessChange('country', v)} />
+                  <Field label="Province" name="province" value={data.business.province} onChange={(v) => handleBusinessChange('province', v)} />
+                  <Field label="District" name="district" value={data.business.district} onChange={(v) => handleBusinessChange('district', v)} />
+                  <Field label="Sector" name="sector" value={data.business.sector} onChange={(v) => handleBusinessChange('sector', v)} />
+                  <Field label="Description" name="description" value={data.business.description} onChange={(v) => handleBusinessChange('description', v)} />
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-800 tracking-wide">Currency</label>
                     <div className="relative">
@@ -438,6 +484,37 @@ export default function SystemSettings() {
                     </div>
                   </div>
                   <Field label="Tax Rate (%)" name="taxRate" value={data.business.taxRate} onChange={(v) => handleBusinessChange('taxRate', parseFloat(v) || 0)} />
+                </div>
+                <div className="border-t border-slate-100 pt-5 space-y-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">Business Branches</h3>
+                    <p className="text-xs text-slate-500 mt-1">Create branches first, then assign managers and staff to them.</p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 items-end">
+                    <Field label="Branch Name" value={newBranch.name} onChange={(value) => setNewBranch({ ...newBranch, name: value })} placeholder="Downtown Branch" />
+                    <Field label="Address" value={newBranch.address} onChange={(value) => setNewBranch({ ...newBranch, address: value })} placeholder="Branch location" />
+                    <button type="button" onClick={handleCreateBranch} className="flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-700 text-white font-bold px-4 py-2.5 rounded-lg text-sm transition">
+                      <Save size={16} /> Add Branch
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {branches.map((branch) => (
+                      <div key={branch.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2.5">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-900 truncate">{branch.name}</p>
+                          <p className="text-xs text-slate-500 truncate">{branch.address || 'No address'} · {branch.userCount || 0} users</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button type="button" onClick={() => handleOpenBranch(branch)} className="px-3 py-1.5 rounded-md text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100">
+                            Open dashboard
+                          </button>
+                          <button type="button" onClick={() => handleToggleBranch(branch)} className={`px-3 py-1.5 rounded-md text-xs font-semibold ${branch.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                            {branch.isActive ? 'Active' : 'Inactive'}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 <div className="border-t border-slate-100 pt-4"></div>
                 <div className="flex justify-end pt-2">

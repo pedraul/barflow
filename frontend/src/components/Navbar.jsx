@@ -1,7 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { Search, User, LogOut } from 'lucide-react'
-import NotificationIcon from './NotificationIcon'
 
 export default function Navbar({ user, onLogout }) {
   return (
@@ -46,7 +45,6 @@ export default function Navbar({ user, onLogout }) {
             </Link>
           )}
 
-          <NotificationIcon />
         </nav>
       </div>
     </header>

@@ -10,7 +10,7 @@ import {
 const fmt = (v) => Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 
 export default function Overview() {
-  const { fetchReportSummary, fetchSubscription, loading } = useOwner()
+  const { fetchReportSummary, fetchSubscription, fetchBranches, branches, activeBranchId, setActiveBranchId, loading } = useOwner()
   const navigate = useNavigate()
   const [summary, setSummary] = useState(null)
   const [branchData, setBranchData] = useState([])
@@ -20,7 +20,13 @@ export default function Overview() {
   useEffect(() => {
     loadData()
     loadSubscription()
-  }, [])
+    fetchBranches().catch(() => {})
+    const refreshTimer = window.setInterval(() => {
+      loadData()
+      loadSubscription()
+    }, 30000)
+    return () => window.clearInterval(refreshTimer)
+  }, [activeBranchId])
 
   const loadData = async () => {
     try {
@@ -44,8 +50,8 @@ export default function Overview() {
 
   const kpis = [
     { label: 'Total Sales', value: fmt(summary?.totalSales), hint: 'All completed & paid orders', icon: <TrendingUp size={24} className="text-blue-600" />, iconBg: 'bg-blue-50', trend: '+12.5%', trendUp: true },
-    { label: 'Net Profit', value: fmt(summary?.netProfit), hint: 'Sales minus cost of goods', icon: <TrendingUp size={24} className="text-emerald-600" />, iconBg: 'bg-emerald-50', trend: '+8.2%', trendUp: true },
-    { label: 'VAT Due (18%)', value: fmt(summary?.vatDue), hint: 'Estimated tax liability', icon: <PieChart size={24} className="text-amber-600" />, iconBg: 'bg-amber-50', trend: '-2.1%', trendUp: false },
+    { label: 'Net Profit', value: fmt(summary?.netProfit), hint: 'Sales minus product and salary costs', icon: <TrendingUp size={24} className="text-emerald-600" />, iconBg: 'bg-emerald-50', trend: '+8.2%', trendUp: true },
+    { label: 'VAT Total', value: fmt(summary?.vatDue), hint: 'VAT from completed sales', icon: <PieChart size={24} className="text-amber-600" />, iconBg: 'bg-amber-50', trend: '-2.1%', trendUp: false },
     { label: 'Cash / Card', value: `${fmt(summary?.cashSales)} / ${fmt(summary?.cardSales)}`, hint: 'Split by payment method', icon: <CreditCard size={24} className="text-purple-600" />, iconBg: 'bg-purple-50', trend: '+5.4%', trendUp: true },
   ]
 
@@ -57,6 +63,10 @@ export default function Overview() {
           <h1 className="text-2xl font-black text-slate-900">Overview Dashboard</h1>
           <p className="text-sm text-slate-500">Statistical summary across waiters, manager, accountant and client QR orders.</p>
         </div>
+        <select value={activeBranchId} onChange={(e) => setActiveBranchId(e.target.value)} className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
+          <option value="all">All branches</option>
+          {branches.filter((branch) => branch.name?.toLowerCase() !== 'main branch').map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
+        </select>
       </div>
 
       {subscription && !subscription.isActive && (
@@ -97,8 +107,8 @@ export default function Overview() {
             {branchData.map((b, idx) => (
               <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                 <div>
-                  <p className="font-semibold text-slate-900 text-sm">{b.branchName || `Branch ${idx + 1}`}</p>
-                  <p className="text-xs text-slate-500">{b.orderCount || 0} orders</p>
+                  <p className="font-semibold text-slate-900 text-sm">{b.name || b.branchName || `Branch ${idx + 1}`}</p>
+                  <p className="text-xs text-slate-500">{b.orders || b.orderCount || 0} orders</p>
                 </div>
                 <p className="font-bold text-slate-900">{fmt(b.revenue)}</p>
               </div>

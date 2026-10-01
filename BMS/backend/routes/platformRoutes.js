@@ -18,6 +18,7 @@ import {
   listPayments,
   paymentStats,
   refundPayment,
+  settlePayment,
   listAdmins,
   createAdmin,
   updateAdmin,
@@ -77,6 +78,7 @@ router.patch('/subscriptions/:id', updateSubscriptionAdmin)
 router.get('/payments', listPayments)
 router.get('/payments/stats', paymentStats)
 router.post('/payments/:id/refund', refundPayment)
+router.post('/payments/:id/settle', settlePayment)
 
 // Platform admins (Users)
 router.get('/admins', listAdmins)

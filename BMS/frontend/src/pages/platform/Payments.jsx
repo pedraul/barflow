@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { CircleDollarSign, Search, Download, RefreshCw, Receipt, Undo2 } from 'lucide-react'
-import { fetchPlatformPayments, fetchPaymentStats, refundPayment } from '../../api/endpoints'
+import { fetchPlatformPayments, fetchPaymentStats, refundPayment, settlePayment } from '../../api/endpoints'
 
 const CURRENCY = 'RWF'
 const formatCurr = (v) => new Intl.NumberFormat('en-RW', { style: 'currency', currency: CURRENCY, minimumFractionDigits: 0 }).format(v || 0)
@@ -44,6 +44,19 @@ export default function Payments() {
     }
   }
 
+  const handleSettle = async (p) => {
+    if (!window.confirm(`Settle payment of ${formatCurr(p.amount)} from ${p.business}?`)) return
+    setBusy(`${p.id}-settle`)
+    try {
+      await settlePayment(p.id)
+      await load()
+    } catch (e) {
+      alert(e.response?.data?.error || 'Settle failed.')
+    } finally {
+      setBusy(null)
+    }
+  }
+
   const filtered = useMemo(() => payments.filter((p) => {
     const matchesQ = !q || [p.business, p.transactionId, p.plan].some((v) => (v || '').toLowerCase().includes(q.toLowerCase()))
     const matchesStatus = statusFilter === 'all' || p.status === statusFilter
@@ -51,8 +64,8 @@ export default function Payments() {
   }), [payments, q, statusFilter])
 
   const badge = (status) => {
-    const map = { paid: 'bg-emerald-100 text-emerald-700', pending: 'bg-amber-100 text-amber-700', failed: 'bg-red-100 text-red-700', refunded: 'bg-slate-200 text-slate-600' }
-    return <span className={`px-2 py-0.5 text-xs font-semibold rounded-full capitalize ${map[status] || 'bg-slate-100 text-slate-600'}`}>{status}</span>
+    const map = { paid: 'bg-emerald-100 text-emerald-700', settled: 'bg-blue-100 text-blue-700', pending: 'bg-amber-100 text-amber-700', failed: 'bg-red-100 text-red-700', refunded: 'bg-slate-200 text-slate-600' }
+    return <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full capitalize ${map[status] || 'bg-slate-100 text-slate-600'}`}>{status}</span>
   }
 
   const exportCsv = () => {
@@ -118,6 +131,7 @@ export default function Payments() {
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white capitalize focus:ring-2 focus:ring-indigo-500 outline-none">
           <option value="all">All statuses</option>
           <option value="paid">Paid</option>
+          <option value="settled">Settled</option>
           <option value="pending">Pending</option>
           <option value="failed">Failed</option>
           <option value="refunded">Refunded</option>
@@ -126,33 +140,36 @@ export default function Payments() {
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-xs">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-600">
-                <th className="text-left px-4 py-3 font-semibold">Business</th>
-                <th className="text-left px-4 py-3 font-semibold">Plan</th>
-                <th className="text-left px-4 py-3 font-semibold">Amount</th>
-                <th className="text-left px-4 py-3 font-semibold">Method</th>
-                <th className="text-left px-4 py-3 font-semibold">Transaction</th>
-                <th className="text-left px-4 py-3 font-semibold">Status</th>
-                <th className="text-left px-4 py-3 font-semibold">Date</th>
-                <th className="text-right px-4 py-3 font-semibold">Actions</th>
+                <th className="text-left px-3 py-2 font-semibold">Business</th>
+                <th className="text-left px-3 py-2 font-semibold">Plan</th>
+                <th className="text-left px-3 py-2 font-semibold">Amount</th>
+                <th className="text-left px-3 py-2 font-semibold">Method</th>
+                <th className="text-left px-3 py-2 font-semibold">Transaction</th>
+                <th className="text-left px-3 py-2 font-semibold">Status</th>
+                <th className="text-left px-3 py-2 font-semibold">Date</th>
+                <th className="text-right px-3 py-2 font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 && <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400">No payments found.</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={8} className="px-3 py-3 text-center text-slate-400">No payments found.</td></tr>}
               {filtered.map((p) => (
                 <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50">
-                  <td className="px-4 py-3 font-semibold text-slate-900">{p.business}</td>
-                  <td className="px-4 py-3 text-slate-700">{p.plan}</td>
-                  <td className="px-4 py-3 font-medium text-slate-900">{formatCurr(p.amount)}</td>
-                  <td className="px-4 py-3 text-slate-700">{METHOD_LABEL[p.method] || p.method}</td>
-                  <td className="px-4 py-3 text-slate-500 font-mono text-xs">{p.transactionId || '—'}</td>
-                  <td className="px-4 py-3">{badge(p.status)}</td>
-                  <td className="px-4 py-3 text-slate-400">{p.date ? new Date(p.date).toLocaleDateString() : '—'}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2 font-semibold text-slate-900">{p.business}</td>
+                  <td className="px-3 py-2 text-slate-700">{p.plan}</td>
+                  <td className="px-3 py-2 font-medium text-slate-900">{formatCurr(p.amount)}</td>
+                  <td className="px-3 py-2 text-slate-700">{METHOD_LABEL[p.method] || p.method}</td>
+                  <td className="px-3 py-2 text-slate-500 font-mono text-xs">{p.transactionId || '—'}</td>
+                  <td className="px-3 py-2">{badge(p.status)}</td>
+                  <td className="px-3 py-2 text-slate-400">{p.date ? new Date(p.date).toLocaleDateString() : '—'}</td>
+                  <td className="px-3 py-2">
                     <div className="flex justify-end gap-1.5">
                       <button title="Receipt" onClick={() => downloadReceipt(p)} className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100"><Receipt size={15} /></button>
+                      {p.status === 'paid' && (
+                        <button title="Settle" onClick={() => handleSettle(p)} disabled={busy === `${p.id}-settle`} className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 disabled:opacity-40"><CircleDollarSign size={15} /></button>
+                      )}
                       {p.status === 'paid' && (
                         <button title="Refund" onClick={() => handleRefund(p)} disabled={busy === `${p.id}-refund`} className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 disabled:opacity-40"><Undo2 size={15} /></button>
                       )}

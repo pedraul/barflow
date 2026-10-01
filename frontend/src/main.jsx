@@ -1,6 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
+import { getWorkspaceBasePath } from './config/workspaceUrl'
 import App from './App'
 import { SubscriptionProvider } from './context/SubscriptionContext'
 import { OrdersProvider } from './context/OrdersContext'
@@ -53,6 +54,7 @@ document.addEventListener('click', (event) => {
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter
+      basename={getWorkspaceBasePath() || undefined}
       future={{
         v7_startTransition: true,
         v7_relativeSplatPath: true,

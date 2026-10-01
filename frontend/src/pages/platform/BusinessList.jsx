@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Search, Eye, Pencil, Trash2, ShieldCheck, Ban, Play, X, RefreshCw, Building2 } from 'lucide-react'
-import { fetchBusinesses, toggleBusinessStatus, updateBusiness, deleteBusiness } from '../../api/endpoints'
+import { fetchBusinesses, toggleBusinessStatus, setUnpaidBusinessAccess, updateBusiness, deleteBusiness } from '../../api/endpoints'
 import { PROVINCES, DISTRICTS_BY_PROVINCE } from '../../constants/locationOptions'
 
 const BUSINESS_TYPES = ['bar', 'restaurant', 'hotel', 'lounge', 'other']
@@ -55,6 +55,23 @@ export default function BusinessList() {
     }
   }
 
+  const handleUnpaidAccess = async (business, granted) => {
+    const message = granted
+      ? `Grant unpaid access to ${business.name}? They can use BarFlow before paying their subscription.`
+      : `Revoke unpaid access from ${business.name}? Their next request will be blocked.`
+    if (!window.confirm(message)) return
+
+    setActionLoading(`${business.id}-access`)
+    try {
+      await setUnpaidBusinessAccess(business.id, granted)
+      await load()
+    } catch (e) {
+      alert(e.response?.data?.error || 'Could not update unpaid access.')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
   const handleDelete = async (b) => {
     if (!window.confirm(`Delete "${b.name}"? This permanently removes the business and all its data.`)) return
     setActionLoading(`${b.id}-delete`)
@@ -99,7 +116,7 @@ export default function BusinessList() {
   }
 
   const hasPendingRenewal = (b) => b.isVerified && b.subPaymentStatus === 'pending'
-  const getStatus = (b) => b.isSuspended ? 'Suspended' : (hasPendingRenewal(b) ? 'Renewal pending' : (b.isVerified ? 'Active' : 'Pending'))
+  const getStatus = (b) => b.isSuspended ? 'Suspended' : (b.unpaidAccessGranted ? 'Access granted' : (hasPendingRenewal(b) ? 'Renewal pending' : (b.hasActiveSubscription ? 'Active' : (b.isVerified ? 'Subscription inactive' : 'Pending'))))
 
   const filtered = useMemo(() => businesses.filter((b) => {
     const s = getStatus(b)
@@ -113,7 +130,7 @@ export default function BusinessList() {
 
   const badge = (b) => {
     const s = getStatus(b)
-    const map = { Active: 'bg-emerald-100 text-emerald-700', Pending: 'bg-amber-100 text-amber-700', 'Renewal pending': 'bg-amber-100 text-amber-700', Suspended: 'bg-red-100 text-red-700' }
+    const map = { Active: 'bg-emerald-100 text-emerald-700', Pending: 'bg-amber-100 text-amber-700', 'Renewal pending': 'bg-amber-100 text-amber-700', 'Access granted': 'bg-sky-100 text-sky-700', 'Subscription inactive': 'bg-orange-100 text-orange-700', Suspended: 'bg-red-100 text-red-700' }
     return <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${map[s]}`}>{s}</span>
   }
 
@@ -143,7 +160,9 @@ export default function BusinessList() {
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
           <option value="all">All statuses</option>
           <option value="active">Active</option>
+          <option value="subscription inactive">Subscription inactive</option>
           <option value="pending">Pending</option>
+          <option value="access granted">Access granted</option>
           <option value="suspended">Suspended</option>
         </select>
         <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white capitalize focus:ring-2 focus:ring-indigo-500 outline-none">
@@ -173,11 +192,12 @@ export default function BusinessList() {
                   <th className="text-left px-3 py-2 font-semibold">Plan</th>
                   <th className="text-left px-3 py-2 font-semibold">Registered</th>
                   <th className="text-left px-3 py-2 font-semibold">Status</th>
+                  <th className="text-left px-3 py-2 font-semibold">Unpaid access</th>
                   <th className="text-right px-3 py-2 font-semibold">Actions</th>
                 </tr>
               </thead>
             <tbody>
-              {filtered.length === 0 && <tr><td colSpan={9} className="px-3 py-3 text-center text-slate-400">No businesses found.</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={10} className="px-3 py-3 text-center text-slate-400">No businesses found.</td></tr>}
               {filtered.map((b) => (
                 <tr key={b.id} className="border-b border-slate-100 hover:bg-slate-50">
                   <td className="px-3 py-2">
@@ -200,6 +220,21 @@ export default function BusinessList() {
                   </td>
                   <td className="px-3 py-2 text-slate-400">{b.createdAt ? new Date(b.createdAt).toLocaleDateString() : 'N/A'}</td>
                   <td className="px-3 py-2">{badge(b)}</td>
+                  <td className="px-3 py-2">
+                    {b.unpaidAccessGranted ? (
+                      <button type="button" title="Revoke unpaid platform access" onClick={() => handleUnpaidAccess(b, false)} disabled={actionLoading === `${b.id}-access`} className="px-2.5 py-1.5 text-xs font-semibold text-red-700 bg-red-50 rounded-lg hover:bg-red-100 disabled:opacity-40">
+                        {actionLoading === `${b.id}-access` ? 'Saving...' : 'Revoke access'}
+                      </button>
+                    ) : b.hasActiveSubscription ? (
+                      <span className="text-xs text-emerald-700">Subscription active</span>
+                    ) : b.isSuspended ? (
+                      <span className="text-xs text-slate-400">Suspended</span>
+                    ) : (
+                      <button type="button" title="Grant platform access before payment" onClick={() => handleUnpaidAccess(b, true)} disabled={actionLoading === `${b.id}-access`} className="px-2.5 py-1.5 text-xs font-semibold text-sky-700 bg-sky-50 rounded-lg hover:bg-sky-100 disabled:opacity-40">
+                        {actionLoading === `${b.id}-access` ? 'Saving...' : 'Grant access'}
+                      </button>
+                    )}
+                  </td>
                   <td className="px-3 py-2">
                     <div className="flex justify-end gap-1.5">
                       <IconBtn title="View" onClick={() => setViewing(b)} color="text-slate-600 hover:bg-slate-100"><Eye size={15} /></IconBtn>
@@ -235,6 +270,7 @@ export default function BusinessList() {
             <Detail label="Registration Code" value={viewing.registrationCode || '—'} />
             <Detail label="Type" value={viewing.businessType} />
             <Detail label="Status" value={getStatus(viewing)} />
+            <Detail label="Unpaid Access" value={viewing.unpaidAccessGranted ? 'Granted' : 'Not granted'} />
             <Detail label="Email" value={viewing.contactEmail || '—'} />
             <Detail label="Phone" value={viewing.contactPhone || '—'} />
             <Detail label="Province" value={viewing.province || '—'} />

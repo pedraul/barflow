@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { registerBusiness, fetchPlans } from '../../api/endpoints'
 import { useAuth } from '../../context/AuthContext'
+import { buildWorkspaceUrl } from '../../config/workspaceUrl'
 import {
   Building2, LayoutDashboard, Briefcase, CreditCard, RefreshCw, BarChart3,
   Users, ClipboardList, Settings, Menu, Bell, LogOut, Info, CheckCircle2,
@@ -119,6 +120,8 @@ export default function RegisterBusiness() {
       })
       if (res.token && res.user) {
         login({ token: res.token, user: res.user })
+        window.location.assign(buildWorkspaceUrl({ ...res.user, businessSlug: res.businessSlug }, '/owner/subscription'))
+        return
       }
       navigate('/owner/subscription')
     } catch (err) {

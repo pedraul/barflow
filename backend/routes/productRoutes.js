@@ -48,17 +48,20 @@ async function reuseCategoryName(businessId, category) {
 router.get('/public-menu', async (req, res) => {
   const tableNumber = req.query.table || '1'
   const businessId = req.query.businessId || req.user?.businessId
+  const branchId = req.query.branchId || null
   try {
     if (!businessId) {
       return res.json({ tableNumber, categories: [] })
     }
 
     const { rows } = await query(
-      `SELECT id, name, category, selling_price, image_url, stock_unit, quantity
-       FROM products
-       WHERE is_active = true AND business_id = $1
-       ORDER BY category, name`,
-      [businessId]
+      `SELECT p.id, p.name, p.category, p.selling_price, p.image_url, p.stock_unit,
+              COALESCE(bs.quantity, p.quantity) AS quantity
+       FROM products p
+       LEFT JOIN branch_stock bs ON bs.product_id = p.id AND bs.branch_id = $2::uuid
+       WHERE p.is_active = true AND p.business_id = $1
+       ORDER BY p.category, p.name`,
+      [businessId, branchId]
     )
 
     res.json({
@@ -73,12 +76,17 @@ router.get('/public-menu', async (req, res) => {
 router.get('/', ...managerOnly, async (req, res) => {
   try {
     const businessId = req.user?.businessId
+    const branchId = req.user?.branchId
+    if (!branchId) return res.status(403).json({ error: 'This manager is not assigned to a branch.' })
     const { rows } = await query(
-      `SELECT id, name, category, selling_price, cost_price, stock_unit, low_stock_threshold, image_url, quantity, is_active, created_at
-       FROM products
-       WHERE business_id = $1
-       ORDER BY created_at DESC`,
-      [businessId]
+      `SELECT p.id, p.name, p.category, p.selling_price, p.cost_price, p.stock_unit,
+              p.low_stock_threshold, p.image_url, COALESCE(bs.quantity, 0) AS quantity,
+              p.is_active, p.created_at
+       FROM products p
+       LEFT JOIN branch_stock bs ON bs.product_id = p.id AND bs.branch_id = $2
+       WHERE p.business_id = $1
+       ORDER BY p.created_at DESC`,
+      [businessId, branchId]
     )
     res.json(
       rows.map((p) => ({
@@ -117,6 +125,16 @@ router.post('/', ...managerOnly, async (req, res) => {
       [businessId, name, await reuseCategoryName(businessId, category), price, costPrice || 0, unit || 'unit', minStockLevel || 0, imageUrl || '', quantity || 0]
     )
     const p = rows[0]
+    if (req.user?.branchId) {
+      await query(
+        `INSERT INTO branch_stock (branch_id, product_id, quantity, updated_at)
+         VALUES ($1, $2, $3, NOW())
+         ON CONFLICT (branch_id, product_id)
+         DO UPDATE SET quantity = EXCLUDED.quantity, updated_at = NOW()`,
+        [req.user.branchId, p.id, quantity || 0]
+      )
+      p.quantity = quantity || 0
+    }
 
 await logAudit({
        userId: req.user?.id,
@@ -160,7 +178,9 @@ router.patch('/:id', ...managerOnly, async (req, res) => {
     if (unit !== undefined) { fields.push(`stock_unit = $${idx++}`); params.push(unit) }
     if (minStockLevel !== undefined) { fields.push(`low_stock_threshold = $${idx++}`); params.push(minStockLevel) }
     if (imageUrl !== undefined) { fields.push(`image_url = $${idx++}`); params.push(imageUrl) }
-    if (quantity !== undefined) { fields.push(`quantity = $${idx++}`); params.push(quantity) }
+    if (quantity !== undefined && !req.user?.branchId) {
+      return res.status(403).json({ error: 'This manager is not assigned to a branch.' })
+    }
     if (isActive !== undefined) { fields.push(`is_active = $${idx++}`); params.push(isActive) }
 
     if (!fields.length) {
@@ -177,6 +197,16 @@ router.patch('/:id', ...managerOnly, async (req, res) => {
       return res.status(404).json({ error: 'Product not found.' })
     }
 
+    if (quantity !== undefined) {
+      await query(
+        `INSERT INTO branch_stock (branch_id, product_id, quantity, updated_at)
+         VALUES ($1, $2, $3, NOW())
+         ON CONFLICT (branch_id, product_id)
+         DO UPDATE SET quantity = EXCLUDED.quantity, updated_at = NOW()`,
+        [req.user.branchId, id, quantity]
+      )
+    }
+
 await logAudit({
        userId: req.user?.id,
        actorName: req.user?.full_name || req.user?.email || 'System',
@@ -186,7 +216,11 @@ await logAudit({
        businessId: req.user?.businessId,
      })
 
-    const p = rows[0]
+    const { rows: stockRows } = await query(
+      'SELECT quantity FROM branch_stock WHERE branch_id = $1 AND product_id = $2',
+      [req.user.branchId, id]
+    )
+    const p = { ...rows[0], quantity: stockRows[0]?.quantity ?? 0 }
     res.json({
       id: p.id,
       name: p.name,

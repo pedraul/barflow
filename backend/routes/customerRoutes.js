@@ -14,17 +14,20 @@ const router = Router()
 router.get('/menu', async (req, res) => {
   const tableNumber = req.query.table || '1'
   const businessId = req.query.businessId || req.user?.businessId
+  const branchId = req.query.branchId || null
   try {
     if (!businessId) {
       return res.json({ tableNumber, categories: [] })
     }
 
     const { rows } = await query(
-      `SELECT id, name, category, selling_price, image_url, stock_unit, quantity
-       FROM products
-       WHERE is_active = true AND business_id = $1
-       ORDER BY category, name`,
-      [businessId]
+      `SELECT p.id, p.name, p.category, p.selling_price, p.image_url, p.stock_unit,
+          COALESCE(bs.quantity, p.quantity) AS quantity
+       FROM products p
+       LEFT JOIN branch_stock bs ON bs.product_id = p.id AND bs.branch_id = $2::uuid
+       WHERE p.is_active = true AND p.business_id = $1
+       ORDER BY p.category, p.name`,
+      [businessId, branchId]
     )
 
     const grouped = new Map()
@@ -57,14 +60,19 @@ router.get('/menu', async (req, res) => {
  * Body: { tableNumber, items: [{productId, quantity, name, price}], sessionToken }
  */
 router.post('/order', async (req, res) => {
-  const { tableNumber, items = [], sessionToken, businessId } = req.body
+  const { tableNumber, items = [], sessionToken, businessId, branchId: requestedBranchId } = req.body
   try {
     const resolvedBusinessId = businessId || (req.user?.businessId) || (await query('SELECT id FROM businesses LIMIT 1')).rows[0]?.id
     if (!resolvedBusinessId) {
       return res.status(400).json({ error: 'Business not found. Please provide businessId.' })
     }
 
-    const { rows: branchRows } = await query('SELECT id FROM branches WHERE business_id = $1 LIMIT 1', [resolvedBusinessId])
+    const { rows: branchRows } = await query(
+      `SELECT id FROM branches
+       WHERE business_id = $1 AND ($2::uuid IS NULL OR id = $2::uuid)
+       ORDER BY created_at ASC LIMIT 1`,
+      [resolvedBusinessId, requestedBranchId || null]
+    )
     const branchId = branchRows[0]?.id
 
     // Quick dedupe: if a very recent open order for this table exists with
@@ -165,6 +173,7 @@ router.get('/order/:orderId/status', async (req, res) => {
  */
 router.post('/payment/initiate', async (req, res) => {
   const { orderId, method, customerPhone } = req.body
+  let resolvedCustomerPhone = customerPhone
   if (!orderId || !method) {
     return res.status(400).json({ error: 'orderId and method are required' })
   }
@@ -182,20 +191,20 @@ router.post('/payment/initiate', async (req, res) => {
     const order = orderResult.rows[0]
 
     // If mobile money, phone is recommended but not required in demo mode
-    if ((method === 'mtn_momo' || method === 'airtel_money') && !customerPhone) {
-      customerPhone = `+250${Math.floor(100000000 + Math.random() * 900000000)}`
+    if ((method === 'mtn_momo' || method === 'airtel_money') && !resolvedCustomerPhone) {
+      resolvedCustomerPhone = `+250${Math.floor(100000000 + Math.random() * 900000000)}`
     }
 
     // Update customer phone on order
-    if (customerPhone) {
-      await query('UPDATE orders SET customer_phone = $1 WHERE id = $2', [customerPhone, orderId])
+    if (resolvedCustomerPhone) {
+      await query('UPDATE orders SET customer_phone = $1 WHERE id = $2', [resolvedCustomerPhone, orderId])
     }
 
     const result = await initiatePayment({
       orderId: order.id,
       amount: Number(order.total_amount),
       method,
-      customerPhone: customerPhone || '',
+      customerPhone: resolvedCustomerPhone || '',
       customerName: `Table ${order.table_number}`,
     })
 
@@ -220,17 +229,28 @@ await logAudit({
  */
 router.get('/orders/table', async (req, res) => {
   const tableNumber = req.query.table
+  const { businessId, branchId } = req.query
   if (!tableNumber) {
     return res.status(400).json({ error: 'table is required' })
   }
 
   try {
+    const params = [tableNumber]
+    const filters = ['table_number = $1', "status NOT IN ('Paid', 'Cancelled')"]
+    if (businessId) {
+      params.push(businessId)
+      filters.push(`business_id = $${params.length}`)
+    }
+    if (branchId) {
+      params.push(branchId)
+      filters.push(`branch_id = $${params.length}`)
+    }
     const { rows } = await query(
       `SELECT id, order_number, status, total_amount, table_number, order_type, source, created_at
        FROM orders
-       WHERE table_number = $1 AND status NOT IN ('Paid', 'Cancelled')
+       WHERE ${filters.join(' AND ')}
        ORDER BY created_at DESC`,
-      [tableNumber]
+      params
     )
 
     const orders = []

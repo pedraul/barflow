@@ -35,17 +35,19 @@ export async function initiatePayment({ orderId, amount, method, customerPhone, 
     throw new Error(`Unsupported payment method: ${method}`)
   }
 
+  const { rows: orderRows } = await query(
+    `SELECT business_id, branch_id FROM orders WHERE id = $1 LIMIT 1`,
+    [orderId]
+  )
+  if (!orderRows.length) throw new Error('Order not found')
+  const orderContext = orderRows[0]
+
   const reference = provider.generateReference()
 
-  // Record the payment in the database
-  let businessId
-  const businessResult = await query('SELECT id FROM businesses LIMIT 1')
-  businessId = businessResult.rows[0]?.id
-
   const paymentResult = await query(
-    `INSERT INTO payments (order_id, method, amount, reference, paid_at)
-     VALUES ($1, $2, $3, $4, NOW()) RETURNING id`,
-    [orderId, method, amount, reference]
+    `INSERT INTO payments (order_id, business_id, branch_id, method, amount, reference, paid_at, provider, provider_status)
+     VALUES ($1, $2, $3, $4, $5, $6, NULL, $7, 'PENDING') RETURNING id`,
+    [orderId, orderContext.business_id, orderContext.branch_id, method, amount, reference, method === 'cash' ? null : 'momo']
   )
 
   const paymentId = paymentResult.rows[0].id
@@ -89,12 +91,6 @@ export async function initiatePayment({ orderId, amount, method, customerPhone, 
  * In production, this would be a webhook from the mobile money provider
  */
 export async function verifyPayment(paymentId) {
-  // Update payment as confirmed
-  await query(
-    `UPDATE payments SET paid_at = NOW() WHERE id = $1`,
-    [paymentId]
-  )
-
   // Get payment details
   const result = await query(
     `SELECT p.*, o.total_amount, o.table_number, o.order_number,
@@ -111,6 +107,25 @@ export async function verifyPayment(paymentId) {
     throw new Error('Payment not found')
   }
 
+  if (!payment.paid_at) {
+    await query(
+      `UPDATE payments SET paid_at = NOW(), provider_status = 'SUCCESS' WHERE id = $1`,
+      [paymentId]
+    )
+  }
+
+  const existingReceipt = await query(
+    `SELECT receipt_data FROM receipts WHERE order_id = $1 ORDER BY created_at DESC LIMIT 1`,
+    [payment.order_id]
+  )
+  if (existingReceipt.rows[0]?.receipt_data) {
+    return {
+      verified: true,
+      receipt: existingReceipt.rows[0].receipt_data,
+      smsSent: false,
+    }
+  }
+
   // Generate receipt
   const receipt = await generateReceipt({
     orderId: payment.order_id,
@@ -125,8 +140,10 @@ export async function verifyPayment(paymentId) {
 
   // Update order status to Paid
   await query(
-    `UPDATE orders SET status = 'Paid', completed_at = NOW() WHERE id = $1`,
-    [payment.order_id]
+    `UPDATE orders
+     SET status = 'Paid', payment_method = $2, completed_at = NOW()
+     WHERE id = $1`,
+    [payment.order_id, payment.method]
   )
 
   // Record status history
@@ -137,7 +154,7 @@ export async function verifyPayment(paymentId) {
   )
 
   // Simulate sending receipt via SMS/USSD
-  const smsSent = false
+  let smsSent = false
   if (payment.customer_phone && payment.customer_phone !== 'N/A') {
     // In production, integrate with SMS provider (e.g., Twilio, Africa's Talking)
     // await sendSMS(payment.customer_phone, `Receipt ${receipt.receiptNumber} for order ${receipt.orderNumber}. Total: ${formatCurrency(amount)}. Thank you!`)

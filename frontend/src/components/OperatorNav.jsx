@@ -12,7 +12,6 @@ const LINKS = [
     ],
   },
   { to: '/operator/reports', label: 'Reports', key: 'reports' },
-  { to: '/notifications', label: 'Notifications', key: 'notifications' },
   { to: '/account', label: 'My Account', key: 'account' },
   { to: '/operator/settings', label: 'Settings', key: 'settings' },
 ]

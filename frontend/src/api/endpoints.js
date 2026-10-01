@@ -55,7 +55,7 @@ export async function updateAvatar(avatarUrl) {
 
 // ===== USERS =====
 export async function fetchUsers() {
-  const { data } = await api.get('/notifications/users')
+  const { data } = await api.get('/users')
   return data
 }
 
@@ -287,10 +287,11 @@ export async function updateSubscription(status) {
 }
 
 // ===== QR CUSTOMER (Public) =====
-export async function fetchMenu(tableNumber, businessId) {
+export async function fetchMenu(tableNumber, businessId, branchId) {
   const params = new URLSearchParams()
   params.set('table', tableNumber)
   if (businessId) params.set('businessId', businessId)
+  if (branchId) params.set('branchId', branchId)
   const { data } = await api.get(`/customer/menu?${params.toString()}`)
   return data
 }
@@ -320,8 +321,11 @@ export async function fetchReceipt(orderId) {
   return data
 }
 
-export async function fetchOrdersByTable(tableNumber) {
-  const { data } = await api.get(`/customer/orders/table?table=${tableNumber}`)
+export async function fetchOrdersByTable(tableNumber, businessId, branchId) {
+  const params = new URLSearchParams({ table: tableNumber })
+  if (businessId) params.set('businessId', businessId)
+  if (branchId) params.set('branchId', branchId)
+  const { data } = await api.get(`/customer/orders/table?${params.toString()}`)
   return data
 }
 
@@ -378,8 +382,8 @@ export async function saveReceiptSettings(settings) {
   return data
 }
 
-export async function markOrderAsPaid(id) {
-  const { data } = await api.post(`/operator/orders/${id}/mark-paid`)
+export async function markOrderAsPaid(id, method) {
+  const { data } = await api.post(`/operator/orders/${id}/mark-paid`, { method })
   return data
 }
 
@@ -516,57 +520,6 @@ export async function fetchManagerRevenueReport({ from, to } = {}) {
   return data
 }
 
-// ===== NOTIFICATIONS (BROADCAST + DIRECT MESSAGING) =====
-export async function fetchNotifications() {
-  const { data } = await api.get('/notifications')
-  return data
-}
-
-export async function fetchGroupMessages() {
-  const { data } = await api.get('/notifications/group')
-  return data
-}
-
-export async function fetchUnreadNotificationCount() {
-  const { data } = await api.get('/notifications/unread-count')
-  return data.count
-}
-
-export async function fetchConversations() {
-  const { data } = await api.get('/notifications/conversations')
-  return data
-}
-
-export async function fetchConversationMessages(userId) {
-  const { data } = await api.get(`/notifications/messages/${userId}`)
-  return data
-}
-
-export async function sendNotification(message, receiverId, parentId, mediaUrl, mediaType) {
-  const { data } = await api.post('/notifications', { message, receiverId, parentId, mediaUrl, mediaType })
-  return data
-}
-
-export async function markNotificationRead(id) {
-  const { data } = await api.patch(`/notifications/${id}/read`)
-  return data
-}
-
-export async function deleteNotification(id) {
-  const { data } = await api.delete(`/notifications/${id}`)
-  return data
-}
-
-export async function editNotification(id, message) {
-  const { data } = await api.patch(`/notifications/${id}`, { message })
-  return data
-}
-
-export async function markAllNotificationsRead() {
-  const { data } = await api.patch('/notifications/mark-all-read')
-  return data
-}
-
 // ===== PLATFORM / SAAS =====
 export async function platformLogin(email, password) {
   const { data } = await api.post('/platform/login', { email, password })
@@ -599,6 +552,11 @@ export async function fetchBusiness(id) {
 
 export async function toggleBusinessStatus(id, action) {
   const { data } = await api.patch(`/platform/businesses/${id}/status`, { action })
+  return data
+}
+
+export async function setUnpaidBusinessAccess(id, granted) {
+  const { data } = await api.patch(`/platform/businesses/${id}/access`, { granted })
   return data
 }
 

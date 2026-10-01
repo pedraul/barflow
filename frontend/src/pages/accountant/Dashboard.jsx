@@ -34,13 +34,21 @@ export default function AccountantDashboard() {
   const [cashFlowFilter, setCashFlowFilter] = useState('This Month');
   const [expenseFilter, setExpenseFilter] = useState('This Month');
 
+  const loadSummary = () => {
+    setLoading(true)
+    return fetchAccountantSummary()
+      .then((result) => setData(result))
+      .catch(() => setData(null))
+      .finally(() => setLoading(false))
+  }
+
   useEffect(() => {
     let active = true
-    fetchAccountantSummary()
-      .then((result) => active && setData(result))
-      .catch(() => active && setData(null))
-      .finally(() => active && setLoading(false))
-    return () => { active = false }
+    loadSummary()
+    const refreshTimer = window.setInterval(() => {
+      if (active) loadSummary()
+    }, 30000)
+    return () => { active = false; window.clearInterval(refreshTimer) }
   }, [])
 
   if (loading) {
@@ -64,6 +72,8 @@ export default function AccountantDashboard() {
   }
 
   const revenue = data.revenue || 0
+  const totalSales = data.taxSummary?.totalSales || 0
+  const vatTotal = data.taxSummary?.vatCollected || 0
   const expenses = data.expenses || 0
   const profit = data.profit || 0
   const cashInHand = data.cashInHand || 0
@@ -89,6 +99,26 @@ export default function AccountantDashboard() {
             </div>
             <div className="p-2.5 bg-emerald-50 rounded-lg text-emerald-600">
               <TrendingUp className="w-5 h-5" />
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+            <div>
+              <div className="text-xs font-medium text-slate-500">Total Sales</div>
+              <div className="text-xl font-bold text-slate-900 mt-1">{money(totalSales)}</div>
+            </div>
+            <div className="p-2.5 bg-blue-50 rounded-lg text-blue-600">
+              <BarChart3 className="w-5 h-5" />
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+            <div>
+              <div className="text-xs font-medium text-slate-500">VAT Total</div>
+              <div className="text-xl font-bold text-slate-900 mt-1">{money(vatTotal)}</div>
+            </div>
+            <div className="p-2.5 bg-amber-50 rounded-lg text-amber-600">
+              <Receipt className="w-5 h-5" />
             </div>
           </div>
 

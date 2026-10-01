@@ -91,28 +91,28 @@ export default function OwnerWithdraw() {
         {viewLogs && (
           logs.length === 0 ? <p className="text-slate-400 mt-4">No withdrawals recorded.</p> : (
             <div className="border border-slate-200 rounded-lg overflow-x-auto mt-4">
-              <table className="w-full text-sm border-collapse">
+              <table className="w-full text-xs border-collapse">
                 <thead>
                   <tr>
-                     <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Phone</th>
-                     <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Purpose</th>
-                     <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-right">Amount</th>
-                     <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-center">Status</th>
-                     <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-right">Date</th>
+                     <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Phone</th>
+                     <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Purpose</th>
+                     <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-right">Amount</th>
+                     <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-center">Status</th>
+                     <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-right">Date</th>
                    </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {logs.map((log) => (
                      <tr key={log.id} className="hover:bg-indigo-50">
-                      <td className="p-3 text-slate-700">{log.phoneNumber}</td>
-                      <td className="p-3 text-slate-700">{log.purpose}</td>
-                      <td className="p-3 text-right font-semibold text-slate-900">{fmt(log.amount)}</td>
-                      <td className="p-3 text-center">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${log.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : log.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>
+                      <td className="p-2 text-slate-700">{log.phoneNumber}</td>
+                      <td className="p-2 text-slate-700">{log.purpose}</td>
+                      <td className="p-2 text-right font-semibold text-slate-900">{fmt(log.amount)}</td>
+                      <td className="p-2 text-center">
+                        <span className={`px-2 py-1 rounded-full text-[10px] font-medium ${log.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : log.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>
                           {log.status === 'approved' ? 'Approved' : log.status === 'rejected' ? 'Rejected' : 'Pending'}
                         </span>
                       </td>
-                      <td className="p-3 text-right text-slate-400">{new Date(log.createdAt).toLocaleDateString()}</td>
+                      <td className="p-2 text-right text-slate-400">{new Date(log.createdAt).toLocaleDateString()}</td>
                     </tr>
                   ))}
                 </tbody>

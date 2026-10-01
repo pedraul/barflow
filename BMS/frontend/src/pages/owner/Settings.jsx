@@ -7,21 +7,53 @@ import QRCode from '../../components/QRCode'
 import {
   User, Database, CreditCard, ShieldCheck, Lock, RefreshCw,
   Settings, HelpCircle, LogOut, FileText,
-  Menu, Bell, ChevronDown, Save, Wallet, Printer, Mail,
+  Menu, Bell, ChevronDown, Save, Wallet, Printer, Mail, ArrowLeft
 } from 'lucide-react'
 import AuditLogViewer from './AuditLogViewer'
 
-const TABS = [
-  { id: 'account', label: 'Account', icon: <User size={18} /> },
-  { id: 'notifications', label: 'Notifications', icon: <Mail size={18} /> },
-  { id: 'backup', label: 'Backup', icon: <Database size={18} /> },
-  { id: 'subscription', label: 'Subscription', icon: <CreditCard size={18} /> },
-  { id: 'audit', label: 'Audit', icon: <FileText size={18} /> },
-  { id: 'payments', label: 'Payments', icon: <Wallet size={18} /> },
-  { id: 'permissions', label: 'Permissions', icon: <ShieldCheck size={18} /> },
-  { id: 'security', label: 'Security', icon: <Lock size={18} /> },
-  { id: 'recovery', label: 'Recovery', icon: <RefreshCw size={18} /> },
+const SETTINGS_GROUPS = [
+  {
+    id: 'general_info',
+    label: 'General Info',
+    items: [
+      { id: 'account', label: 'Account', icon: <User size={18} /> },
+    ]
+  },
+  {
+    id: 'communication',
+    label: 'Communication',
+    items: [
+      { id: 'notifications', label: 'Notifications', icon: <Mail size={18} /> },
+    ]
+  },
+  {
+    id: 'financial',
+    label: 'Financial',
+    items: [
+      { id: 'subscription', label: 'Subscription', icon: <CreditCard size={18} /> },
+      { id: 'payments', label: 'Payments', icon: <Wallet size={18} /> },
+    ]
+  },
+  {
+    id: 'security',
+    label: 'Security',
+    items: [
+      { id: 'permissions', label: 'Permissions', icon: <ShieldCheck size={18} /> },
+      { id: 'security', label: 'Security', icon: <Lock size={18} /> },
+      { id: 'recovery', label: 'Recovery', icon: <RefreshCw size={18} /> },
+    ]
+  },
+  {
+    id: 'system',
+    label: 'System',
+    items: [
+      { id: 'backup', label: 'Backup', icon: <Database size={18} /> },
+      { id: 'audit', label: 'Audit', icon: <FileText size={18} /> },
+    ]
+  },
 ]
+
+const ALL_TABS = SETTINGS_GROUPS.flatMap(g => g.items)
 
 const EMAIL_NOTIFICATION_OPTIONS = [
   ['notify_registration', 'Business Registration Confirmation'],
@@ -55,14 +87,16 @@ export default function SystemSettings() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const [activeSubTab, setActiveSubTab] = useState('account')
+  const [message, setMessage] = useState('')
 
   // derive active subtab from path (e.g. /settings/security)
   React.useEffect(() => {
     const parts = pathname.split('/').filter(Boolean)
     const last = parts[parts.length - 1] || 'account'
-    if (TABS.find(t => t.id === last)) setActiveSubTab(last)
+    if (ALL_TABS.find(t => t.id === last)) {
+      setActiveSubTab(last)
+    }
   }, [pathname])
-  const [message, setMessage] = useState('')
   const [data, setData] = useState({
     business: { name: '', address: '', phone: '', email: '', currency: 'RWF', taxRate: 18 },
     settings: {}, permissions: [], backups: [],
@@ -117,6 +151,10 @@ export default function SystemSettings() {
   }, [load])
 
   const flash = (m) => { setMessage(m); setTimeout(() => setMessage(''), 4000) }
+
+  const goBack = () => {
+    navigate('/dashboard/owner')
+  }
 
   const handleSaveAccount = async () => {
     try {
@@ -275,6 +313,9 @@ export default function SystemSettings() {
         {/* 2. TOP BANNER HEADER */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 shadow-xs">
           <div className="flex items-center gap-4">
+            <button onClick={goBack} className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition" title="Back to Dashboard">
+              <ArrowLeft size={22} />
+            </button>
             <button className="text-slate-600 hover:text-slate-900 transition">
               <Menu size={20} />
             </button>
@@ -291,6 +332,9 @@ export default function SystemSettings() {
           </div>
 
           <div className="flex items-center gap-4">
+            <button onClick={goBack} className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition" title="Back to Dashboard">
+              <ArrowLeft size={22} />
+            </button>
             <div className="relative cursor-pointer p-1.5 hover:bg-slate-100 rounded-full transition">
               <Bell size={20} className="text-slate-600" />
               <span className="absolute top-1.5 right-1.5 bg-red-500 w-2 h-2 rounded-full"></span>
@@ -307,17 +351,32 @@ export default function SystemSettings() {
         </header>
 
         {/* 3. WORKING WORKSPACE SCROLL CONTENT */}
-        <main className="flex-1 overflow-y-auto p-8 flex gap-6 items-start">
+        <main className="owner-settings-workspace flex-1 overflow-y-auto p-4 md:p-8 flex flex-col md:flex-row gap-4 md:gap-6 items-start">
 
-          {/* LEFT COLUMN: Sub-Tab Controls */}
-            <div className="w-[240px] bg-white border border-slate-200 rounded-xl p-3 shadow-xs space-y-0.5 shrink-0">
-            {TABS.map((t) => (
-              <SubTabButton key={t.id} id={t.id} label={t.label} icon={t.icon} active={activeSubTab === t.id} onClick={(id) => { navigate(`/settings/${id}`); }} showBar={t.id === 'account'} />
-            ))}
+          {/* LEFT COLUMN: Sub-Tab Controls - vertical on desktop, horizontal on mobile */}
+          <div className="owner-settings-tabs w-full md:w-[240px] bg-white border border-slate-200 rounded-xl p-2 md:p-3 shadow-xs shrink-0">
+            <div className="flex md:flex-col gap-1 overflow-x-auto md:overflow-visible pb-1 md:pb-0 -mx-1 px-1 md:mx-0 md:px-0">
+              {SETTINGS_GROUPS.map((group) => {
+                const isGroupActive = group.items.some(i => i.id === activeSubTab)
+                return (
+                  <div key={group.id} className="flex-shrink-0 md:flex-shrink mb-1">
+                    <div className={`hidden md:block px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider ${isGroupActive ? 'text-indigo-700 bg-indigo-50' : 'text-slate-500'}`}>
+                      {group.label}
+                    </div>
+                    <div className="md:hidden text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2 py-1">{group.label}</div>
+                    <div className="flex md:flex-col gap-0.5">
+                      {group.items.map((t) => (
+                        <SubTabButton key={t.id} id={t.id} label={t.label} icon={t.icon} active={activeSubTab === t.id} onClick={(id) => { navigate(`/settings/${id}`); }} showBar={t.id === 'account'} />
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
 
           {/* RIGHT COLUMN: Settings Viewport Canvas */}
-          <div className="flex-1 bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
+          <div className="flex-1 bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden min-w-0">
             {message && (
               <div className={`m-6 p-3 rounded-lg text-sm font-medium border ${message.startsWith('❌') ? 'bg-red-50 border-red-300 text-red-800' : 'bg-emerald-50 border-emerald-300 text-emerald-800'}`}>{message}</div>
             )}
@@ -434,22 +493,22 @@ export default function SystemSettings() {
                   <p className="text-slate-400">No backups recorded yet.</p>
                 ) : (
                   <div className="border border-slate-200 rounded-lg overflow-x-auto">
-                    <table className="w-full text-sm border-collapse">
+                    <table className="w-full text-xs border-collapse">
                       <thead>
                         <tr>
-                          <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Name</th>
-                          <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Type</th>
-                          <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Status</th>
-                          <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-right">Created</th>
+                          <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Name</th>
+                          <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Type</th>
+                          <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Status</th>
+                          <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-right">Created</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {backups.map((b) => (
                           <tr key={b.id} className="hover:bg-slate-50">
-                            <td className="p-3 text-slate-700">{b.backupName}</td>
-                            <td className="p-3 text-slate-700">{b.backupType}</td>
-                            <td className="p-3"><span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold border bg-emerald-100 text-emerald-800 border-emerald-300">{b.status}</span></td>
-                            <td className="p-3 text-right text-slate-400">{new Date(b.createdAt).toLocaleString()}</td>
+                            <td className="p-2 text-slate-700">{b.backupName}</td>
+                            <td className="p-2 text-slate-700">{b.backupType}</td>
+                            <td className="p-2"><span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border bg-emerald-100 text-emerald-800 border-emerald-300">{b.status}</span></td>
+                            <td className="p-2 text-right text-slate-400">{new Date(b.createdAt).toLocaleString()}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -486,26 +545,26 @@ export default function SystemSettings() {
                 <SectionTitle title="ROLE PERMISSIONS" subtitle="Toggle what each role can do across the system." />
                 <div className="border-t border-slate-100"></div>
                 <div className="border border-slate-200 rounded-lg overflow-x-auto">
-                  <table className="w-full text-sm border-collapse">
+                  <table className="w-full text-xs border-collapse">
                     <thead>
                       <tr>
-                        <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Role</th>
-                        {PERMISSION_LABELS.map(([k, lbl]) => <th key={k} className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-center">{lbl}</th>)}
+                        <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Role</th>
+                        {PERMISSION_LABELS.map(([k, lbl]) => <th key={k} className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-center">{lbl}</th>)}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {permDraft.map((p) => (
                         <tr key={p.role}>
-                          <td className="p-3"><span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold border bg-slate-100 text-slate-500 border-slate-200">{p.role}</span></td>
+                          <td className="p-2"><span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border bg-slate-100 text-slate-500 border-slate-200">{p.role}</span></td>
                           {PERMISSION_LABELS.map(([k]) => (
-                            <td key={k} className="p-3 text-center">
+                            <td key={k} className="p-2 text-center">
                               <input type="checkbox" checked={!!p[k]} onChange={() => togglePerm(p.role, k)} />
                             </td>
                           ))}
                         </tr>
                       ))}
                       {!permDraft.length && (
-                        <tr><td colSpan={PERMISSION_LABELS.length + 1} className="p-3 text-center text-slate-400">No roles configured.</td></tr>
+                        <tr><td colSpan={PERMISSION_LABELS.length + 1} className="p-2 text-center text-slate-400">No roles configured.</td></tr>
                       )}
                     </tbody>
                   </table>

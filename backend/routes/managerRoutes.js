@@ -3,6 +3,8 @@ import { query } from '../config/database.js'
 import authMiddleware from '../middleware/authMiddleware.js'
 import roleMiddleware from '../middleware/roleMiddleware.js'
 import { logAudit, getClientIp, buildAuditVisibilityClause } from '../utils/audit.js'
+import { getFinancialSummary } from '../services/financialSummaryService.js'
+import { getBranchContext } from '../middleware/branchContext.js'
 
 const router = Router()
 
@@ -12,13 +14,16 @@ const managerOwnerWaiter = [authMiddleware, roleMiddleware('manager', 'owner', '
 
 router.get('/transfers/pending', ...managerOrOwner, async (req, res) => {
   try {
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
     const { rows } = await query(
       `SELECT t.*, u1.full_name AS from_name, u2.full_name AS to_name, u2.phone AS to_phone
         FROM transfers t
         LEFT JOIN users u1 ON u1.id = t.from_user
         LEFT JOIN users u2 ON u2.id = t.to_user
-        WHERE t.status = 'pending'
+        WHERE t.status = 'pending' AND t.business_id = $1
+          AND ($2::uuid IS NULL OR t.branch_id = $2)
         ORDER BY t.created_at DESC`,
+      [scope.businessId, scope.branchId]
     )
 
 await logAudit({
@@ -46,13 +51,15 @@ router.post('/transfers/:id/approve', ...managerOrOwner, async (req, res) => {
   try {
     const { id } = req.params
     const { action } = req.body
+    const scope = await getBranchContext(req, { requestedBranchId: req.body.branchId || req.query.branchId, allowOwnerAll: true })
     if (!['approved', 'rejected'].includes(action)) {
       return res.status(400).json({ error: 'Action must be "approved" or "rejected".' })
     }
     const { rows } = await query(
       `UPDATE transfers SET status = $1, manager_approval = 1, manager_approved_by = $2, approved_at = NOW()
-         WHERE id = $3 RETURNING *`,
-      [action, req.user.id, id],
+        WHERE id = $3 AND business_id = $4
+          AND ($5::uuid IS NULL OR branch_id = $5) RETURNING *`,
+      [action, req.user.id, id, scope.businessId, scope.branchId],
     )
     if (!rows.length) {
       return res.status(404).json({ error: 'Transfer not found.' })
@@ -62,9 +69,9 @@ router.post('/transfers/:id/approve', ...managerOrOwner, async (req, res) => {
       const tr = rows[0]
       const paymentRef = `TRANSFER-${tr.id}-${Date.now().toString(36).toUpperCase()}`
       await query(
-        `INSERT INTO payments (order_id, received_by, method, amount, reference, paid_at)
-         VALUES ($1, $2, $3, $4, $5, NOW())`,
-        [null, null, 'pos', Number(tr.amount) || 0, paymentRef]
+        `INSERT INTO payments (order_id, business_id, branch_id, received_by, method, amount, reference, paid_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
+        [null, scope.businessId, tr.branch_id || scope.branchId, req.user.id, 'pos', Number(tr.amount) || 0, paymentRef]
       )
       await logAudit({
         userId: req.user.id,
@@ -94,13 +101,15 @@ router.post('/transfers/:id/approve', ...managerOrOwner, async (req, res) => {
 
 router.get('/withdrawals/pending', ...managerOrOwner, async (req, res) => {
   try {
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
     const { rows } = await query(
       `SELECT w.*, u.full_name AS initiated_by_name
          FROM withdrawals w
          LEFT JOIN users u ON u.id = w.initiated_by
-         WHERE w.status = 'pending' AND w.business_id = $1
+        WHERE w.status = 'pending' AND w.business_id = $1
+          AND ($2::uuid IS NULL OR w.branch_id = $2)
          ORDER BY w.created_at DESC`,
-      [req.user?.businessId]
+      [scope.businessId, scope.branchId]
     )
 
     await logAudit({
@@ -133,10 +142,12 @@ router.post('/withdrawals/:id/approve', ...managerOrOwner, async (req, res) => {
       return res.status(400).json({ error: 'Action must be "approved" or "rejected".' })
     }
     const status = action === 'approved' ? 'completed' : 'cancelled'
+    const scope = await getBranchContext(req, { requestedBranchId: req.body.branchId || req.query.branchId, allowOwnerAll: true })
     const { rows } = await query(
       `UPDATE withdrawals SET status = $1, approved_by = $2, approved_at = NOW()
-         WHERE id = $3 AND business_id = $4 RETURNING *`,
-      [status, req.user.id, id, req.user?.businessId]
+         WHERE id = $3 AND business_id = $4
+           AND ($5::uuid IS NULL OR branch_id = $5) RETURNING *`,
+      [status, req.user.id, id, scope.businessId, scope.branchId]
     )
     if (!rows.length) {
       return res.status(404).json({ error: 'Withdrawal not found.' })
@@ -146,9 +157,9 @@ router.post('/withdrawals/:id/approve', ...managerOrOwner, async (req, res) => {
       const w = rows[0]
       const paymentRef = `WITHDRAWAL-${w.id}-${Date.now().toString(36).toUpperCase()}`
       await query(
-        `INSERT INTO payments (order_id, received_by, method, amount, reference, paid_at)
-         VALUES ($1, $2, $3, $4, $5, NOW())`,
-        [null, null, 'pos', Number(w.amount) || 0, paymentRef]
+        `INSERT INTO payments (order_id, business_id, branch_id, received_by, method, amount, reference, paid_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
+        [null, scope.businessId, w.branch_id || scope.branchId, req.user.id, 'pos', Number(w.amount) || 0, paymentRef]
       )
       await logAudit({
         userId: req.user.id,
@@ -320,12 +331,15 @@ await logAudit({
 
 router.get('/payrolls/pending', ...managerOrOwner, async (req, res) => {
   try {
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
     const { rows } = await query(
       `SELECT s.*, u.full_name AS user_name
          FROM salary_payments s
          LEFT JOIN users u ON u.id = s.user_id
-         WHERE s.status = 'pending'
+         WHERE s.status = 'pending' AND s.business_id = $1
+           AND ($2::uuid IS NULL OR s.branch_id = $2)
          ORDER BY s.created_at DESC`,
+      [scope.businessId, scope.branchId]
     )
 
     await logAudit({
@@ -356,13 +370,15 @@ router.post('/payrolls/:id/approve', ...managerOrOwner, async (req, res) => {
   try {
     const { id } = req.params
     const { action } = req.body
+    const scope = await getBranchContext(req, { requestedBranchId: req.body.branchId || req.query.branchId, allowOwnerAll: true })
     if (!['approved', 'rejected'].includes(action)) {
       return res.status(400).json({ error: 'Action must be "approved" or "rejected".' })
     }
     const { rows } = await query(
       `UPDATE salary_payments SET status = $1, approved_by = $2, approved_at = NOW()
-         WHERE id = $3 RETURNING *`,
-      [action, req.user.id, id],
+        WHERE id = $3 AND business_id = $4
+          AND ($5::uuid IS NULL OR branch_id = $5) RETURNING *`,
+      [action, req.user.id, id, scope.businessId, scope.branchId],
     )
     if (!rows.length) {
       return res.status(404).json({ error: 'Payroll not found.' })
@@ -462,15 +478,16 @@ router.get('/reports/stock', ...managerOnly, async (req, res) => {
 // Transfers approved report
 router.get('/reports/transfers', ...managerOnly, async (req, res) => {
   try {
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
     const { rows } = await query(
       `SELECT t.id, t.amount, t.description, t.status, t.manager_approval, t.approved_at, t.created_at,
               u1.full_name AS from_name, u2.full_name AS to_name, u2.phone AS to_phone
        FROM transfers t
        LEFT JOIN users u1 ON u1.id = t.from_user
        LEFT JOIN users u2 ON u2.id = t.to_user
-       WHERE t.business_id = $1
+      WHERE t.business_id = $1 AND ($2::uuid IS NULL OR t.branch_id = $2)
        ORDER BY t.created_at DESC`,
-      [req.user.businessId]
+          [scope.businessId, scope.branchId]
     )
     res.json(rows.map(t => ({
       id: t.id,
@@ -490,7 +507,8 @@ router.get('/reports/transfers', ...managerOnly, async (req, res) => {
 
         router.get('/reports/payrolls', ...managerOrOwner, async (req, res) => {
   try {
-    const businessId = req.user.businessId
+            const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
+            const { businessId, branchId } = scope
     const { month } = req.query
 
     if (month && !/^\d{4}-\d{2}$/.test(month)) {
@@ -502,9 +520,9 @@ router.get('/reports/transfers', ...managerOnly, async (req, res) => {
     const { rows: employees } = await query(
       `SELECT u.id, u.full_name, u.email, u.phone, u.role, u.salary, u.is_active, u.created_at
        FROM users u
-       WHERE u.business_id = $1
+      WHERE u.business_id = $1 AND ($2::uuid IS NULL OR u.branch_id = $2)
        ORDER BY u.full_name ASC`,
-      [businessId]
+          [businessId, branchId]
     )
 
     // Every salary record recorded for this business (permanent history)
@@ -514,9 +532,9 @@ router.get('/reports/transfers', ...managerOnly, async (req, res) => {
               s.approved_at, s.created_at, u.full_name AS user_name
        FROM salary_payments s
        LEFT JOIN users u ON u.id = s.user_id
-       WHERE s.business_id = $1
+      WHERE s.business_id = $1 AND ($2::uuid IS NULL OR s.branch_id = $2)
        ORDER BY s.created_at DESC`,
-      [businessId]
+          [businessId, branchId]
     )
 
     const monthOf = (d) => {
@@ -683,10 +701,19 @@ router.get('/reports/revenue', ...managerOnly, async (req, res) => {
       `SELECT COALESCE(SUM(r.amount), 0) AS total FROM refunds r WHERE ${refundWhere}`,
       refundParams
     )
-    const totalRevenue = orders.reduce((s, o) => s + o.total, 0) - (Number(refundRows[0]?.total) || 0)
+    const financialSummary = await getFinancialSummary(req.user.businessId)
+    const totalRevenue = financialSummary.totalSales
     const bySource = { qr: 0, waiter: 0, other: 0 }
     orders.forEach(o => { const src = o.source === 'qr' || o.source === 'waiter' ? o.source : 'other'; bySource[src] += o.total })
-    res.json({ orders, totalRevenue, bySource, totalOrders: orders.length })
+    res.json({
+      orders,
+      totalRevenue,
+      totalSales: financialSummary.totalSales,
+      vatTotal: financialSummary.vatTotal,
+      netProfit: financialSummary.netProfit,
+      bySource,
+      totalOrders: orders.length,
+    })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

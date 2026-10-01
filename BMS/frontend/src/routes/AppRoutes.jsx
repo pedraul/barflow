@@ -24,6 +24,7 @@ import ManagerPassword from '../pages/manager/PasswordManagement'
 import ManagerTransfer from '../pages/manager/Transfer'
 import ApproveTransfers from '../pages/manager/ApproveTransfers'
 import ApproveRefunds from '../pages/manager/ApproveRefunds'
+import ManagerRefunds from '../pages/manager/Refunds'
 import ApprovePayrolls from '../pages/manager/ApprovePayrolls'
 import ApproveWithdrawals from '../pages/manager/ApproveWithdrawals'
 import ManagerSettings from '../pages/manager/Settings'
@@ -112,6 +113,24 @@ export default function AppRoutes() {
 
       {/* Owner Routes */}
       <Route
+        path="/settings/*"
+        element={
+          <ProtectedRoute checkSubscription allow={['Owner']}>
+            <Settings />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/settings/*"
+        element={
+          <ProtectedRoute checkSubscription allow={['Owner']}>
+            <Settings />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
         path="/dashboard/owner"
         element={
           <ProtectedRoute checkSubscription allow={['Owner']}>
@@ -123,23 +142,10 @@ export default function AppRoutes() {
       />
 
       <Route
-        path="/owner/users"
-        element={
-          <ProtectedRoute checkSubscription allow={['Owner']}>
-            <OwnerLayout>
-              <OwnerUserManagement />
-            </OwnerLayout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
         path="/owner/subscription"
         element={
           <ProtectedRoute allow={['Owner']}>
-            <OwnerLayout>
-              <OwnerSubscription />
-            </OwnerLayout>
+            <OwnerSubscription />
           </ProtectedRoute>
         }
       />
@@ -200,6 +206,17 @@ export default function AppRoutes() {
       />
 
       <Route
+        path="/owner/users"
+        element={
+          <ProtectedRoute checkSubscription allow={['Owner']}>
+            <OwnerLayout>
+              <OwnerUserManagement />
+            </OwnerLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
         path="/owner/audit-logs"
         element={
           <ProtectedRoute checkSubscription allow={['Owner']}>
@@ -214,9 +231,7 @@ export default function AppRoutes() {
         path="/settings/*"
         element={
           <ProtectedRoute checkSubscription allow={['Owner']}>
-            <OwnerLayout>
-              <Settings />
-            </OwnerLayout>
+            <Settings />
           </ProtectedRoute>
         }
       />
@@ -328,7 +343,7 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute checkSubscription allow={['Manager']}>
             <ManagerLayout>
-              <ApproveRefunds />
+              <ManagerRefunds />
             </ManagerLayout>
           </ProtectedRoute>
         }
@@ -868,9 +883,7 @@ export default function AppRoutes() {
         path="/settings/*"
         element={
           <ProtectedRoute checkSubscription allow={['Owner']}>
-            <OwnerLayout>
-              <Settings />
-            </OwnerLayout>
+            <Settings />
           </ProtectedRoute>
         }
       />

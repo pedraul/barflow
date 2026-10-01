@@ -4,7 +4,7 @@ import { fetchOperatorOrders, fetchReadyOrders, routeOrder, updateOperatorOrderS
 import {
   LayoutDashboard, ShoppingBag, ChefHat, CheckCircle2, BarChart3,
   Clock, FileText, Printer, GlassWater,
-  FileSpreadsheet, User, LogOut, Menu, Share2, MessageSquare
+  FileSpreadsheet, User, LogOut, Menu, Share2
 } from 'lucide-react'
 
 const MONEY = (v) => `${Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
@@ -33,6 +33,7 @@ export default function OperatorOrderManagement() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'new')
   const [selectedOrder, setSelectedOrder] = useState(null)
+  const [paymentOrderId, setPaymentOrderId] = useState(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { pathname } = useLocation()
@@ -75,16 +76,31 @@ export default function OperatorOrderManagement() {
   }
 
   const handleStatus = async (orderId, status) => {
+    if (status === 'Paid') {
+      setPaymentOrderId(orderId)
+      return
+    }
+
     setActionLoading(true)
     try {
-      if (status === 'Paid') {
-        await markOrderAsPaid(orderId)
-      } else {
-        await updateOperatorOrderStatus(orderId, status)
-      }
+      await updateOperatorOrderStatus(orderId, status)
       await load()
     } catch (e) {
       alert(e.message || 'Failed to update status')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleConfirmPayment = async (method) => {
+    if (!paymentOrderId) return
+    setActionLoading(true)
+    try {
+      await markOrderAsPaid(paymentOrderId, method)
+      setPaymentOrderId(null)
+      await load()
+    } catch (e) {
+      alert(e.response?.data?.error || e.message || 'Failed to record payment')
     } finally {
       setActionLoading(false)
     }
@@ -130,7 +146,7 @@ export default function OperatorOrderManagement() {
     : orders
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 text-slate-800 font-sans antialiased">
+    <div className="operator-shell flex flex-col md:flex-row min-h-screen bg-slate-50 text-slate-800 font-sans antialiased">
       {/* Mobile overlay */}
       {mobileMenuOpen && (
         <div className="sidebar-overlay" onClick={() => setMobileMenuOpen(false)} />
@@ -150,7 +166,7 @@ export default function OperatorOrderManagement() {
       </header>
 
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-64 bg-[#0B132B] text-slate-400 flex flex-col justify-between shrink-0">
+      <aside className="operator-desktop-sidebar hidden md:flex w-64 bg-[#0B132B] text-slate-400 flex flex-col justify-between shrink-0">
         <div>
           <div className="h-16 flex items-center gap-2 px-6 border-b border-slate-800 text-white font-bold text-xl">
             <div className="p-1.5 bg-blue-600 rounded-lg text-white">
@@ -182,7 +198,6 @@ export default function OperatorOrderManagement() {
               <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Other</p>
               <div className="space-y-1">
                 <SidebarLink icon={<FileSpreadsheet size={18} />} label="Reports" onClick={() => navigate('/operator/reports')} />
-                <SidebarLink icon={<MessageSquare size={18} />} label="Chats" onClick={() => navigate('/notifications')} />
                 <SidebarLink icon={<User size={18} />} label="My Account" onClick={() => navigate('/account')} />
               </div>
             </div>
@@ -232,7 +247,6 @@ export default function OperatorOrderManagement() {
               <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Other</p>
               <div className="space-y-1">
                 <SidebarLink icon={<FileSpreadsheet size={18} />} label="Reports" onClick={() => navigate('/operator/reports')} />
-                <SidebarLink icon={<MessageSquare size={18} />} label="Chats" onClick={() => navigate('/notifications')} />
                 <SidebarLink icon={<User size={18} />} label="My Account" onClick={() => navigate('/account')} />
               </div>
             </div>
@@ -271,7 +285,7 @@ export default function OperatorOrderManagement() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="operator-main flex-1 overflow-y-auto p-6">
           <div className="bg-white border border-slate-200 rounded-xl shadow-sm">
             <div className="flex border-b border-slate-200">
               <button onClick={() => setActiveTab('new')} className={`px-6 py-3 text-sm font-semibold transition ${activeTab === 'new' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-600 hover:text-slate-900'}`}>
@@ -402,6 +416,20 @@ export default function OperatorOrderManagement() {
                 )}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {paymentOrderId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => !actionLoading && setPaymentOrderId(null)}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-5" role="dialog" aria-modal="true" aria-labelledby="payment-method-title" onClick={(event) => event.stopPropagation()}>
+            <h2 id="payment-method-title" className="text-lg font-bold text-slate-900">Record payment</h2>
+            <p className="mt-1 text-sm text-slate-500">Select how the order was paid.</p>
+            <div className="grid grid-cols-2 gap-3 mt-5">
+              <button type="button" disabled={actionLoading} onClick={() => handleConfirmPayment('cash')} className="py-3 rounded-lg bg-emerald-600 text-white font-semibold disabled:opacity-50">Cash</button>
+              <button type="button" disabled={actionLoading} onClick={() => handleConfirmPayment('card')} className="py-3 rounded-lg bg-blue-600 text-white font-semibold disabled:opacity-50">Card</button>
+            </div>
+            <button type="button" disabled={actionLoading} onClick={() => setPaymentOrderId(null)} className="w-full mt-3 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg">Cancel</button>
           </div>
         </div>
       )}

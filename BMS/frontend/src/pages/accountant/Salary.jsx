@@ -1,8 +1,9 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useUsers } from '../../context/UsersContext'
 import { useSalary } from '../../context/SalaryContext'
 import { useAuditLog } from '../../context/AuditLogContext'
 import { updateUser } from '../../api/endpoints'
+import * as api from '../../api/endpoints'
 
 const money = (value) => `${Number(value || 0).toLocaleString()} RWF`
 
@@ -32,8 +33,8 @@ function calculateTax(gross) {
 }
 
 export default function Salary() {
-  const { users, updateUser: updateUserCtx } = useUsers()
-   const { recordSalaryPayment, salaryPayments } = useSalary()
+  const { users: contextUsers, updateUser: updateUserCtx, loaded, error: usersError } = useUsers()
+  const { recordSalaryPayment, salaryPayments } = useSalary()
   const { log: auditLog } = useAuditLog()
   const [paying, setPaying] = useState(null)
   const [method, setMethod] = useState('mtn')
@@ -42,6 +43,35 @@ export default function Salary() {
   const [sending, setSending] = useState(false)
   const [editingUser, setEditingUser] = useState(null)
   const [editForm, setEditForm] = useState({ bonus: '', promotion: '', phone: '' })
+  const [directUsers, setDirectUsers] = useState([])
+  const [directLoading, setDirectLoading] = useState(false)
+  const [directError, setDirectError] = useState(null)
+
+  useEffect(() => {
+    let active = true
+    if (!contextUsers || contextUsers.length === 0) {
+      console.log('[Salary] contextUsers empty, fetching directly...')
+      setDirectLoading(true)
+      setDirectError(null)
+      api.fetchUsers()
+        .then((data) => {
+          console.log('[Salary] fetchUsers result:', data)
+          if (active) setDirectUsers(data || [])
+        })
+        .catch((err) => {
+          console.error('[Salary] fetchUsers error:', err)
+          if (active) setDirectError(err.message)
+        })
+        .finally(() => { if (active) setDirectLoading(false) })
+    } else {
+      console.log('[Salary] using contextUsers:', contextUsers.length)
+    }
+    return () => { active = false }
+  }, [contextUsers])
+
+  const users = (contextUsers && contextUsers.length > 0) ? contextUsers : directUsers
+
+  console.log('[Salary] render - users count:', users.length, 'contextUsers:', contextUsers?.length, 'directUsers:', directUsers.length, 'error:', usersError || directError)
 
   const totalSalary = users.reduce((sum, u) => {
     const base = Number(u.salary) || 0
@@ -87,6 +117,7 @@ export default function Salary() {
     setError(null)
     try {
       await recordSalaryPayment({
+        userId: paying.id,
         name: paying.name,
         phone: paying.phone || '',
         amount: gross,
@@ -95,6 +126,7 @@ export default function Salary() {
         time: new Date().toLocaleString(),
         bonus,
         promotion: paying.promotion || '',
+        payPeriodStart: new Date().toISOString().slice(0, 7),
       })
 
       auditLog({
@@ -122,6 +154,28 @@ export default function Salary() {
           <p>Workers to be paid. Use “Pay” to send a salary request to the manager for approval. The money is sent to the worker's number only after the manager approves.</p>
         </div>
       </div>
+
+      {(usersError || directError) && (
+        <div style={{ background: '#fee2e2', color: '#991b1b', padding: '12px 16px', borderRadius: '8px', marginBottom: '16px', fontSize: '14px' }}>
+          <strong>Error loading users:</strong> {usersError || directError}
+          <br />
+          <span style={{ fontSize: '12px', opacity: 0.8 }}>Check browser console and backend logs for details. Make sure the backend is running and you are logged in.</span>
+        </div>
+      )}
+
+      {!usersError && !directError && users.length === 0 && !directLoading && (
+        <div style={{ background: '#fef3c7', color: '#92400e', padding: '12px 16px', borderRadius: '8px', marginBottom: '16px', fontSize: '14px' }}>
+          <strong>No workers found.</strong> The API returned an empty list.
+          <br />
+          <span style={{ fontSize: '12px', opacity: 0.8 }}>UsersContext loaded: {loaded ? 'yes' : 'no'} | Context users: {contextUsers?.length || 0} | Direct users: {directUsers.length}</span>
+        </div>
+      )}
+
+      {directLoading && users.length === 0 && (
+        <div style={{ padding: '12px 16px', marginBottom: '16px', fontSize: '14px', color: '#6b7280' }}>
+          Loading workers...
+        </div>
+      )}
 
       <div className="summary-card" style={{ marginBottom: '20px' }}>
         <strong>{money(totalSalary)}</strong>

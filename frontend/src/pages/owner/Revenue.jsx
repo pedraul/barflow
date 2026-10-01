@@ -9,7 +9,7 @@ export default function OwnerRevenue() {
   const [logs, setLogs] = useState([])
   const [loading, setLoading] = useState(false)
   const [viewLogs, setViewLogs] = useState(false)
-  const { fetchRevenue, fetchRevenueLogs } = useOwner()
+  const { fetchRevenue, fetchRevenueLogs, activeBranchId } = useOwner()
 
   const loadData = useCallback(async () => {
     try {
@@ -18,7 +18,7 @@ export default function OwnerRevenue() {
     } catch (e) { console.error(e) }
   }, [fetchRevenue])
 
-  useEffect(() => { loadData() }, [loadData])
+  useEffect(() => { loadData() }, [loadData, activeBranchId])
 
   const loadLogs = async () => {
     setViewLogs(!viewLogs)

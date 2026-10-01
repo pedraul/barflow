@@ -1,3 +1,36 @@
+.branch-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 5px 9px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+  color: #334155;
+  background: rgba(248, 250, 252, 0.92);
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.branch-badge-label {
+  color: #64748b;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sidebar .branch-badge,
+.owner-sidebar-mobile .branch-badge {
+  border-color: rgba(148, 163, 184, 0.35);
+  color: #e2e8f0;
+  background: rgba(30, 41, 59, 0.8);
+}
+
+.sidebar .branch-badge-label,
+.owner-sidebar-mobile .branch-badge-label {
+  color: #94a3b8;
+}
 @import "tailwindcss";
 
 /* ============================================================
@@ -5505,6 +5538,49 @@ label {
   color: #94a3b8;
 }
 
+.layout-body.has-fixed-sidebar .sidebar-desktop {
+  position: fixed;
+  top: 61px;
+  bottom: 0;
+  left: 0;
+  height: auto;
+  overflow-y: auto;
+  z-index: 900;
+}
+
+.layout-body.has-fixed-sidebar .app-content {
+  min-width: 0;
+  margin-left: 250px;
+}
+
+.owner-desktop-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: 256px;
+  height: 100vh;
+  overflow-y: auto;
+  z-index: 900;
+}
+
+.owner-main-content {
+  margin-left: 256px;
+  min-width: 0;
+}
+
+.operator-desktop-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: 256px;
+  height: 100vh;
+  overflow-y: auto;
+  z-index: 900;
+}
+
+.operator-main {
+  min-width: 0;
+  margin-left: 256px;
+}
+
 /* Desktop top bar */
 .desktop-topbar {
   display: flex;
@@ -5699,6 +5775,12 @@ label {
 
   .sidebar-desktop {
     display: none;
+  }
+
+  .layout-body.has-fixed-sidebar .app-content,
+  .owner-main-content,
+  .operator-main {
+    margin-left: 0;
   }
 
   .sidebar-mobile {
@@ -6268,6 +6350,26 @@ label {
    OWNER SYSTEM SETTINGS — FLAT TABS ON MOBILE, NO GROUP HEADERS, NO BACK BUTTON
    ============================================================ */
 @media (max-width: 768px) {
+  .owner-settings-workspace {
+    padding: 0.75rem !important;
+    gap: 0.75rem !important;
+  }
+
+  .owner-settings-workspace .p-8 {
+    padding: 1rem !important;
+  }
+
+  .owner-settings-workspace > div:last-child {
+    width: 100%;
+  }
+
+  .owner-settings-workspace input,
+  .owner-settings-workspace select,
+  .owner-settings-workspace textarea {
+    max-width: 100%;
+    min-width: 0;
+  }
+
   /* Owner settings tabs wrap onto new lines on phones */
   .owner-settings-tabs {
     display: flex;
@@ -8371,7 +8473,6 @@ svg {
   .metric-grid,
   .stats-grid,
   .hero-points,
-  .qr-grid,
   .stock-menu-grid,
   .module-grid,
   .workspace-actions,
@@ -8393,6 +8494,31 @@ svg {
     gap: 0.75rem !important;
     width: 100% !important;
     max-width: 100% !important;
+  }
+
+  /* Preserve compact tile layouts instead of flattening every grid to one column. */
+  .grid.grid-cols-2,
+  .grid.grid-cols-3,
+  .grid.grid-cols-4,
+  .grid.grid-cols-5,
+  .grid.grid-cols-6,
+  .metric-grid,
+  .stats-grid,
+  .hero-points,
+  .qr-grid,
+  .stock-menu-grid,
+  .module-grid,
+  .workspace-actions,
+  .export-grid,
+  .pill-grid,
+  .salary-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .form-grid,
+  .detail-grid,
+  form.grid {
+    grid-template-columns: minmax(0, 1fr) !important;
   }
 
   .summary-card,

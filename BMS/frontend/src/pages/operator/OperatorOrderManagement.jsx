@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { fetchOperatorOrders, fetchReadyOrders, routeOrder, updateOperatorOrderStatus, markOrderAsPaid } from '../../api/endpoints'
 import {
   LayoutDashboard, ShoppingBag, ChefHat, CheckCircle2, BarChart3,
@@ -34,6 +34,12 @@ export default function OperatorOrderManagement() {
   const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'new')
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [actionLoading, setActionLoading] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { pathname } = useLocation()
+
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [pathname])
 
   const load = async () => {
     try {
@@ -124,9 +130,77 @@ export default function OperatorOrderManagement() {
     : orders
 
   return (
-    <div className="flex min-h-screen bg-slate-50 text-slate-800 font-sans antialiased">
-      {/* SIDEBAR */}
-      <aside className="w-64 bg-[#0B132B] text-slate-400 flex flex-col justify-between shrink-0">
+    <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 text-slate-800 font-sans antialiased">
+      {/* Mobile overlay */}
+      {mobileMenuOpen && (
+        <div className="sidebar-overlay" onClick={() => setMobileMenuOpen(false)} />
+      )}
+
+      {/* Mobile topbar */}
+      <header className="mobile-topbar">
+        <button
+          type="button"
+          className="mobile-menu-button"
+          onClick={() => setMobileMenuOpen((prev) => !prev)}
+          aria-label="Toggle navigation"
+        >
+          {mobileMenuOpen ? '✕' : '☰'}
+        </button>
+        <div className="mobile-brand">BarFlow</div>
+      </header>
+
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex w-64 bg-[#0B132B] text-slate-400 flex flex-col justify-between shrink-0">
+        <div>
+          <div className="h-16 flex items-center gap-2 px-6 border-b border-slate-800 text-white font-bold text-xl">
+            <div className="p-1.5 bg-blue-600 rounded-lg text-white">
+              <GlassWater size={20} className="transform rotate-180" />
+            </div>
+            <span>BarFlow</span>
+          </div>
+
+          <nav className="p-4 space-y-6 text-sm">
+            <div>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Order Management</p>
+              <div className="space-y-1">
+                <SidebarLink icon={<FileText size={18} />} label="New Orders" badge={newOrders.length} badgeColor="bg-red-500 text-white" active={activeTab === 'new'} onClick={() => setActiveTab('new')} />
+                <SidebarLink icon={<ChefHat size={18} />} label="Preparing" badge={preparingOrders.length} badgeColor="bg-amber-500 text-white" active={activeTab === 'preparing'} onClick={() => setActiveTab('preparing')} />
+                <SidebarLink icon={<CheckCircle2 size={18} />} label="Ready" badge={readyOrders?.length || 0} badgeColor="bg-emerald-500 text-white" active={activeTab === 'ready'} onClick={() => setActiveTab('ready')} />
+                <SidebarLink icon={<CheckCircle2 size={18} />} label="Completed" badge={completedOrders.length} badgeColor="bg-slate-500 text-white" active={activeTab === 'completed'} onClick={() => setActiveTab('completed')} />
+                <SidebarLink icon={<FileText size={18} />} label="All Orders" active={activeTab === 'all'} onClick={() => setActiveTab('all')} />
+              </div>
+            </div>
+
+            <div>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Receipts</p>
+              <div className="space-y-1">
+                <SidebarLink icon={<Printer size={18} />} label="Printed Receipts" onClick={() => navigate('/operator/receipts/printed')} />
+              </div>
+            </div>
+
+            <div>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Other</p>
+              <div className="space-y-1">
+                <SidebarLink icon={<FileSpreadsheet size={18} />} label="Reports" onClick={() => navigate('/operator/reports')} />
+                <SidebarLink icon={<MessageSquare size={18} />} label="Chats" onClick={() => navigate('/notifications')} />
+                <SidebarLink icon={<User size={18} />} label="My Account" onClick={() => navigate('/account')} />
+              </div>
+            </div>
+          </nav>
+        </div>
+
+        <div className="p-4 border-t border-slate-800">
+          <button onClick={() => { navigate('/login') }} className="flex items-center gap-3 px-3 py-2.5 text-red-400 hover:bg-red-950/30 rounded-lg font-medium transition w-full">
+            <LogOut size={18} /> Logout
+          </button>
+        </div>
+      </aside>
+
+      {/* Mobile sidebar drawer */}
+      <aside
+        className={`operator-sidebar-mobile ${mobileMenuOpen ? 'operator-sidebar-open' : ''}`}
+        onClick={() => setMobileMenuOpen(false)}
+      >
         <div>
           <div className="h-16 flex items-center gap-2 px-6 border-b border-slate-800 text-white font-bold text-xl">
             <div className="p-1.5 bg-blue-600 rounded-lg text-white">
@@ -176,9 +250,6 @@ export default function OperatorOrderManagement() {
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
           <div className="flex items-center gap-4">
-            <button className="text-slate-500 hover:text-slate-700">
-              <Menu size={20} />
-            </button>
             <h1 className="text-lg font-semibold text-slate-900">Order Management</h1>
           </div>
           <div className="flex items-center gap-6">
@@ -226,9 +297,9 @@ export default function OperatorOrderManagement() {
               ) : displayOrders.length === 0 ? (
                 <div className="text-center text-slate-400 py-8">No {activeTab} orders</div>
               ) : (
-                <table className="w-full min-w-[1000px] text-sm">
+                <table className="w-full min-w-[1000px] text-xs">
                   <thead className="bg-slate-50 border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
-                    <tr><th className="px-4 py-3 font-medium">Order</th><th className="px-4 py-3 font-medium">Table / Source</th><th className="px-4 py-3 font-medium">Items</th><th className="px-4 py-3 font-medium">Status</th><th className="px-4 py-3 font-medium">Total</th><th className="px-4 py-3 font-medium">Created</th><th className="px-4 py-3 font-medium text-right">Actions</th></tr>
+                    <tr><th className="px-3 py-2 font-medium">Order</th><th className="px-3 py-2 font-medium">Table / Source</th><th className="px-3 py-2 font-medium">Items</th><th className="px-3 py-2 font-medium">Status</th><th className="px-3 py-2 font-medium">Total</th><th className="px-3 py-2 font-medium">Created</th><th className="px-3 py-2 font-medium text-right">Actions</th></tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
                     {displayOrders.map((order) => {
@@ -248,13 +319,13 @@ export default function OperatorOrderManagement() {
                       const isReady = statusKey === 'ready'
                       const statusStyle = statusKey === 'ready' ? 'bg-emerald-100 text-emerald-700' : statusKey === 'preparing' ? 'bg-amber-100 text-amber-700' : statusKey === 'open' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'
                       return <tr key={order.id} className="hover:bg-slate-50 align-top cursor-pointer" onClick={() => setSelectedOrder(order)}>
-                        <td className="px-4 py-4 font-semibold text-slate-900">{order.orderNumber || '—'}</td>
-                        <td className="px-4 py-4"><div>Table {order.tableNumber || '—'}</div><span className={`inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded ${order.source === 'qr' ? 'bg-blue-100 text-blue-700' : 'bg-violet-100 text-violet-700'}`}>{String(order.source || 'other').toUpperCase()}</span></td>
-                        <td className="px-4 py-4 max-w-xs"><div className="space-y-1">{(order.items || []).map((item, idx) => <div key={idx} className="truncate">{item.name} <span className="text-slate-400">×{item.quantity}</span></div>)}</div></td>
-                        <td className="px-4 py-4"><span className={`inline-flex px-2 py-1 rounded-full text-xs ${statusStyle}`}>{status || 'Unknown'}</span>{order.station && <span className={`ml-1 inline-flex items-center gap-0.5 px-2 py-1 rounded-full text-[10px] font-bold ${stationBadge}`}>{stationLabel}</span>}</td>
-                        <td className="px-4 py-4 font-semibold text-slate-900">{MONEY(order.total)}</td>
-                        <td className="px-4 py-4 text-slate-500 whitespace-nowrap">{order.createdAt}</td>
-                        <td className="px-4 py-4"><div className="flex justify-end flex-wrap gap-2" onClick={(e) => e.stopPropagation()}><button onClick={() => setSelectedOrder(order)} className="text-xs border border-slate-300 text-slate-700 px-2.5 py-1.5 rounded-md hover:bg-white">View</button>{isOpen && <><button onClick={() => handleRoute(order.id, 'kitchen')} disabled={actionLoading || order.station === 'kitchen' || order.station === 'both'} title={order.station === 'kitchen' || order.station === 'both' ? 'Already sent to Kitchen' : undefined} className="text-xs bg-emerald-600 text-white px-2.5 py-1.5 rounded-md disabled:opacity-50 disabled:cursor-not-allowed">Kitchen</button><button onClick={() => handleRoute(order.id, 'bar')} disabled={actionLoading || order.station === 'bar' || order.station === 'both'} title={order.station === 'bar' || order.station === 'both' ? 'Already sent to Bar' : undefined} className="text-xs bg-purple-600 text-white px-2.5 py-1.5 rounded-md disabled:opacity-50 disabled:cursor-not-allowed">Bar</button><button onClick={() => handleRoute(order.id, 'both')} disabled={actionLoading || order.station === 'both' || order.station === 'kitchen' || order.station === 'bar'} title={order.station ? 'Already sent to ' + (order.station === 'both' ? 'Kitchen + Bar' : order.station.charAt(0).toUpperCase() + order.station.slice(1)) : undefined} className="text-xs bg-amber-600 text-white px-2.5 py-1.5 rounded-md disabled:opacity-50 disabled:cursor-not-allowed">Both</button></>}{isReady && <><button onClick={() => handleStatus(order.id, 'Served')} disabled={actionLoading} className="text-xs bg-emerald-600 text-white px-2.5 py-1.5 rounded-md disabled:opacity-50">Serve</button><button onClick={() => handleStatus(order.id, 'Paid')} disabled={actionLoading} className="text-xs bg-blue-600 text-white px-2.5 py-1.5 rounded-md disabled:opacity-50">Serve & Pay</button></>}{['ready', 'served', 'paid'].includes(statusKey) && <button onClick={() => navigate(`/operator/receipt/${order.id}`)} className="text-xs border border-slate-300 text-slate-700 px-2.5 py-1.5 rounded-md">Receipt</button>}</div></td>
+                        <td className="px-3 py-2 font-semibold text-slate-900">{order.orderNumber || '—'}</td>
+                        <td className="px-3 py-2"><div>Table {order.tableNumber || '—'}</div><span className={`inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded ${order.source === 'qr' ? 'bg-blue-100 text-blue-700' : 'bg-violet-100 text-violet-700'}`}>{String(order.source || 'other').toUpperCase()}</span></td>
+                        <td className="px-3 py-2 max-w-xs"><div className="space-y-1">{(order.items || []).map((item, idx) => <div key={idx} className="truncate">{item.name} <span className="text-slate-400">×{item.quantity}</span></div>)}</div></td>
+                        <td className="px-3 py-2"><span className={`inline-flex px-2 py-1 rounded-full text-[10px] ${statusStyle}`}>{status || 'Unknown'}</span>{order.station && <span className={`ml-1 inline-flex items-center gap-0.5 px-2 py-1 rounded-full text-[10px] font-bold ${stationBadge}`}>{stationLabel}</span>}</td>
+                        <td className="px-3 py-2 font-semibold text-slate-900">{MONEY(order.total)}</td>
+                        <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{order.createdAt}</td>
+                        <td className="px-3 py-2"><div className="flex justify-end flex-wrap gap-2" onClick={(e) => e.stopPropagation()}><button onClick={() => setSelectedOrder(order)} className="text-xs border border-slate-300 text-slate-700 px-2.5 py-1.5 rounded-md hover:bg-white">View</button>{isOpen && <><button onClick={() => handleRoute(order.id, 'kitchen')} disabled={actionLoading || order.station === 'kitchen' || order.station === 'both'} title={order.station === 'kitchen' || order.station === 'both' ? 'Already sent to Kitchen' : undefined} className="text-xs bg-emerald-600 text-white px-2.5 py-1.5 rounded-md disabled:opacity-50 disabled:cursor-not-allowed">Kitchen</button><button onClick={() => handleRoute(order.id, 'bar')} disabled={actionLoading || order.station === 'bar' || order.station === 'both'} title={order.station === 'bar' || order.station === 'both' ? 'Already sent to Bar' : undefined} className="text-xs bg-purple-600 text-white px-2.5 py-1.5 rounded-md disabled:opacity-50 disabled:cursor-not-allowed">Bar</button><button onClick={() => handleRoute(order.id, 'both')} disabled={actionLoading || order.station === 'both' || order.station === 'kitchen' || order.station === 'bar'} title={order.station ? 'Already sent to ' + (order.station === 'both' ? 'Kitchen + Bar' : order.station.charAt(0).toUpperCase() + order.station.slice(1)) : undefined} className="text-xs bg-amber-600 text-white px-2.5 py-1.5 rounded-md disabled:opacity-50 disabled:cursor-not-allowed">Both</button></>}{isReady && <><button onClick={() => handleStatus(order.id, 'Served')} disabled={actionLoading} className="text-xs bg-emerald-600 text-white px-2.5 py-1.5 rounded-md disabled:opacity-50">Serve</button><button onClick={() => handleStatus(order.id, 'Paid')} disabled={actionLoading} className="text-xs bg-blue-600 text-white px-2.5 py-1.5 rounded-md disabled:opacity-50">Serve & Pay</button></>}{['ready', 'served', 'paid'].includes(statusKey) && <button onClick={() => navigate(`/operator/receipt/${order.id}`)} className="text-xs border border-slate-300 text-slate-700 px-2.5 py-1.5 rounded-md">Receipt</button>}</div></td>
                       </tr>
                     })}
                   </tbody>
@@ -274,7 +345,7 @@ export default function OperatorOrderManagement() {
               <button onClick={() => setSelectedOrder(null)} className="text-slate-400 hover:text-slate-600 text-2xl">×</button>
             </div>
             <div className="p-6 space-y-5">
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 <div className="border border-slate-100 rounded-lg p-3">
                   <p className="text-xs text-slate-500 font-medium">Order Number</p>
                   <p className="font-bold text-slate-900 mt-0.5">{selectedOrder.orderNumber || '—'}</p>

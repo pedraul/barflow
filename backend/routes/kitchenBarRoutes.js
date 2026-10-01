@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { query } from '../config/database.js'
 import { logAudit, getClientIp } from '../utils/audit.js'
 import authMiddleware from '../middleware/authMiddleware.js'
+import { getBranchContext } from '../middleware/branchContext.js'
 
 const router = Router()
 
@@ -12,7 +13,7 @@ const router = Router()
  */
 router.get('/orders', authMiddleware, async (req, res) => {
   try {
-    const currentBusinessId = req.user.businessId
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
     const { rows } = await query(
       `SELECT o.id, o.order_number, o.table_number, o.status, o.source, o.station, o.created_at, o.user_id,
               (
@@ -32,6 +33,7 @@ router.get('/orders', authMiddleware, async (req, res) => {
        WHERE LOWER(o.station) IN ('kitchen', 'both')
          AND o.status IN ('Open', 'Preparing', 'Ready')
          AND o.business_id = $1
+         AND ($2::uuid IS NULL OR o.branch_id = $2)
        ORDER BY 
          CASE o.status 
            WHEN 'Open' THEN 1
@@ -39,12 +41,12 @@ router.get('/orders', authMiddleware, async (req, res) => {
            WHEN 'Ready' THEN 3 
          END,
          o.created_at ASC`,
-      [currentBusinessId]
+      [scope.businessId, scope.branchId]
     )
 
      res.json(rows.map(mapKitchenBarOrder))
    } catch (error) {
-     res.status(500).json({ error: error.message })
+    res.status(error.statusCode || 500).json({ error: error.message })
    }
  })
 
@@ -55,7 +57,7 @@ router.get('/orders', authMiddleware, async (req, res) => {
  */
 router.get('/bar-orders', authMiddleware, async (req, res) => {
   try {
-    const currentBusinessId = req.user.businessId
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
     const { rows } = await query(
       `SELECT o.id, o.order_number, o.table_number, o.status, o.source, o.station, o.created_at, o.user_id,
               (
@@ -75,6 +77,7 @@ router.get('/bar-orders', authMiddleware, async (req, res) => {
        WHERE LOWER(o.station) IN ('bar', 'both')
          AND o.status IN ('Open', 'Preparing', 'Ready')
          AND o.business_id = $1
+         AND ($2::uuid IS NULL OR o.branch_id = $2)
        ORDER BY
          CASE o.status
            WHEN 'Open' THEN 1
@@ -82,12 +85,12 @@ router.get('/bar-orders', authMiddleware, async (req, res) => {
            WHEN 'Ready' THEN 3
          END,
          o.created_at ASC`,
-      [currentBusinessId]
+      [scope.businessId, scope.branchId]
     )
 
     res.json(rows.map(mapKitchenBarOrder))
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    res.status(error.statusCode || 500).json({ error: error.message })
   }
 })
 
@@ -163,7 +166,7 @@ await logAudit({
  */
 router.get('/completed', authMiddleware, async (req, res) => {
   try {
-    const currentBusinessId = req.user.businessId
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
     const { rows } = await query(
       `SELECT o.id, o.order_number, o.table_number, o.status, o.total_amount, o.created_at, o.completed_at,
               (
@@ -177,14 +180,15 @@ router.get('/completed', authMiddleware, async (req, res) => {
               ) AS items
        FROM orders o
        WHERE o.source = 'qr' AND o.status IN ('Served', 'Paid') AND o.business_id = $1
+         AND ($2::uuid IS NULL OR o.branch_id = $2)
        ORDER BY o.completed_at DESC
        LIMIT 50`,
-      [currentBusinessId]
+      [scope.businessId, scope.branchId]
     )
 
     res.json(rows.map(mapKitchenBarOrder))
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    res.status(error.statusCode || 500).json({ error: error.message })
   }
 })
 

@@ -3,6 +3,8 @@ import { query } from '../config/database.js'
 import authMiddleware from '../middleware/authMiddleware.js'
 import roleMiddleware from '../middleware/roleMiddleware.js'
 import { logAudit, getClientIp } from '../utils/audit.js'
+import { getBranchContext } from '../middleware/branchContext.js'
+import { getFinancialSummary } from '../services/financialSummaryService.js'
 
 const router = Router()
 
@@ -55,12 +57,12 @@ router.get('/summary', ...accountantOnly, async (req, res) => {
       [businessId]
     )).rows
 
-    const grossRevenue = Number(revenueRows[0]?.revenue || 0)
-    const expenses = Number(expenseRows[0]?.expenses || 0)
+    const financialSummary = await getFinancialSummary(businessId)
+    const expenses = financialSummary.expenses
     const payments = Number(paymentRows[0]?.payments || 0)
     const refunds = Number(refundRows[0]?.refunds || 0)
-    const revenue = grossRevenue - refunds
-    const profit = revenue - expenses
+    const revenue = financialSummary.totalSales
+    const profit = financialSummary.netProfit
     const cashInHand = revenue - payments
     const bankBalance = Number(bankBalanceRows[0]?.balance || 0)
 
@@ -101,14 +103,8 @@ router.get('/summary', ...accountantOnly, async (req, res) => {
       [businessId]
     )).rows
 
-    const taxRows = (await safeQuery(
-      `SELECT COALESCE(SUM(total_amount), 0) AS total_sales,
-              COALESCE(SUM(tax_amount), 0) AS vat_collected
-       FROM orders WHERE business_id = $1`,
-      [businessId]
-    )).rows
-    const totalSales = Number(taxRows[0]?.total_sales || 0)
-    const vatCollected = Number(taxRows[0]?.vat_collected || 0)
+    const totalSales = financialSummary.totalSales
+    const vatCollected = financialSummary.vatTotal
     const vatPaid = expenses * 0.18
     const vatPayable = Math.max(0, vatCollected - vatPaid)
 
@@ -187,11 +183,11 @@ router.post('/transfers', ...accountantOnly, async (req, res) => {
     return res.status(400).json({ error: 'All fields are required.' })
   }
   try {
-    const businessId = req.user?.businessId
+    const scope = await getBranchContext(req, { requestedBranchId: req.body.branchId, allowOwnerAll: false })
     const { rows } = await query(
-      `INSERT INTO transfers (business_id, from_user, to_phone, amount, description, status)
-       VALUES ($1, $2, $3, $4, $5, 'pending') RETURNING id`,
-      [businessId, req.user?.id, phone, amount, `${name}: ${purpose}`]
+      `INSERT INTO transfers (business_id, branch_id, from_user, to_phone, amount, description, status)
+       VALUES ($1, $2, $3, $4, $5, $6, 'pending') RETURNING id`,
+      [scope.businessId, scope.branchId, req.user?.id, phone, amount, `${name}: ${purpose}`]
     )
 await logAudit({
        userId: req.user?.id,

@@ -199,13 +199,16 @@ export async function listBusinesses(req, res) {
     const { rows } = await query(
       `SELECT b.*, 
         s.plan, s.status AS sub_status, s.current_period_end, s.payment_status AS sub_payment_status,
+        COALESCE(s.is_active AND s.payment_status = 'verified'
+          AND (s.current_period_end IS NULL OR s.current_period_end > NOW()), FALSE) AS has_active_subscription,
         sp.name AS plan_name,
         (SELECT COUNT(*) FROM users u WHERE u.business_id = b.id) AS user_count
        FROM businesses b
        LEFT JOIN LATERAL (
          SELECT * FROM subscriptions
          WHERE business_id = b.id
-         ORDER BY created_at DESC
+         ORDER BY (is_active = TRUE AND payment_status = 'verified'
+           AND (current_period_end IS NULL OR current_period_end > NOW())) DESC, created_at DESC
          LIMIT 1
        ) s ON TRUE
        LEFT JOIN subscription_plans sp ON sp.id = s.plan_id
@@ -229,6 +232,8 @@ export async function listBusinesses(req, res) {
     businessType: r.business_type,
     isVerified: r.is_verified,
     isSuspended: r.is_suspended,
+    unpaidAccessGranted: r.unpaid_access_granted,
+    hasActiveSubscription: r.has_active_subscription,
     plan: r.plan_name || r.plan || 'N/A',
     subStatus: r.sub_status || 'inactive',
     subPaymentStatus: r.sub_payment_status || 'pending',
@@ -270,6 +275,7 @@ export async function getBusiness(req, res) {
       businessType: b.business_type,
       isVerified: b.is_verified,
       isSuspended: b.is_suspended,
+      unpaidAccessGranted: b.unpaid_access_granted,
       plan: b.plan_name || b.plan || 'N/A',
       subStatus: b.sub_status || 'inactive',
       userCount: Number(b.user_count) || 0,
@@ -287,7 +293,7 @@ export async function toggleBusinessStatus(req, res) {
   try {
     let updateQuery
     if (action === 'verify') {
-      updateQuery = query('UPDATE businesses SET is_verified = TRUE WHERE id = $1 RETURNING id, name', [id])
+      updateQuery = query('UPDATE businesses SET is_verified = TRUE, unpaid_access_granted = FALSE WHERE id = $1 RETURNING id, name', [id])
     } else if (action === 'suspend') {
       updateQuery = query('UPDATE businesses SET is_suspended = TRUE WHERE id = $1 RETURNING id, name', [id])
     } else if (action === 'activate') {
@@ -397,6 +403,51 @@ export async function toggleBusinessStatus(req, res) {
       targetModule: 'Platform',
       ipAddress: getClientIp(req),
     })
+    res.json({ success: true, business: rows[0] })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+}
+
+export async function setUnpaidBusinessAccess(req, res) {
+  const { id } = req.params
+  const { granted } = req.body
+  if (typeof granted !== 'boolean') {
+    return res.status(400).json({ error: 'granted must be a boolean.' })
+  }
+
+  try {
+    const { rows } = await query(
+      `UPDATE businesses b
+       SET unpaid_access_granted = $2
+       WHERE b.id = $1
+         AND ($2 = FALSE OR (
+           b.is_suspended = FALSE
+           AND NOT EXISTS (
+             SELECT 1 FROM subscriptions s
+             WHERE s.business_id = b.id AND s.is_active = TRUE AND s.payment_status = 'verified'
+               AND (s.current_period_end IS NULL OR s.current_period_end > NOW())
+           )
+         ))
+       RETURNING b.id, b.name, b.unpaid_access_granted`,
+      [id, granted]
+    )
+    if (!rows.length) {
+      const { rows: existing } = await query('SELECT id FROM businesses WHERE id = $1', [id])
+      if (!existing.length) return res.status(404).json({ error: 'Business not found.' })
+      return res.status(409).json({ error: 'Unpaid access can only be granted to non-suspended businesses without an active paid subscription.' })
+    }
+
+    await logAudit({
+      userId: req.user?.id,
+      actorName: req.user?.name || req.user?.full_name || 'Platform Admin',
+      action: `${granted ? 'Granted' : 'Revoked'} unpaid business access: ${rows[0].name}`,
+      targetModule: 'Platform',
+      ipAddress: getClientIp(req),
+      businessId: id,
+      metadata: { unpaidAccessGranted: granted },
+    })
+
     res.json({ success: true, business: rows[0] })
   } catch (error) {
     res.status(500).json({ error: error.message })
@@ -719,7 +770,7 @@ export async function updateSubscriptionAdmin(req, res) {
       sql = `UPDATE subscriptions SET status = 'cancelled', is_active = FALSE, cancelled_at = NOW() WHERE id = $1 RETURNING id`
       params = [id]
     } else if (action === 'reactivate') {
-      sql = `UPDATE subscriptions SET status = 'active', is_active = TRUE, payment_status = 'verified', cancelled_at = NULL WHERE id = $1 RETURNING id`
+      sql = `UPDATE subscriptions SET status = 'active', is_active = TRUE, payment_status = 'verified', cancelled_at = NULL WHERE id = $1 RETURNING id, business_id`
       params = [id]
     } else if (action === 'change') {
       sql = `UPDATE subscriptions SET plan = COALESCE($2, plan), billing_cycle = COALESCE($3, billing_cycle) WHERE id = $1 RETURNING id`
@@ -729,6 +780,9 @@ export async function updateSubscriptionAdmin(req, res) {
     }
     const { rows } = await query(sql, params)
     if (!rows.length) return res.status(404).json({ error: 'Subscription not found.' })
+    if (action === 'reactivate' && rows[0].business_id) {
+      await query('UPDATE businesses SET is_verified = TRUE, unpaid_access_granted = FALSE WHERE id = $1', [rows[0].business_id])
+    }
     await logPlatformActivity({ req, actorName: req.user?.name, action: `Subscription ${action}`, module: 'Subscriptions' })
     res.json({ success: true })
   } catch (error) {

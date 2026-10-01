@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useRef } from 'react'
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react'
 import { useAuth } from './AuthContext'
 import api from '../api/axios'
 
@@ -8,8 +8,16 @@ export function OwnerProvider({ children }) {
   const { token } = useAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [branches, setBranches] = useState([])
+  const [activeBranchId, setActiveBranchIdState] = useState(() => localStorage.getItem('barflow.activeBranchId') || 'all')
   const subscriptionCacheRef = useRef(null)
   const subscriptionRequestRef = useRef(null)
+
+  useEffect(() => {
+    const syncActiveBranch = (event) => setActiveBranchIdState(event.detail || 'all')
+    window.addEventListener('barflow-branch-changed', syncActiveBranch)
+    return () => window.removeEventListener('barflow-branch-changed', syncActiveBranch)
+  }, [])
 
   const handleError = useCallback((e) => {
     const msg = e.response?.data?.error || e.message || 'Request failed'
@@ -29,21 +37,36 @@ export function OwnerProvider({ children }) {
     }
   }, [handleError])
 
+  const setActiveBranchId = useCallback((branchId) => {
+    const value = branchId || 'all'
+    setActiveBranchIdState(value)
+    localStorage.setItem('barflow.activeBranchId', value)
+    window.dispatchEvent(new CustomEvent('barflow-branch-changed', { detail: value }))
+  }, [])
+
+  const withActiveBranch = useCallback((params = {}) => ({
+    ...params,
+    ...(activeBranchId && activeBranchId !== 'all' ? { branchId: activeBranchId } : {}),
+  }), [activeBranchId])
+
   // ── Users ──
   const fetchUsers = useCallback(async (params = {}) => {
     return withLoading(async () => {
-      const qs = new URLSearchParams(params).toString()
+      const qs = new URLSearchParams(withActiveBranch(params)).toString()
       const { data } = await api.get(`/v1/owner/users${qs ? `?${qs}` : ''}`)
       return data
     })
-  }, [withLoading])
+  }, [withLoading, withActiveBranch])
 
   const createUser = useCallback(async (userData) => {
     return withLoading(async () => {
-      const { data } = await api.post('/v1/owner/users', userData)
+      const { data } = await api.post('/v1/owner/users', {
+        ...userData,
+        ...(userData.branch ? {} : activeBranchId !== 'all' ? { branch: activeBranchId } : {}),
+      })
       return data
     })
-  }, [withLoading])
+  }, [withLoading, activeBranchId])
 
   const updateUser = useCallback(async (id, data) => {
     return withLoading(async () => {
@@ -68,96 +91,102 @@ export function OwnerProvider({ children }) {
   // ── Salaries / Payroll ──
   const fetchSalaries = useCallback(async () => {
     return withLoading(async () => {
-      const { data } = await api.get('/v1/owner/salaries')
+      const qs = new URLSearchParams(withActiveBranch()).toString()
+      const { data } = await api.get(`/v1/owner/salaries${qs ? `?${qs}` : ''}`)
       return data
     })
-  }, [withLoading])
+  }, [withLoading, withActiveBranch])
 
   const processPayout = useCallback(async (payPeriod) => {
     return withLoading(async () => {
-      const { data } = await api.post('/v1/owner/salaries/payout', payPeriod || {})
+      const { data } = await api.post('/v1/owner/salaries/payout', {
+        ...(payPeriod || {}),
+        ...(activeBranchId !== 'all' ? { branchId: activeBranchId } : {}),
+      })
       return data
     })
-  }, [withLoading])
+  }, [withLoading, activeBranchId])
 
   // ── Withdrawals ──
   const createWithdrawal = useCallback(async (data) => {
     return withLoading(async () => {
-      const res = await api.post('/v1/owner/withdraw', data)
+      const res = await api.post('/v1/owner/withdraw', { ...data, ...(activeBranchId !== 'all' ? { branchId: activeBranchId } : {}) })
       return res.data
     })
-  }, [withLoading])
+  }, [withLoading, activeBranchId])
 
   const fetchWithdrawalLogs = useCallback(async (params = {}) => {
     return withLoading(async () => {
-      const qs = new URLSearchParams(params).toString()
+      const qs = new URLSearchParams(withActiveBranch(params)).toString()
       const { data } = await api.get(`/v1/owner/withdraw/logs${qs ? `?${qs}` : ''}`)
       return data
     })
-  }, [withLoading])
+  }, [withLoading, withActiveBranch])
 
   // ── Transfers ──
   const createTransfer = useCallback(async (data) => {
     return withLoading(async () => {
-      const { data: res } = await api.post('/v1/owner/transfer', data)
+      const { data: res } = await api.post('/v1/owner/transfer', { ...data, ...(activeBranchId !== 'all' ? { branchId: activeBranchId } : {}) })
       return res
     })
-  }, [withLoading])
+  }, [withLoading, activeBranchId])
 
   const approveTransfer = useCallback(async (id, action) => {
     return withLoading(async () => {
-      const { data } = await api.put(`/v1/owner/transfer/${id}/approve`, { action })
+      const { data } = await api.put(`/v1/owner/transfer/${id}/approve`, { action, ...(activeBranchId !== 'all' ? { branchId: activeBranchId } : {}) })
       return data
     })
-  }, [withLoading])
+  }, [withLoading, activeBranchId])
 
   const fetchTransferLogs = useCallback(async (params = {}) => {
     return withLoading(async () => {
-      const qs = new URLSearchParams(params).toString()
+      const qs = new URLSearchParams(withActiveBranch(params)).toString()
       const { data } = await api.get(`/v1/owner/transfer/logs${qs ? `?${qs}` : ''}`)
       return data
     })
-  }, [withLoading])
+  }, [withLoading, withActiveBranch])
 
   // ── Revenue ──
   const fetchRevenue = useCallback(async () => {
     return withLoading(async () => {
-      const { data } = await api.get('/v1/owner/revenue')
+      const qs = new URLSearchParams(withActiveBranch()).toString()
+      const { data } = await api.get(`/v1/owner/revenue${qs ? `?${qs}` : ''}`)
       return data
     })
-  }, [withLoading])
+  }, [withLoading, withActiveBranch])
 
   const fetchRevenueLogs = useCallback(async (params = {}) => {
     return withLoading(async () => {
-      const qs = new URLSearchParams(params).toString()
+      const qs = new URLSearchParams(withActiveBranch(params)).toString()
       const { data } = await api.get(`/v1/owner/revenue/logs${qs ? `?${qs}` : ''}`)
       return data
     })
-  }, [withLoading])
+  }, [withLoading, withActiveBranch])
 
   // ── Orders Oversight ──
   const fetchQROrders = useCallback(async (params = {}) => {
     return withLoading(async () => {
-      const qs = new URLSearchParams(params).toString()
+      const qs = new URLSearchParams(withActiveBranch(params)).toString()
       const { data } = await api.get(`/v1/owner/orders/qr${qs ? `?${qs}` : ''}`)
       return data
     })
-  }, [withLoading])
+  }, [withLoading, withActiveBranch])
 
   const fetchWaiters = useCallback(async () => {
     return withLoading(async () => {
-      const { data } = await api.get('/v1/owner/waiters')
+      const qs = new URLSearchParams(withActiveBranch()).toString()
+      const { data } = await api.get(`/v1/owner/waiters${qs ? `?${qs}` : ''}`)
       return data
     })
-  }, [withLoading])
+  }, [withLoading, withActiveBranch])
 
   const fetchWaiterOrders = useCallback(async (userId, params = {}) => {
     return withLoading(async () => {
-      const qs = new URLSearchParams(params).toString()
+      const qs = new URLSearchParams(withActiveBranch(params)).toString()
       const { data } = await api.get(`/v1/owner/orders/waiter/${userId}${qs ? `?${qs}` : ''}`)
       return data
     })
-  }, [withLoading])
+  }, [withLoading, withActiveBranch])
 
   const fetchOrderHistory = useCallback(async (orderId) => {
     return withLoading(async () => {
@@ -167,12 +196,13 @@ export function OwnerProvider({ children }) {
   }, [withLoading])
 
   // ── Reports ──
-  const fetchReportSummary = useCallback(async () => {
+  const fetchReportSummary = useCallback(async (params = {}) => {
     return withLoading(async () => {
-      const { data } = await api.get('/v1/owner/reports/summary')
+      const qs = new URLSearchParams(withActiveBranch(params)).toString()
+      const { data } = await api.get(`/v1/owner/reports/summary${qs ? `?${qs}` : ''}`)
       return data
     })
-  }, [withLoading])
+  }, [withLoading, withActiveBranch])
 
   const exportReport = useCallback(async (format = 'csv') => {
     return withLoading(async () => {
@@ -265,17 +295,19 @@ export function OwnerProvider({ children }) {
   // ── Inventory ──
   const fetchGlobalInventory = useCallback(async () => {
     return withLoading(async () => {
-      const { data } = await api.get('/v1/owner/inventory')
+      const qs = new URLSearchParams(withActiveBranch()).toString()
+      const { data } = await api.get(`/v1/owner/inventory${qs ? `?${qs}` : ''}`)
       return data
     })
-  }, [withLoading])
+  }, [withLoading, withActiveBranch])
 
   const fetchStockMovements = useCallback(async () => {
     return withLoading(async () => {
-      const { data } = await api.get('/v1/owner/inventory/movements')
+      const qs = new URLSearchParams(withActiveBranch()).toString()
+      const { data } = await api.get(`/v1/owner/inventory/movements${qs ? `?${qs}` : ''}`)
       return data
     })
-  }, [withLoading])
+  }, [withLoading, withActiveBranch])
 
   // ── Settings ──
   const fetchSystemSettings = useCallback(async () => {
@@ -289,6 +321,32 @@ export function OwnerProvider({ children }) {
     return withLoading(async () => {
       const { data: res } = await api.put('/v1/owner/settings', data)
       return res
+    })
+  }, [withLoading])
+
+  const fetchBranches = useCallback(async () => {
+    return withLoading(async () => {
+      const { data } = await api.get('/branches')
+      setBranches(Array.isArray(data) ? data : [])
+      return data
+    })
+  }, [withLoading])
+
+  const createBranch = useCallback(async (payload) => {
+    return withLoading(async () => {
+      const { data } = await api.post('/branches', payload)
+      setBranches((current) => [
+        ...current.filter((branch) => branch.id !== data.id),
+        data,
+      ])
+      return data
+    })
+  }, [withLoading])
+
+  const updateBranch = useCallback(async (id, payload) => {
+    return withLoading(async () => {
+      const { data } = await api.patch(`/branches/${id}`, payload)
+      return data
     })
   }, [withLoading])
 
@@ -364,7 +422,7 @@ export function OwnerProvider({ children }) {
   }, [withLoading])
 
   const value = {
-    loading, error,
+    loading, error, branches, activeBranchId, setActiveBranchId,
     fetchUsers, createUser, updateUser, deleteUser, resetUserPassword,
     fetchSalaries, processPayout,
     createWithdrawal, fetchWithdrawalLogs,
@@ -375,7 +433,7 @@ export function OwnerProvider({ children }) {
     fetchAuditLogs, fetchAuditLogsExport,
     fetchSubscription, fetchAvailableSubscriptionPlans, selectSubscriptionPlan, verifySubscriptionPayment, fetchReceipt, renewSubscription,
     fetchGlobalInventory, fetchStockMovements,
-    fetchSystemSettings, updateSystemSettings, triggerBackup, fetchBackups, restoreBackup, updatePermissions,
+    fetchSystemSettings, updateSystemSettings, fetchBranches, createBranch, updateBranch, triggerBackup, fetchBackups, restoreBackup, updatePermissions,
     fetchPaymentSettings, updatePaymentSettings, generateQRPayment, generateMerchantQRPayment, verifyQRPayment,
   }
 

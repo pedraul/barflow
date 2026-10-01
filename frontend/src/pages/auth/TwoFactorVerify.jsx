@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import * as api from '../../api/endpoints'
 import { useAuth } from '../../context/AuthContext'
+import { buildWorkspaceUrl } from '../../config/workspaceUrl'
 import { ShieldCheck, Info, RotateCw, HelpCircle, Lock, Mail, Smartphone } from 'lucide-react'
 
 export default function TwoFactorVerify() {
@@ -25,13 +26,13 @@ export default function TwoFactorVerify() {
   const isPlatformAdmin = searchParams.get('isPlatformAdmin') === 'true'
 
   const ROLE_DASHBOARD = {
-    owner: '/dashboard/owner',
-    manager: '/manager/dashboard',
-    accountant: '/accountant/dashboard',
-    waiter: '/waiter/dashboard',
-    operator: '/operator/orders',
-    kitchen: '/kitchen',
-    bar: '/bar',
+    owner: '/owner/',
+    manager: '/manager/',
+    accountant: '/accountant/',
+    waiter: '/waiter/',
+    operator: '/operator/',
+    kitchen: '/kitchen/',
+    bar: '/bar/',
     super_admin: '/admin/dashboard',
   }
 
@@ -118,15 +119,17 @@ export default function TwoFactorVerify() {
               phone: rawUser.phone || '',
               role: rawUser.role || role || '',
               branch: rawUser.branch || '',
+              branchId: rawUser.branchId || null,
               avatar: rawUser.avatar || '',
               businessId: rawUser.businessId || '',
               businessName: rawUser.businessName || '',
               subscriptionStatus: rawUser.subscriptionStatus || '',
               subscriptionExpired: rawUser.subscriptionExpired,
+              unpaidAccessGranted: rawUser.unpaidAccessGranted === true,
             },
           })
           const dashboard = ROLE_DASHBOARD[rawUser.role || role] || '/'
-          setPendingDashboard(dashboard)
+          window.location.assign(buildWorkspaceUrl({ ...rawUser, businessSlug: rawUser.businessSlug }, dashboard))
         }
       }
     } catch (err) {

@@ -7,7 +7,7 @@ import * as api from '../../api/endpoints'
 const money = (v) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'RWF', minimumFractionDigits: 0 }).format(v || 0)
 
 export default function OwnerWaiterOrders() {
-  const { fetchWaiters, fetchWaiterOrders } = useOwner()
+  const { fetchWaiters, fetchWaiterOrders, activeBranchId } = useOwner()
   const [waiters, setWaiters] = useState([])
   const [selectedWaiter, setSelectedWaiter] = useState(null)
   const [orders, setOrders] = useState([])
@@ -17,12 +17,16 @@ export default function OwnerWaiterOrders() {
 
   useEffect(() => {
     let active = true
+    setWaiters([])
+    setSelectedWaiter(null)
+    setOrders([])
+    setWaitersLoading(true)
     fetchWaiters()
       .then((data) => { if (active) setWaiters(data || []) })
       .catch(() => {})
       .finally(() => { if (active) setWaitersLoading(false) })
     return () => { active = false }
-  }, [fetchWaiters])
+  }, [fetchWaiters, activeBranchId])
 
   const loadOrders = async (userId) => {
     setLoading(true)

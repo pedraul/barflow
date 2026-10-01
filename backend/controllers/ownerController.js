@@ -1,4 +1,4 @@
-import { query } from '../config/database.js'
+import { query, pool } from '../config/database.js'
 import bcrypt from 'bcryptjs'
 import { sign } from '../config/jwt.js'
 import crypto from 'crypto'
@@ -12,6 +12,8 @@ import {
   sendRenewalConfirmation,
 } from '../services/emailNotificationService.js'
 import { createBackup as createSqlBackup, restoreBackup as restoreSqlBackup } from '../utils/backup.js'
+import { getFinancialSummary } from '../services/financialSummaryService.js'
+import { getBranchContext } from '../middleware/branchContext.js'
 
 // ──────────────────────────────────────────────
 // Helper: generate receipt number
@@ -239,14 +241,14 @@ export async function ownerLogout(req, res) {
 // GET /api/v1/owner/users
 export async function getUsers(req, res) {
   try {
-    const { role, status, branch } = req.query
-    const businessId = req.user?.businessId
+    const { role, status, branch, branchId } = req.query
+    const scope = await getBranchContext(req, { requestedBranchId: branchId || branch, allowOwnerAll: true })
     let sql = `SELECT u.id, u.full_name, u.email, u.username, u.role, u.is_active, u.salary, u.last_login, u.phone,
                       b.name AS branch_name, b.id AS branch_id
                FROM users u
                LEFT JOIN branches b ON b.id = u.branch_id
-               WHERE u.business_id = $1`
-    const params = [businessId]
+               WHERE u.business_id = $1${scope.branchId ? ' AND u.branch_id = $2' : ''}`
+    const params = scope.branchId ? [scope.businessId, scope.branchId] : [scope.businessId]
 
     if (role) {
       sql += ` AND u.role = $${params.length + 1}`
@@ -256,11 +258,6 @@ export async function getUsers(req, res) {
       sql += ` AND u.is_active = $${params.length + 1}`
       params.push(status === 'active')
     }
-    if (branch) {
-      sql += ` AND b.id = $${params.length + 1}`
-      params.push(branch)
-    }
-
     sql += ' ORDER BY u.created_at DESC'
 
     const { rows } = await query(sql, params)
@@ -284,7 +281,7 @@ export async function getUsers(req, res) {
       }))
     )
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    res.status(error.statusCode || 500).json({ error: error.message })
   }
 }
 
@@ -292,8 +289,12 @@ export async function getUsers(req, res) {
 export async function createUser(req, res) {
   try {
     const { username, fullName, email, password, role, branch, salary, phone } = req.body
+    const allowedRoles = new Set(['manager', 'accountant', 'waiter', 'kitchen', 'bar', 'operator'])
     if (!fullName || !email || !password || !role) {
       return res.status(400).json({ error: 'Name, email, password, and role are required.' })
+    }
+    if (!allowedRoles.has(String(role).toLowerCase())) {
+      return res.status(400).json({ error: 'Only non-owner business roles can be assigned to a branch.' })
     }
 
     const businessId = req.user?.businessId
@@ -304,21 +305,21 @@ export async function createUser(req, res) {
     const passwordHash = await bcrypt.hash(password, 10)
 
     let branchId = null
-    if (branch && branch.trim()) {
+    if (branch && String(branch).trim()) {
       const { rows: existingBranch } = await query(
-        `SELECT id FROM branches WHERE LOWER(name) = LOWER($1) AND business_id = $2 LIMIT 1`,
-        [branch.trim(), businessId]
+        `SELECT id FROM branches
+         WHERE business_id = $1 AND COALESCE(is_active, TRUE) = TRUE
+           AND (id::text = $2 OR LOWER(name) = LOWER($2))
+         LIMIT 1`,
+        [businessId, String(branch).trim()]
       )
       if (existingBranch.length) {
         branchId = existingBranch[0].id
       } else {
-      const { rows: newBranch } = await query(
-        `INSERT INTO branches (business_id, name) VALUES ($1, $2) RETURNING id`,
-        [businessId, branch.trim()]
-      )
-        branchId = newBranch[0].id
+        return res.status(400).json({ error: 'Selected branch was not found in this business.' })
       }
     }
+    if (!branchId) return res.status(400).json({ error: 'A branch is required for this user role.' })
 
     const { rows } = await query(
       `INSERT INTO users (business_id, username, full_name, email, password_hash, role, branch_id, salary, phone)
@@ -349,6 +350,10 @@ export async function updateUser(req, res) {
   try {
     const { id } = req.params
     const { fullName, email, username, role, branch, isActive, salary, phone } = req.body
+    const allowedRoles = new Set(['manager', 'accountant', 'waiter', 'kitchen', 'bar', 'operator'])
+    if (role !== undefined && !allowedRoles.has(String(role).toLowerCase())) {
+      return res.status(400).json({ error: 'Only non-owner business roles can be assigned to a branch.' })
+    }
 
     const fields = []
     const params = []
@@ -362,22 +367,17 @@ export async function updateUser(req, res) {
     if (salary !== undefined) { fields.push(`salary = $${idx++}`); params.push(salary) }
     if (phone !== undefined) { fields.push(`phone = $${idx++}`); params.push(phone) }
     if (branch !== undefined && branch !== null && String(branch).trim()) {
-      const branchName = String(branch).trim()
       const businessId = req.user?.businessId
       const { rows: existingBranch } = await query(
-        `SELECT id FROM branches WHERE LOWER(name) = LOWER($1) AND business_id = $2 LIMIT 1`,
-        [branchName, businessId]
+        `SELECT id FROM branches
+         WHERE business_id = $1 AND COALESCE(is_active, TRUE) = TRUE
+           AND (id::text = $2 OR LOWER(name) = LOWER($2))
+         LIMIT 1`,
+        [businessId, String(branch).trim()]
       )
-      let branchId = existingBranch.length ? existingBranch[0].id : null
-      if (!branchId) {
-        const { rows: newBranch } = await query(
-          `INSERT INTO branches (business_id, name) VALUES ($1, $2) RETURNING id`,
-          [businessId, branchName]
-        )
-        branchId = newBranch[0].id
-      }
+      if (!existingBranch.length) return res.status(400).json({ error: 'Selected branch was not found in this business.' })
       fields.push(`branch_id = $${idx++}`)
-      params.push(branchId)
+      params.push(existingBranch[0].id)
     }
 
     if (!fields.length) {
@@ -412,28 +412,65 @@ export async function updateUser(req, res) {
 
 // DELETE /api/v1/owner/users/:id
 export async function deleteUser(req, res) {
+  const client = await pool.connect()
   try {
     const { id } = req.params
     const businessId = req.user?.businessId
-    const { rows } = await query('SELECT id, full_name FROM users WHERE id = $1 AND business_id = $2', [id, businessId])
+    await client.query('BEGIN')
+    const { rows } = await client.query('SELECT id, full_name FROM users WHERE id = $1 AND business_id = $2 FOR UPDATE', [id, businessId])
     if (!rows.length) {
+      await client.query('ROLLBACK')
       return res.status(404).json({ error: 'User not found.' })
     }
 
-    await query('DELETE FROM users WHERE id = $1 AND business_id = $2', [id, businessId])
+    // Detach nullable foreign-key references before permanently deleting the account.
+    const { rows: references } = await client.query(
+      `SELECT DISTINCT kcu.table_name, kcu.column_name
+       FROM information_schema.table_constraints tc
+       JOIN information_schema.key_column_usage kcu
+         ON tc.constraint_name = kcu.constraint_name
+        AND tc.table_schema = kcu.table_schema
+       JOIN information_schema.constraint_column_usage ccu
+         ON tc.constraint_name = ccu.constraint_name
+        AND tc.table_schema = ccu.table_schema
+       JOIN information_schema.columns cols
+         ON cols.table_schema = kcu.table_schema
+        AND cols.table_name = kcu.table_name
+        AND cols.column_name = kcu.column_name
+       WHERE tc.constraint_type = 'FOREIGN KEY'
+         AND ccu.table_schema = 'public'
+         AND ccu.table_name = 'users'
+         AND ccu.column_name = 'id'
+         AND cols.is_nullable = 'YES'`
+    )
+
+    for (const reference of references) {
+      const table = reference.table_name.replace(/"/g, '""')
+      const column = reference.column_name.replace(/"/g, '""')
+      await client.query(`UPDATE "${table}" SET "${column}" = NULL WHERE "${column}" = $1`, [id])
+    }
+
+    await client.query('DELETE FROM users WHERE id = $1 AND business_id = $2', [id, businessId])
 
     await logAudit({
       userId: req.user.id,
       actorName: req.user.full_name || req.user.email,
-      action: `Deleted user ${rows[0].full_name}`,
+      action: `Permanently deleted user ${rows[0].full_name}`,
       targetModule: 'Staff Management',
       ipAddress: getClientIp(req),
       businessId: req.user?.businessId,
     })
 
-    res.json({ message: `User ${rows[0].full_name} deleted successfully.` })
+    await client.query('COMMIT')
+    res.json({ message: `User ${rows[0].full_name} was permanently deleted.` })
   } catch (error) {
+    await client.query('ROLLBACK').catch(() => {})
+    if (error.code === '23503') {
+      return res.status(409).json({ error: 'This user still has required records and cannot be permanently deleted.' })
+    }
     res.status(500).json({ error: error.message })
+  } finally {
+    client.release()
   }
 }
 
@@ -478,7 +515,9 @@ export async function resetUserPassword(req, res) {
 // GET /api/v1/owner/salaries
 export async function getSalaries(req, res) {
   try {
-    const businessId = req.user?.businessId
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
+    const branchFilter = scope.branchId ? ' AND u.branch_id = $2' : ''
+    const params = scope.branchId ? [scope.businessId, scope.branchId] : [scope.businessId]
     const { rows } = await query(
       `SELECT s.id, s.user_id, u.full_name AS user_name, u.email, u.role, u.phone,
               b.name AS branch_name, u.salary AS base_salary,
@@ -487,9 +526,9 @@ export async function getSalaries(req, res) {
          FROM salary_payments s
          JOIN users u ON u.id = s.user_id
          LEFT JOIN branches b ON b.id = u.branch_id
-         WHERE u.business_id = $1
+        WHERE u.business_id = $1${branchFilter}
          ORDER BY s.created_at DESC`,
-      [businessId]
+      params
     )
 
     res.json(
@@ -521,10 +560,11 @@ export async function getSalaries(req, res) {
 // POST /api/v1/owner/salaries/payout
 export async function processPayout(req, res) {
   try {
-    const businessId = req.user?.businessId
+    const scope = await getBranchContext(req, { requestedBranchId: req.body.branchId || req.query.branchId, allowOwnerAll: false })
     const { rows: employees } = await query(
-      `SELECT id, full_name, salary, phone FROM users WHERE is_active = TRUE AND salary > 0 AND business_id = $1`,
-      [businessId]
+      `SELECT id, full_name, salary, phone FROM users
+       WHERE is_active = TRUE AND salary > 0 AND business_id = $1 AND branch_id = $2`,
+      [scope.businessId, scope.branchId]
     )
 
     if (!employees.length) {
@@ -542,9 +582,9 @@ export async function processPayout(req, res) {
       const net = Math.max(0, gross - tax - insurance)
 
       const { rows: inserted } = await query(
-        `INSERT INTO salary_payments (user_id, name, phone, gross_amount, tax_amount, insurance_amount, net_amount, amount, method, status, pay_period_start, pay_period_end)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'direct', 'Paid', $9, $10) RETURNING id`,
-        [emp.id, emp.full_name, emp.phone || '', gross, tax, insurance, net, net, payPeriodStart, payPeriodEnd]
+        `INSERT INTO salary_payments (user_id, branch_id, name, phone, gross_amount, tax_amount, insurance_amount, net_amount, amount, method, status, pay_period_start, pay_period_end)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'direct', 'Paid', $10, $11) RETURNING id`,
+        [emp.id, scope.branchId, emp.full_name, emp.phone || '', gross, tax, insurance, net, net, payPeriodStart, payPeriodEnd]
       )
       results.push({ userId: emp.id, name: emp.full_name, gross, tax, insurance, net, paymentId: inserted[0].id })
     }
@@ -576,12 +616,12 @@ export async function createWithdrawal(req, res) {
       return res.status(400).json({ error: 'Phone number, purpose, and amount are required.' })
     }
 
-    const businessId = req.user?.businessId
+    const scope = await getBranchContext(req, { requestedBranchId: req.body.branchId || req.query.branchId, allowOwnerAll: false })
 
     const { rows } = await query(
-      `INSERT INTO withdrawals (business_id, phone_number, purpose, amount, initiated_by, status)
-       VALUES ($1, $2, $3, $4, $5, 'pending') RETURNING *`,
-      [businessId, phoneNumber, purpose, amount, req.user.id]
+      `INSERT INTO withdrawals (business_id, branch_id, phone_number, purpose, amount, initiated_by, status)
+       VALUES ($1, $2, $3, $4, $5, $6, 'pending') RETURNING *`,
+      [scope.businessId, scope.branchId, phoneNumber, purpose, amount, req.user.id]
     )
 
     await logAudit({
@@ -602,22 +642,24 @@ export async function createWithdrawal(req, res) {
 // GET /api/v1/owner/withdraw/logs
 export async function getWithdrawalLogs(req, res) {
   try {
-    const businessId = req.user?.businessId
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
+    const branchFilter = scope.branchId ? ' AND branch_id = $2' : ''
+    const scopeParams = scope.branchId ? [scope.businessId, scope.branchId] : [scope.businessId]
     const page = Math.max(1, parseInt(req.query.page) || 1)
     const limit = Math.min(100, Math.max(10, parseInt(req.query.limit) || 50))
     const offset = (page - 1) * limit
 
-    const { rows: countResult } = await query('SELECT COUNT(*) AS total FROM withdrawals WHERE business_id = $1', [businessId])
+    const { rows: countResult } = await query(`SELECT COUNT(*) AS total FROM withdrawals WHERE business_id = $1${branchFilter}`, scopeParams)
     const total = parseInt(countResult[0].total) || 0
 
     const { rows } = await query(
       `SELECT w.*, u.full_name AS initiated_by_name
        FROM withdrawals w
        LEFT JOIN users u ON u.id = w.initiated_by
-       WHERE w.business_id = $1
+      WHERE w.business_id = $1${branchFilter}
        ORDER BY w.created_at DESC
        LIMIT $2 OFFSET $3`,
-      [businessId, limit, offset]
+      [...scopeParams, limit, offset]
     )
 
     res.json({
@@ -649,7 +691,7 @@ export async function createTransfer(req, res) {
       return res.status(400).json({ error: 'Amount is required.' })
     }
 
-    const businessId = req.user?.businessId
+    const scope = await getBranchContext(req, { requestedBranchId: req.body.branchId || req.query.branchId, allowOwnerAll: false })
 
     // Resolve recipient by phone number (transfers are made to a phone)
     let toUserId = null
@@ -657,7 +699,7 @@ export async function createTransfer(req, res) {
     if (toPhone) {
       const { rows: users } = await query(
         'SELECT id, full_name FROM users WHERE phone = $1 AND business_id = $2 LIMIT 1',
-        [toPhone, businessId]
+        [toPhone, scope.businessId]
       )
       if (users.length) {
         toUserId = users[0].id
@@ -666,9 +708,9 @@ export async function createTransfer(req, res) {
     }
 
     const { rows } = await query(
-      `INSERT INTO transfers (business_id, from_user, to_user, to_phone, amount, description, status)
-       VALUES ($1, $2, $3, $4, $5, $6, 'pending') RETURNING *`,
-      [businessId, req.user.id, toUserId, toPhone || null, amount, description || '']
+      `INSERT INTO transfers (business_id, branch_id, from_user, to_user, to_phone, amount, description, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending') RETURNING *`,
+      [scope.businessId, scope.branchId, req.user.id, toUserId, toPhone || null, amount, description || '']
     )
 
     await logAudit({
@@ -695,11 +737,12 @@ export async function approveTransfer(req, res) {
     if (!['approved', 'rejected'].includes(action)) {
       return res.status(400).json({ error: 'Action must be "approved" or "rejected".' })
     }
+    const scope = await getBranchContext(req, { requestedBranchId: req.body.branchId || req.query.branchId, allowOwnerAll: false })
 
     const { rows } = await query(
       `UPDATE transfers SET status = $1, manager_approval = 1, manager_approved_by = $2, approved_at = NOW()
-       WHERE id = $3 RETURNING *`,
-      [action, req.user.id, id]
+       WHERE id = $3 AND business_id = $4 AND branch_id = $5 RETURNING *`,
+      [action, req.user.id, id, scope.businessId, scope.branchId]
     )
 
     if (!rows.length) {
@@ -724,12 +767,14 @@ export async function approveTransfer(req, res) {
 // GET /api/v1/owner/transfer/logs
 export async function getTransferLogs(req, res) {
   try {
-    const businessId = req.user?.businessId
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
+    const branchFilter = scope.branchId ? ' AND branch_id = $2' : ''
+    const scopeParams = scope.branchId ? [scope.businessId, scope.branchId] : [scope.businessId]
     const page = Math.max(1, parseInt(req.query.page) || 1)
     const limit = Math.min(100, Math.max(10, parseInt(req.query.limit) || 50))
     const offset = (page - 1) * limit
 
-    const { rows: countResult } = await query('SELECT COUNT(*) AS total FROM transfers WHERE business_id = $1', [businessId])
+    const { rows: countResult } = await query(`SELECT COUNT(*) AS total FROM transfers WHERE business_id = $1${branchFilter}`, scopeParams)
     const total = parseInt(countResult[0].total) || 0
 
     const { rows } = await query(
@@ -738,10 +783,10 @@ export async function getTransferLogs(req, res) {
        LEFT JOIN users u1 ON u1.id = t.from_user
        LEFT JOIN users u2 ON u2.id = t.to_user
        LEFT JOIN users u3 ON u3.id = t.manager_approved_by
-       WHERE t.business_id = $1
+      WHERE t.business_id = $1${branchFilter}
        ORDER BY t.created_at DESC
        LIMIT $2 OFFSET $3`,
-      [businessId, limit, offset]
+      [...scopeParams, limit, offset]
     )
 
     res.json({
@@ -772,7 +817,10 @@ export async function getTransferLogs(req, res) {
 // GET /api/v1/owner/revenue
 export async function getRevenue(req, res) {
   try {
-    const businessId = req.user?.businessId
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
+    const businessId = scope.businessId
+    const branchFilter = scope.branchId ? ' AND branch_id = $2' : ''
+    const branchParams = scope.branchId ? [businessId, scope.branchId] : [businessId]
     if (!businessId) {
       return res.json({
         revenueReceived: 0,
@@ -784,27 +832,34 @@ export async function getRevenue(req, res) {
     }
 
     const { rows: revenueReceived } = await query(
-      `SELECT COALESCE(SUM(total_amount), 0) AS total FROM orders WHERE status IN ('Paid', 'Served') AND business_id = $1`,
-      [businessId]
+      `SELECT COALESCE(SUM(total_amount), 0) AS total FROM orders WHERE status IN ('Paid', 'Served') AND business_id = $1${branchFilter}`,
+      branchParams
     )
     const { rows: refundTotalRows } = await query(
-      `SELECT COALESCE(SUM(amount), 0) AS total FROM refunds WHERE status = 'approved' AND business_id = $1`,
-      [businessId]
+      `SELECT COALESCE(SUM(amount), 0) AS total FROM refunds WHERE status = 'approved' AND business_id = $1${branchFilter}`,
+      branchParams
     )
 
     const { rows: stockAvailable } = await query(
-      `SELECT COUNT(*) AS total_items, COALESCE(SUM(quantity), 0) AS total_quantity FROM products WHERE is_active = TRUE AND business_id = $1`,
-      [businessId]
+      `SELECT COUNT(DISTINCT p.id) FILTER (WHERE bs.quantity > 0) AS total_items,
+              COALESCE(SUM(bs.quantity), 0) AS total_quantity
+       FROM branch_stock bs
+       JOIN products p ON p.id = bs.product_id
+       WHERE p.is_active = TRUE AND p.business_id = $1${scope.branchId ? ' AND bs.branch_id = $2' : ''}`,
+      branchParams
     )
 
     const { rows: stockOrdered } = await query(
-      `SELECT COUNT(*) AS total_orders, COALESCE(SUM(total_amount), 0) AS total_value FROM orders WHERE status = 'Open' AND business_id = $1`,
-      [businessId]
+      `SELECT COUNT(*) AS total_orders, COALESCE(SUM(total_amount), 0) AS total_value FROM orders WHERE status = 'Open' AND business_id = $1${branchFilter}`,
+      branchParams
     )
 
     const { rows: stockValue } = await query(
-      `SELECT COALESCE(SUM(quantity * cost_price), 0) AS total_value FROM products WHERE is_active = TRUE AND business_id = $1`,
-      [businessId]
+      `SELECT COALESCE(SUM(bs.quantity * p.cost_price), 0) AS total_value
+       FROM branch_stock bs
+       JOIN products p ON p.id = bs.product_id
+       WHERE p.is_active = TRUE AND p.business_id = $1${scope.branchId ? ' AND bs.branch_id = $2' : ''}`,
+      branchParams
     )
 
     const { rows: soldValue } = await query(
@@ -812,8 +867,8 @@ export async function getRevenue(req, res) {
        FROM order_items oi
        JOIN products p ON p.id = oi.product_id
        JOIN orders o ON o.id = oi.order_id AND o.status IN ('Paid', 'Served')
-       WHERE o.business_id = $1`,
-      [businessId]
+      WHERE o.business_id = $1${scope.branchId ? ' AND o.branch_id = $2' : ''}`,
+          branchParams
     )
 
     res.json({
@@ -931,38 +986,43 @@ export async function getReportSummary(req, res) {
       })
     }
 
-    // Refunds total (money returned to clients - removed from revenue)
-    const { rows: refundTotal } = await query(
-      `SELECT COALESCE(SUM(amount), 0) AS total FROM refunds WHERE status = 'approved' AND business_id = $1`,
-      [businessId]
-    )
-    const totalRefunds = Number(refundTotal[0]?.total || 0)
-
-    // Total Sales (net of refunds)
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
+    const salesBranchFilter = scope.branchId ? ' AND branch_id = $2' : ''
+    const salesParams = scope.branchId ? [scope.businessId, scope.branchId] : [scope.businessId]
     const { rows: salesData } = await query(
       `SELECT COALESCE(SUM(total_amount), 0) AS total_sales,
-              COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN total_amount ELSE 0 END), 0) AS cash_sales,
-              COALESCE(SUM(CASE WHEN payment_method = 'card' THEN total_amount ELSE 0 END), 0) AS card_sales,
               COUNT(*) AS total_orders
-       FROM orders WHERE status IN ('Paid', 'Served') AND business_id = $1`,
-      [businessId]
+       FROM orders WHERE status IN ('Paid', 'Served') AND business_id = $1${salesBranchFilter}`,
+      salesParams
+    )
+    const { rows: tenderData } = await query(
+      `WITH tender_entries AS (
+         SELECT p.amount, p.method::text AS method
+         FROM payments p
+         JOIN orders o ON o.id = p.order_id
+         WHERE p.business_id = $1 AND o.business_id = $1
+           AND p.paid_at IS NOT NULL
+           AND o.status IN ('Paid', 'Served')
+           AND COALESCE(p.reference, '') NOT LIKE 'REFUND-%'
+           ${scope.branchId ? 'AND p.branch_id = $2 AND o.branch_id = $2' : ''}
+         UNION ALL
+         SELECT o.total_amount AS amount, o.payment_method::text AS method
+         FROM orders o
+         WHERE o.business_id = $1 AND o.status IN ('Paid', 'Served')
+           AND LOWER(o.payment_method) IN ('cash', 'card', 'pos')
+           ${scope.branchId ? 'AND o.branch_id = $2' : ''}
+           AND NOT EXISTS (
+             SELECT 1 FROM payments p
+             WHERE p.order_id = o.id AND p.paid_at IS NOT NULL
+           )
+       )
+       SELECT COALESCE(SUM(amount) FILTER (WHERE LOWER(method) = 'cash'), 0) AS cash_sales,
+              COALESCE(SUM(amount) FILTER (WHERE LOWER(method) IN ('card', 'pos')), 0) AS card_sales
+       FROM tender_entries`,
+      salesParams
     )
 
-    // Net Profit (simplified: total sales minus total costs)
-    const { rows: costData } = await query(
-      `SELECT COALESCE(SUM(oi.quantity * p.cost_price), 0) AS total_cost
-       FROM order_items oi
-       JOIN orders o ON o.id = oi.order_id AND o.status IN ('Paid', 'Served')
-       JOIN products p ON p.id = oi.product_id
-       WHERE o.business_id = $1`,
-      [businessId]
-    )
-
-    // VAT Due (simplified: 18% of net sales)
-    const totalSales = (Number(salesData[0].total_sales) || 0) - totalRefunds
-    const totalCost = Number(costData[0].total_cost) || 0
-    const netProfit = totalSales - totalCost
-    const vatDue = totalSales * 0.18
+    const financialSummary = await getFinancialSummary(scope.businessId, scope.branchId)
 
     // Branch Performance
     const { rows: branchPerformance } = await query(
@@ -972,10 +1032,10 @@ export async function getReportSummary(req, res) {
        FROM branches b
        LEFT JOIN users u ON u.branch_id = b.id
        LEFT JOIN orders o ON o.branch_id = b.id AND o.status IN ('Paid', 'Served')
-       WHERE b.business_id = $1
+      WHERE b.business_id = $1${scope.branchId ? ' AND b.id = $2' : ''}
        GROUP BY b.id, b.name
        ORDER BY total_revenue DESC`,
-      [businessId]
+          scope.branchId ? [scope.businessId, scope.branchId] : [scope.businessId]
     )
 
     // Recent activity
@@ -990,8 +1050,8 @@ export async function getReportSummary(req, res) {
 
     // Dashboard stats
     const { rows: staffCount } = await query(
-      `SELECT role, COUNT(*) AS count FROM users WHERE is_active = TRUE AND business_id = $1 GROUP BY role`,
-      [businessId]
+      `SELECT role, COUNT(*) AS count FROM users WHERE is_active = TRUE AND business_id = $1${scope.branchId ? ' AND branch_id = $2' : ''} GROUP BY role`,
+      scope.branchId ? [businessId, scope.branchId] : [businessId]
     )
     const stats = {}
     staffCount.forEach((r) => { stats[r.role] = parseInt(r.count) })
@@ -999,23 +1059,24 @@ export async function getReportSummary(req, res) {
     // Customer orders via QR
     const { rows: qrOrders } = await query(
       `SELECT COUNT(*) AS count, COALESCE(SUM(total_amount), 0) AS total
-       FROM orders WHERE source = 'qr' AND status IN ('Paid', 'Served') AND business_id = $1`,
-      [businessId]
+      FROM orders WHERE source = 'qr' AND status IN ('Paid', 'Served') AND business_id = $1${scope.branchId ? ' AND branch_id = $2' : ''}`,
+          scope.branchId ? [scope.businessId, scope.branchId] : [scope.businessId]
     )
 
     res.json({
       summary: {
-        totalSales,
-        cashSales: Number(salesData[0].cash_sales) || 0,
-        cardSales: Number(salesData[0].card_sales) || 0,
-        netProfit,
-        vatDue,
+        totalSales: financialSummary.totalSales,
+        cashSales: Number(tenderData[0].cash_sales) || 0,
+        cardSales: Number(tenderData[0].card_sales) || 0,
+        netProfit: financialSummary.netProfit,
+        vatDue: financialSummary.vatTotal,
         totalOrders: Number(salesData[0].total_orders) || 0,
         waiters: stats.waiter || 0,
         managers: stats.manager || 0,
         accountants: stats.accountant || 0,
         qrOrders: parseInt(qrOrders[0].count) || 0,
-        qrRevenue: (Number(qrOrders[0].total) || 0) - totalRefunds,
+        qrRevenue: (Number(qrOrders[0].total) || 0) - financialSummary.refunds,
+        branchId: scope.branchId,
       },
       branchPerformance: branchPerformance.map((b) => ({
         id: b.id,
@@ -1447,7 +1508,7 @@ export async function verifySubscriptionPayment(req, res) {
     )
 
     if (sub.business_id) {
-      await query('UPDATE businesses SET is_verified = TRUE WHERE id = $1', [sub.business_id])
+      await query('UPDATE businesses SET is_verified = TRUE, unpaid_access_granted = FALSE WHERE id = $1', [sub.business_id])
     }
 
     // Record the payment in platform_payments for platform admin control
@@ -1687,14 +1748,19 @@ export async function getAvailableSubscriptionPlans(_req, res) {
 // GET /api/v1/owner/inventory
 export async function getGlobalInventory(req, res) {
   try {
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
+    const branchFilter = scope.branchId ? 'WHERE b.business_id = $1 AND inv.branch_id = $2' : 'WHERE b.business_id = $1'
+    const params = scope.branchId ? [scope.businessId, scope.branchId] : [scope.businessId]
     const { rows } = await query(
       `SELECT inv.id, inv.name, inv.sku, inv.quantity, inv.cost_price, inv.selling_price,
               inv.min_stock_level, inv.unit, inv.expiry_date,
               b.name AS branch_name, b.id AS branch_id,
               inv.created_at, inv.updated_at
-       FROM inventory inv
-       LEFT JOIN branches b ON b.id = inv.branch_id
+      FROM inventory inv
+      LEFT JOIN branches b ON b.id = inv.branch_id
+      ${branchFilter}
        ORDER BY inv.name ASC`
+          , params
     )
 
     res.json(
@@ -1722,6 +1788,9 @@ export async function getGlobalInventory(req, res) {
 // GET /api/v1/owner/inventory/movements
 export async function getStockMovements(req, res) {
   try {
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
+    const branchFilter = scope.branchId ? 'WHERE b.business_id = $1 AND inv.branch_id = $2' : 'WHERE b.business_id = $1'
+    const params = scope.branchId ? [scope.businessId, scope.branchId] : [scope.businessId]
     const { rows } = await query(
       `SELECT sa.id, sa.inventory_id, inv.name AS item_name, sa.adjustment_type, sa.quantity,
               sa.reason, sa.created_at,
@@ -1729,9 +1798,11 @@ export async function getStockMovements(req, res) {
        FROM stock_adjustments sa
        JOIN inventory inv ON inv.id = sa.inventory_id
        JOIN users u ON u.id = sa.adjusted_by
-       LEFT JOIN branches b ON b.id = inv.branch_id
+      LEFT JOIN branches b ON b.id = inv.branch_id
+      ${branchFilter}
        ORDER BY sa.created_at DESC
-       LIMIT 100`
+      LIMIT 100`,
+          params
     )
 
     res.json(
@@ -1821,9 +1892,17 @@ export async function getSystemSettings(req, res) {
             id: business[0].id,
             name: business[0].name,
             address: business[0].address || '',
-            phone: business[0].phone || '',
-            email: business[0].email || '',
-            currency: business[0].currency || 'RWF',
+            phone: business[0].contact_phone || '',
+            email: business[0].contact_email || '',
+            city: business[0].city || '',
+            country: business[0].country || '',
+            province: business[0].province || '',
+            district: business[0].district || '',
+            sector: business[0].sector || '',
+            businessType: business[0].business_type || '',
+            registrationCode: business[0].registration_code || '',
+            description: business[0].description || '',
+            currency: business[0].currency_code || 'RWF',
             taxRate: Number(business[0].tax_rate) || 18,
           }
         : null,
@@ -1866,7 +1945,10 @@ export async function getSystemSettings(req, res) {
 export async function updateSystemSettings(req, res) {
   try {
     const businessId = req.user?.businessId
-    const { name, address, phone, email, currency, taxRate, settings } = req.body
+    const {
+      name, address, phone, email, city, country, province, district, sector,
+      businessType, registrationCode, description, currency, taxRate, settings,
+    } = req.body
 
     // Update business info
     const fields = []
@@ -1875,9 +1957,17 @@ export async function updateSystemSettings(req, res) {
 
     if (name !== undefined) { fields.push(`name = $${idx++}`); params.push(name) }
     if (address !== undefined) { fields.push(`address = $${idx++}`); params.push(address) }
-    if (phone !== undefined) { fields.push(`phone = $${idx++}`); params.push(phone) }
-    if (email !== undefined) { fields.push(`email = $${idx++}`); params.push(email) }
-    if (currency !== undefined) { fields.push(`currency = $${idx++}`); params.push(currency) }
+    if (phone !== undefined) { fields.push(`contact_phone = $${idx++}`); params.push(phone) }
+    if (email !== undefined) { fields.push(`contact_email = $${idx++}`); params.push(email) }
+    if (city !== undefined) { fields.push(`city = $${idx++}`); params.push(city) }
+    if (country !== undefined) { fields.push(`country = $${idx++}`); params.push(country) }
+    if (province !== undefined) { fields.push(`province = $${idx++}`); params.push(province) }
+    if (district !== undefined) { fields.push(`district = $${idx++}`); params.push(district) }
+    if (sector !== undefined) { fields.push(`sector = $${idx++}`); params.push(sector) }
+    if (businessType !== undefined) { fields.push(`business_type = $${idx++}`); params.push(businessType) }
+    if (registrationCode !== undefined) { fields.push(`registration_code = $${idx++}`); params.push(registrationCode) }
+    if (description !== undefined) { fields.push(`description = $${idx++}`); params.push(description) }
+    if (currency !== undefined) { fields.push(`currency_code = $${idx++}`); params.push(currency) }
     if (taxRate !== undefined) { fields.push(`tax_rate = $${idx++}`); params.push(taxRate) }
 
     if (fields.length) {
@@ -2182,7 +2272,8 @@ export async function importRolePermissions(req, res) {
 // GET /api/v1/owner/orders/qr
 export async function getQROrders(req, res) {
   try {
-    const businessId = req.user?.businessId
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
+    const businessId = scope.businessId
     const { status } = req.query
     let sql = `SELECT o.id, o.order_number, o.table_number, o.order_type, o.status,
                     o.total_amount, o.subtotal, o.tax_amount, o.created_at,
@@ -2199,8 +2290,8 @@ export async function getQROrders(req, res) {
                       WHERE oi.order_id = o.id
                     ) AS items
              FROM orders o
-             WHERE o.source = 'qr' AND o.business_id = $1`
-    const params = [businessId]
+             WHERE o.source = 'qr' AND o.business_id = $1${scope.branchId ? ' AND o.branch_id = $2' : ''}`
+    const params = scope.branchId ? [businessId, scope.branchId] : [businessId]
     if (status) {
       sql += ` AND o.status = $${params.length + 1}`
       params.push(status)
@@ -2236,13 +2327,15 @@ export async function getQROrders(req, res) {
 // GET /api/v1/owner/waiters
 export async function getWaiters(req, res) {
   try {
-    const businessId = req.user?.businessId
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
+    const businessId = scope.businessId
+    const branchFilter = scope.branchId ? ' AND branch_id = $2' : ''
     const { rows } = await query(
       `SELECT id, full_name AS name, email, phone, is_active
        FROM users
-       WHERE role = 'waiter' AND business_id = $1
+      WHERE role = 'waiter' AND business_id = $1${branchFilter}
        ORDER BY full_name ASC`,
-      [businessId]
+          scope.branchId ? [businessId, scope.branchId] : [businessId]
     )
     res.json(
       rows.map((w) => ({
@@ -2261,7 +2354,8 @@ export async function getWaiters(req, res) {
 // GET /api/v1/owner/orders/waiter/:userId
 export async function getWaiterOrders(req, res) {
   try {
-    const businessId = req.user?.businessId
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
+    const businessId = scope.businessId
     const { userId } = req.params
     const { status } = req.query
     let sql = `SELECT o.id, o.order_number, o.table_number, o.status, o.total_amount, o.created_at,
@@ -2279,9 +2373,9 @@ export async function getWaiterOrders(req, res) {
                       WHERE oi.order_id = o.id
                     ) AS items
              FROM orders o
-             WHERE o.user_id = $1 AND o.source = 'waiter' AND o.business_id = $2
+             WHERE o.user_id = $1 AND o.source = 'waiter' AND o.business_id = $2${scope.branchId ? ' AND o.branch_id = $3' : ''}
     `
-    const params = [userId, businessId]
+    const params = scope.branchId ? [userId, businessId, scope.branchId] : [userId, businessId]
     if (status) {
       sql += ` AND o.status = $${params.length + 1}`
       params.push(status)
@@ -2290,8 +2384,8 @@ export async function getWaiterOrders(req, res) {
 
     const { rows } = await query(sql, params)
     const { rows: userRows } = await query(
-      `SELECT full_name AS name FROM users WHERE id = $1 AND business_id = $2`,
-      [userId, businessId]
+      `SELECT full_name AS name FROM users WHERE id = $1 AND business_id = $2 AND ($3::uuid IS NULL OR branch_id = $3)`,
+      [userId, businessId, scope.branchId]
     )
     const waiterName = userRows[0]?.name || 'Unknown'
 
@@ -2516,14 +2610,23 @@ export async function verifyQRPayment(req, res) {
   }
   try {
     const businessId = req.user?.businessId
+    const branchId = req.user?.branchId || null
+    const { rows: orderRows } = await query(
+      `SELECT id, branch_id, total_amount FROM orders
+       WHERE id = $1 AND business_id = $2 AND ($3::uuid IS NULL OR branch_id = $3)`,
+      [orderId, businessId, branchId]
+    )
+    if (!orderRows.length) return res.status(404).json({ error: 'Order not found in your business branch.' })
+
+    const paymentMethod = String(method || 'qr').trim().toLowerCase()
     const { rows } = await query(
-      `INSERT INTO payments (order_id, received_by, method, amount, reference)
-       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-      [orderId, req.user?.id || null, method || 'qr', amount, reference || `QR-${Date.now()}`]
+      `INSERT INTO payments (order_id, business_id, branch_id, received_by, method, amount, reference, paid_at, provider_status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), 'SUCCESS') RETURNING id`,
+      [orderId, businessId, orderRows[0].branch_id, req.user?.id || null, paymentMethod, amount ?? orderRows[0].total_amount, reference || `QR-${Date.now()}`]
     )
     await query(
-      `UPDATE orders SET status = 'Paid', completed_at = NOW() WHERE id = $1 AND business_id = $2`,
-      [orderId, businessId]
+      `UPDATE orders SET status = 'Paid', payment_method = $3, completed_at = NOW() WHERE id = $1 AND business_id = $2`,
+      [orderId, businessId, paymentMethod]
     )
     await query(
       `INSERT INTO order_status_history (order_id, status, changed_by, note)

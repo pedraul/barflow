@@ -6,7 +6,7 @@ const MONEY = (v) => `${Number(v || 0).toLocaleString('en-US', { minimumFraction
 
 function Receipt({ data }) {
   return (
-    <div className="relative w-[380px] bg-white shadow-2xl drop-shadow-xl my-4 print:shadow-none">
+    <div className="relative w-full max-w-[380px] bg-white shadow-2xl drop-shadow-xl my-4 print:shadow-none">
       <div
         className="absolute top-0 left-0 right-0 h-1 bg-[radial-gradient(circle,_transparent_70%,_#e5e7eb_70%)] bg-[length:10px_10px]"
       />
@@ -286,7 +286,7 @@ export default function OperatorReceiptDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-8 font-sans text-[#0B132B]">
+    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 sm:p-8 font-sans text-[#0B132B]">
       <div className="flex flex-col items-center">
         <div className="flex items-center gap-3 mb-4 no-print">
           <button className="secondary-action" onClick={() => navigate('/operator/receipts/' + (isPrinted ? 'printed' : 'draft'))}>← Back</button>

@@ -144,10 +144,10 @@ export async function processAutoRenewals() {
       const now = new Date()
       const newExpiry = new Date(now)
       
-      // Calculate new period based on plan
+      // Calculate new period based on billing cycle
       let monthsToAdd = 1
-      if (sub.plan === 'quarterly') monthsToAdd = 3
-      if (sub.plan === 'annually') monthsToAdd = 12
+      if (sub.billing_cycle === 'quarterly') monthsToAdd = 3
+      if (sub.billing_cycle === 'annually' || sub.billing_cycle === 'yearly') monthsToAdd = 12
       newExpiry.setMonth(newExpiry.getMonth() + monthsToAdd)
 
       await query(

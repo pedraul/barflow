@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { Search, ShoppingCart, Plus, Minus, Trash2, CheckCircle2, UtensilsCrossed, ArrowLeft } from 'lucide-react'
 import { useCustomer } from '../../context/CustomerContext'
+import { fetchOrdersByTable } from '../../api/endpoints'
 
 const money = (value) => `${Number(value || 0).toLocaleString('en-RW')} RWF`
 
@@ -20,9 +21,11 @@ export default function MenuPage() {
   const [selectedSection, setSelectedSection] = useState(null)
   const [selectedCategory, setSelectedCategory] = useState(null)
   const [search, setSearch] = useState('')
+  const [activeOrders, setActiveOrders] = useState([])
 
   const isFreshScan = !!searchParams.get('table')
   const businessId = searchParams.get('businessId') || undefined
+  const branchId = searchParams.get('branchId') || undefined
 
   useEffect(() => {
     if (isFreshScan && currentOrder) {
@@ -31,7 +34,30 @@ export default function MenuPage() {
     }
   }, [isFreshScan, currentOrder, setCurrentOrder, setDeferredOrder])
 
-  useEffect(() => { loadMenu(searchParams.get('table') || '1', businessId) }, [searchParams, loadMenu, businessId])
+  useEffect(() => { loadMenu(searchParams.get('table') || '1', businessId, branchId) }, [searchParams, loadMenu, businessId, branchId])
+  useEffect(() => {
+    if (!isFreshScan) {
+      setActiveOrders([])
+      return undefined
+    }
+
+    let cancelled = false
+    const loadActiveOrders = async () => {
+      try {
+        const result = await fetchOrdersByTable(searchParams.get('table'), businessId, branchId)
+        if (!cancelled) setActiveOrders(result.orders || [])
+      } catch (error) {
+        if (!cancelled) setActiveOrders([])
+      }
+    }
+
+    loadActiveOrders()
+    const interval = window.setInterval(loadActiveOrders, 5000)
+    return () => {
+      cancelled = true
+      window.clearInterval(interval)
+    }
+  }, [isFreshScan, searchParams, businessId, branchId])
   useEffect(() => { if (currentOrder && !isFreshScan) navigate('/payment') }, [currentOrder, navigate, isFreshScan])
   useEffect(() => {
     const categoryParam = searchParams.get('category')
@@ -77,6 +103,42 @@ export default function MenuPage() {
       <div className="hidden md:flex flex-1 max-w-md ml-auto relative"><Search className="absolute left-4 top-3 text-slate-400" size={20} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search for food or drinks..." className="w-full rounded-xl border border-slate-300 py-3 pl-11 pr-4 outline-none focus:border-amber-500" /></div>
       <button onClick={() => navigate('/cart')} className="ml-auto md:ml-0 relative rounded-xl bg-slate-950 text-white px-5 py-3 flex gap-2 items-center font-semibold"><ShoppingCart size={19} /> View cart {getCartCount() > 0 && <span className="rounded-full bg-emerald-500 w-5 h-5 grid place-items-center text-xs">{getCartCount()}</span>}</button>
     </header>
+
+    {activeOrders.length > 0 && (
+      <section className="border-b border-amber-200 bg-amber-50 px-5 py-4 md:px-10" aria-live="polite">
+        <div className="mx-auto max-w-5xl">
+          <h2 className="font-bold text-slate-900">Your table's active orders</h2>
+          <div className="mt-3 space-y-3">
+            {activeOrders.map((order) => {
+              const served = String(order.status || '').toLowerCase() === 'served'
+              return (
+                <div key={order.orderId} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-white p-4">
+                  <div>
+                    <p className="font-semibold text-slate-900">Order {order.orderNumber} · Table {order.tableNumber}</p>
+                    <p className="mt-1 text-sm text-slate-600">{(order.items || []).map((item) => `${item.name} ×${item.quantity}`).join(', ')}</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-800">{money(order.total)} · <span className={served ? 'text-emerald-700' : 'text-amber-700'}>{order.status}</span></p>
+                  </div>
+                  {served && (
+                    <button
+                      type="button"
+                      className="rounded-lg bg-emerald-700 px-5 py-2.5 font-semibold text-white hover:bg-emerald-800"
+                      onClick={() => navigate('/payment', {
+                        state: {
+                          order,
+                          returnTo: `${window.location.pathname}${window.location.search}`,
+                        },
+                      })}
+                    >
+                      Pay
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+    )}
 
     <main className="grid grid-cols-1 lg:grid-cols-[1fr_350px] min-h-[calc(100vh-90px)]">
       {selectedCategory ? (

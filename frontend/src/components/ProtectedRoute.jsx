@@ -32,10 +32,10 @@ export default function ProtectedRoute({ children, allow = [], checkSubscription
   if (checkSubscription) {
     const isExcluded = EXCLUDED_SUBSCRIPTION_PATHS.includes(location.pathname)
     if (!isExcluded) {
-      if (user.subscriptionExpired === true) {
+      if (user.subscriptionExpired === true && user.unpaidAccessGranted !== true) {
         return <Navigate to={user.role.toLowerCase() === 'owner' ? '/owner/subscription' : '/subscription-expired'} replace />
       }
-      if (loaded && !error && realStatus !== 'active') {
+      if (loaded && !error && realStatus !== 'active' && user.unpaidAccessGranted !== true) {
         return <Navigate to={user.role.toLowerCase() === 'owner' ? '/owner/subscription' : '/subscription-expired'} replace />
       }
     }

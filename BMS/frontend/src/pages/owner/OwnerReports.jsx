@@ -52,14 +52,14 @@ export default function OwnerReports({ liveSales, branches, variance }) {
           <h2 className="text-lg font-bold text-slate-900 mb-4">Branch performance</h2>
           <p className="text-sm text-slate-500 mb-4">Sales and staffing across every branch.</p>
           <div className="border border-slate-200 rounded-lg overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
+            <table className="w-full text-xs border-collapse">
               <thead>
                 <tr>
-                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Branch</th>
-                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Manager</th>
-                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Staff</th>
-                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Status</th>
-                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Today's sales</th>
+                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Branch</th>
+                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Manager</th>
+                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Staff</th>
+                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Status</th>
+                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Today's sales</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -67,11 +67,11 @@ export default function OwnerReports({ liveSales, branches, variance }) {
                   const sales = liveSales.filter((s) => s.branch === branch.name).reduce((sum, s) => sum + s.amount, 0)
                   return (
                     <tr key={branch.id} className="hover:bg-indigo-50">
-                      <td className="p-3 text-slate-700">{branch.name}</td>
-                      <td className="p-3 text-slate-700">{branch.manager}</td>
-                      <td className="p-3 text-slate-700">{branch.staff}</td>
-                      <td className="p-3"><span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold border ${branch.status === 'Active' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-amber-100 text-amber-800 border-amber-300'}`}>{branch.status}</span></td>
-                      <td className="p-3 text-slate-700">{money(sales)}</td>
+                      <td className="p-2 text-slate-700">{branch.name}</td>
+                      <td className="p-2 text-slate-700">{branch.manager}</td>
+                      <td className="p-2 text-slate-700">{branch.staff}</td>
+                      <td className="p-2"><span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${branch.status === 'Active' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-amber-100 text-amber-800 border-amber-300'}`}>{branch.status}</span></td>
+                      <td className="p-2 text-slate-700">{money(sales)}</td>
                     </tr>
                   )
                 })}
@@ -86,24 +86,24 @@ export default function OwnerReports({ liveSales, branches, variance }) {
           <h2 className="text-lg font-bold text-slate-900 mb-4">Variance</h2>
           <p className="text-sm text-slate-500 mb-4">Expected vs actual takings and recorded losses.</p>
           <div className="border border-slate-200 rounded-lg overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
+            <table className="w-full text-xs border-collapse">
               <thead>
                 <tr>
-                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Branch</th>
-                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Expected</th>
-                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Actual</th>
-                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Loss</th>
-                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Reason</th>
+                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Branch</th>
+                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Expected</th>
+                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Actual</th>
+                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Loss</th>
+                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Reason</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {variance.map((row) => (
                   <tr key={row.id} className="hover:bg-indigo-50">
-                    <td className="p-3 text-slate-700">{row.branch}</td>
-                    <td className="p-3 text-slate-700">{money(row.expected)}</td>
-                    <td className="p-3 text-slate-700">{money(row.actual)}</td>
-                    <td className="p-3"><span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold border ${row.loss > 0 ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-emerald-100 text-emerald-800 border-emerald-300'}`}>{money(row.loss)}</span></td>
-                    <td className="p-3 text-slate-700">{row.reason}</td>
+                    <td className="p-2 text-slate-700">{row.branch}</td>
+                    <td className="p-2 text-slate-700">{money(row.expected)}</td>
+                    <td className="p-2 text-slate-700">{money(row.actual)}</td>
+                    <td className="p-2"><span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${row.loss > 0 ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-emerald-100 text-emerald-800 border-emerald-300'}`}>{money(row.loss)}</span></td>
+                    <td className="p-2 text-slate-700">{row.reason}</td>
                   </tr>
                 ))}
               </tbody>

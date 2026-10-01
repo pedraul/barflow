@@ -6,8 +6,25 @@ import api from '../api/axios'
 
 const AuthContext = createContext(null)
 
+function getHandoffUser() {
+  if (typeof window === 'undefined' || !window.location.hash.startsWith('#auth=')) return null
+  try {
+    const token = decodeURIComponent(window.location.hash.slice(6))
+    const payloadPart = token.split('.')[0]
+    const base64Payload = payloadPart.replace(/-/g, '+').replace(/_/g, '/')
+    const payload = JSON.parse(atob(base64Payload.padEnd(base64Payload.length + (4 - base64Payload.length % 4) % 4, '=')))
+    window.history.replaceState({}, document.title, window.location.pathname + window.location.search)
+    return { token, user: payload }
+  } catch {
+    return null
+  }
+}
+
+const handoff = getHandoffUser()
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
+    if (handoff?.user) return handoff.user
     try {
       const stored = localStorage.getItem('auth_user')
       return stored ? JSON.parse(stored) : null
@@ -15,7 +32,7 @@ export function AuthProvider({ children }) {
       return null
     }
   })
-  const [token, setToken] = useState(() => localStorage.getItem('auth_token'))
+  const [token, setToken] = useState(() => handoff?.token || localStorage.getItem('auth_token'))
   const [permissions, setPermissions] = useState(() => {
     try {
       const stored = localStorage.getItem('auth_permissions')
@@ -74,6 +91,14 @@ export function AuthProvider({ children }) {
   }
 
   const login = ({ token: authToken, user: userProfile }) => {
+    const role = String(userProfile?.role || '').toLowerCase()
+    if (!['platform_admin', 'super_admin'].includes(role)) {
+      const branchId = role === 'owner' ? 'all' : userProfile?.branchId || 'all'
+      localStorage.setItem('barflow.activeBranchId', branchId)
+      window.dispatchEvent(new CustomEvent('barflow-branch-changed', { detail: branchId }))
+    }
+    localStorage.setItem('auth_token', authToken)
+    localStorage.setItem('auth_user', JSON.stringify(userProfile))
     setToken(authToken)
     setUser(userProfile)
   }

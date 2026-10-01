@@ -24,24 +24,24 @@ export default function OwnerInventory({ inventory }) {
         <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
           <h2 className="text-lg font-bold text-slate-900 mb-4">Inventory reports</h2>
           <div className="border border-slate-200 rounded-lg overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
+            <table className="w-full text-xs border-collapse">
               <thead>
                 <tr>
-                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Item</th>
-                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Branch</th>
-                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Stock</th>
-                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Reorder at</th>
-                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Status</th>
+                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Item</th>
+                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Branch</th>
+                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Stock</th>
+                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Reorder at</th>
+                  <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {inventory.map((row) => (
                   <tr key={row.id} className="hover:bg-indigo-50">
-                    <td className="p-3 text-slate-700">{row.item}</td>
-                    <td className="p-3 text-slate-700">{row.branch}</td>
-                    <td className="p-3 text-slate-700">{row.stock}</td>
-                    <td className="p-3 text-slate-700">{row.reorder}</td>
-                    <td className="p-3"><span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold border ${row.stock <= row.reorder ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-emerald-100 text-emerald-800 border-emerald-300'}`}>{row.stock <= row.reorder ? 'Reorder' : 'OK'}</span></td>
+                    <td className="p-2 text-slate-700">{row.item}</td>
+                    <td className="p-2 text-slate-700">{row.branch}</td>
+                    <td className="p-2 text-slate-700">{row.stock}</td>
+                    <td className="p-2 text-slate-700">{row.reorder}</td>
+                    <td className="p-2"><span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${row.stock <= row.reorder ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-emerald-100 text-emerald-800 border-emerald-300'}`}>{row.stock <= row.reorder ? 'Reorder' : 'OK'}</span></td>
                   </tr>
                 ))}
               </tbody>
@@ -56,24 +56,24 @@ export default function OwnerInventory({ inventory }) {
           <p className="text-sm text-slate-500 mb-4">Items at or below their reorder threshold need restocking.</p>
           {lowStock.length ? (
             <div className="border border-slate-200 rounded-lg overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
+              <table className="w-full text-xs border-collapse">
                 <thead>
                   <tr>
-                    <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Item</th>
-                    <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Branch</th>
-                    <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Stock</th>
-                    <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Reorder at</th>
-                    <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-3 border-b border-slate-200 text-left">Action</th>
+                    <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Item</th>
+                    <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Branch</th>
+                    <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Stock</th>
+                    <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Reorder at</th>
+                    <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {lowStock.map((row) => (
                     <tr key={row.id} className="hover:bg-indigo-50">
-                      <td className="p-3 text-slate-700">{row.item}</td>
-                      <td className="p-3 text-slate-700">{row.branch}</td>
-                      <td className="p-3 text-slate-700">{row.stock}</td>
-                      <td className="p-3 text-slate-700">{row.reorder}</td>
-                      <td className="p-3"><button type="button" className="text-indigo-600 hover:underline font-medium" onClick={() => setSubTab('stock')}>View stock</button></td>
+                      <td className="p-2 text-slate-700">{row.item}</td>
+                      <td className="p-2 text-slate-700">{row.branch}</td>
+                      <td className="p-2 text-slate-700">{row.stock}</td>
+                      <td className="p-2 text-slate-700">{row.reorder}</td>
+                      <td className="p-2"><button type="button" className="text-indigo-600 hover:underline font-medium" onClick={() => setSubTab('stock')}>View stock</button></td>
                     </tr>
                   ))}
                 </tbody>

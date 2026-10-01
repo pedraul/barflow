@@ -3,16 +3,14 @@ import { query } from '../config/database.js'
 import authMiddleware from '../middleware/authMiddleware.js'
 import roleMiddleware from '../middleware/roleMiddleware.js'
 import { logAudit, getClientIp, buildAuditVisibilityClause } from '../utils/audit.js'
-import { permissionMiddleware } from '../middleware/permissionMiddleware.js'
 
 const router = Router()
 
 const managerOnly = [authMiddleware, roleMiddleware('manager')]
 const managerOrOwner = [authMiddleware, roleMiddleware('manager', 'owner')]
-const canApproveTransfers = [authMiddleware, permissionMiddleware('can_approve_transfers')]
-const canViewTransferLogs = [authMiddleware, permissionMiddleware('can_view_transfer_logs')]
+const managerOwnerWaiter = [authMiddleware, roleMiddleware('manager', 'owner', 'waiter')]
 
-router.get('/transfers/pending', ...managerOnly, ...canViewTransferLogs, async (req, res) => {
+router.get('/transfers/pending', ...managerOrOwner, async (req, res) => {
   try {
     const { rows } = await query(
       `SELECT t.*, u1.full_name AS from_name, u2.full_name AS to_name, u2.phone AS to_phone
@@ -44,7 +42,7 @@ await logAudit({
   }
 })
 
-router.post('/transfers/:id/approve', ...managerOnly, ...canApproveTransfers, async (req, res) => {
+router.post('/transfers/:id/approve', ...managerOrOwner, async (req, res) => {
   try {
     const { id } = req.params
     const { action } = req.body
@@ -178,6 +176,32 @@ router.post('/withdrawals/:id/approve', ...managerOrOwner, async (req, res) => {
   }
 })
 
+// GET /api/manager/refunds
+// Full refund history for the manager's business.
+router.get('/refunds', ...managerOrOwner, async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT r.id, r.amount, r.reason, r.status, r.created_at,
+              o.order_number
+       FROM refunds r
+       JOIN orders o ON o.id = r.order_id
+       WHERE r.business_id = $1
+       ORDER BY r.created_at DESC`,
+      [req.user.businessId]
+    )
+    res.json(rows.map((r) => ({
+      id: r.id,
+      order: r.order_number || r.order_id,
+      amount: Number(r.amount),
+      reason: r.reason || '',
+      status: r.status,
+      date: r.created_at ? new Date(r.created_at).toLocaleString() : '—',
+    })))
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
 router.get('/refunds/pending', ...managerOnly, async (req, res) => {
   try {
     const { rows } = await query(
@@ -203,6 +227,63 @@ await logAudit({
       amount: r.amount,
       reason: r.reason || '',
     })))
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// POST /api/manager/refunds
+// Creates a refund directly (recorded as approved immediately).
+// The refund is sent to the phone number the client used when paying
+// (the order's customer_phone), so the money goes straight back to the client.
+// Available to managers, owners, and waiters (waiters refund from their order screen).
+router.post('/refunds', ...managerOwnerWaiter, async (req, res) => {
+  try {
+    const { orderId, amount, reason } = req.body
+    if (!orderId || !amount || !reason) {
+      return res.status(400).json({ error: 'Order, amount, and reason are required.' })
+    }
+    const { rows: orderRows } = await query(
+      `SELECT id, order_number, customer_phone, status FROM orders WHERE id = $1 AND business_id = $2`,
+      [orderId, req.user.businessId]
+    )
+    if (!orderRows.length) {
+      return res.status(404).json({ error: 'Order not found.' })
+    }
+    const order = orderRows[0]
+    if (order.status !== 'Paid') {
+      return res.status(400).json({ error: `Refunds are only allowed for paid orders. Current status: ${order.status}` })
+    }
+    const refundPhone = order.customer_phone || ''
+    const { rows } = await query(
+      `INSERT INTO refunds (business_id, order_id, amount, reason, status, approved_by, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, 'approved', $5, NOW(), NOW()) RETURNING *`,
+      [req.user.businessId, orderId, Number(amount), reason, req.user.id]
+    )
+    const refund = rows[0]
+    const paymentRef = `REFUND-${refund.id}-${Date.now().toString(36).toUpperCase()}`
+    await query(
+      `INSERT INTO payments (order_id, received_by, method, amount, reference, paid_at)
+       VALUES ($1, $2, $3, $4, $5, NOW())`,
+      [orderId, null, 'pos', Number(amount) || 0, paymentRef]
+    )
+    await logAudit({
+      userId: req.user.id,
+      actorName: req.user.full_name || req.user.email,
+      action: `Processed refund of ${Number(amount) || 0} for order ${order.order_number || orderId} to client phone ${refundPhone || 'N/A'} (${reason}) (ref: ${paymentRef})`,
+      targetModule: 'Refunds',
+      ipAddress: getClientIp(req),
+      businessId: req.user?.businessId,
+      metadata: { refundId: refund.id, orderId, amount: Number(amount), phone: refundPhone, reference: paymentRef },
+    })
+    res.status(201).json({
+      id: refund.id,
+      order: order.order_number || orderId,
+      amount: Number(refund.amount),
+      reason: refund.reason,
+      status: refund.status,
+      phone: refundPhone,
+    })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
@@ -407,8 +488,7 @@ router.get('/reports/transfers', ...managerOnly, async (req, res) => {
   }
 })
 
-// Payrolls approved report
-router.get('/reports/payrolls', ...managerOrOwner, async (req, res) => {
+        router.get('/reports/payrolls', ...managerOrOwner, async (req, res) => {
   try {
     const businessId = req.user.businessId
     const { month } = req.query
@@ -418,6 +498,7 @@ router.get('/reports/payrolls', ...managerOrOwner, async (req, res) => {
     }
     const selectedMonth = month || new Date().toISOString().slice(0, 7)
 
+    // All employees (every user) in the business so the report never misses anyone
     const { rows: employees } = await query(
       `SELECT u.id, u.full_name, u.email, u.phone, u.role, u.salary, u.is_active, u.created_at
        FROM users u
@@ -426,6 +507,7 @@ router.get('/reports/payrolls', ...managerOrOwner, async (req, res) => {
       [businessId]
     )
 
+    // Every salary record recorded for this business (permanent history)
     const { rows: payments } = await query(
       `SELECT s.id, s.user_id, s.name, s.phone, s.amount, s.gross_amount, s.net_amount,
               s.status, s.pay_period, s.pay_period_start, s.pay_period_end, s.paid_at,
@@ -462,6 +544,7 @@ router.get('/reports/payrolls', ...managerOrOwner, async (req, res) => {
 
     const PAID_STATUSES = new Set(['Paid', 'approved', 'completed'])
 
+    // Every month appearing in the salary history + the last 6 calendar months, for the dropdown
     const availMonths = new Set([selectedMonth])
     for (const p of payments) {
       for (const d of [p.pay_period_start, p.paid_at, p.approved_at, p.created_at]) {
@@ -482,7 +565,7 @@ router.get('/reports/payrolls', ...managerOrOwner, async (req, res) => {
       const paidMonthsSet = new Set(
         ups
           .filter((p) => PAID_STATUSES.has(p.status))
-          .map((p) => monthOf(p.pay_period_start || p.paid_at || p.created_at))
+          .map((p) => monthOf(p.pay_period_start || p.paid_at || p.approved_at || p.created_at))
           .filter(Boolean)
       )
       const paidMonths = [...paidMonthsSet].sort()
@@ -511,7 +594,20 @@ router.get('/reports/payrolls', ...managerOrOwner, async (req, res) => {
       }
     })
 
-    res.json({ employees: rows, months, month: selectedMonth })
+    // Legacy payments linked to a user yet still kept in the report so nothing is lost
+    const legacy = payments
+      .filter((p) => !p.user_id && p.name)
+      .map((p) => ({
+        id: p.id,
+        employee: p.name || 'Unknown',
+        amount: Number(p.amount || 0),
+        period: p.pay_period || monthOf(p.pay_period_start) || '—',
+        status: p.status || '—',
+        approvedAt: p.approved_at,
+        createdAt: p.created_at,
+      }))
+
+    res.json({ month: selectedMonth, months, employees: rows, legacy })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
@@ -553,6 +649,13 @@ router.get('/reports/revenue', ...managerOnly, async (req, res) => {
     if (to) { clauses.push(`o.created_at < $${idx++}`); params.push(to) }
     const where = clauses.join(' AND ')
 
+    const refundClauses = ['r.business_id = $1', "r.status = 'approved'"]
+    const refundParams = [req.user.businessId]
+    let ridx = 2
+    if (from) { refundClauses.push(`r.created_at >= $${ridx++}`); refundParams.push(from) }
+    if (to) { refundClauses.push(`r.created_at < $${ridx++}`); refundParams.push(to) }
+    const refundWhere = refundClauses.join(' AND ')
+
     const { rows } = await query(
       `SELECT o.id, o.order_number, o.table_number, o.status, o.total_amount, o.source, o.created_at,
               (
@@ -576,7 +679,11 @@ router.get('/reports/revenue', ...managerOnly, async (req, res) => {
       items: o.items || [],
       createdAt: o.created_at,
     }))
-    const totalRevenue = orders.reduce((s, o) => s + o.total, 0)
+    const { rows: refundRows } = await query(
+      `SELECT COALESCE(SUM(r.amount), 0) AS total FROM refunds r WHERE ${refundWhere}`,
+      refundParams
+    )
+    const totalRevenue = orders.reduce((s, o) => s + o.total, 0) - (Number(refundRows[0]?.total) || 0)
     const bySource = { qr: 0, waiter: 0, other: 0 }
     orders.forEach(o => { const src = o.source === 'qr' || o.source === 'waiter' ? o.source : 'other'; bySource[src] += o.total })
     res.json({ orders, totalRevenue, bySource, totalOrders: orders.length })

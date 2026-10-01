@@ -4,8 +4,6 @@ import { useOwner } from '../../context/OwnerContext'
 import { AlertTriangle, Download, ArrowLeft } from 'lucide-react'
 
 const PLANS = [
-  { id: 'monthly', label: 'Monthly', months: 1, hint: 'Full features, billed every month' },
-  { id: 'quarterly', label: 'Quarterly', months: 3, hint: 'Full features, billed every 3 months' },
   { id: 'annually', label: 'Annually', months: 12, hint: 'Full features, billed every 12 months' },
 ]
 
@@ -230,7 +228,7 @@ export default function Subscription() {
                   onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setPlan(p.id)}>
                   <div className="flex justify-between items-center">
                     <h3 className="font-bold text-slate-900 text-base">{p.label}</h3>
-                    {discount > 0 && <span className="text-emerald-700 font-bold text-xs bg-emerald-50 px-2 py-0.5 rounded-full">Save {discount}%</span>}
+                    {discount > 0 && <span className="text-emerald-700 font-bold text-[10px] bg-emerald-50 px-2 py-0.5 rounded-full">Save {discount}%</span>}
                   </div>
                   <div className="text-2xl font-extrabold text-indigo-600">
                     {formatCurr(finalAmount)}

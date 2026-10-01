@@ -1,29 +1,37 @@
-import React, { useMemo } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { useOrders } from '../../context/OrdersContext'
 import { useUsers } from '../../context/UsersContext'
+import { fetchRefunds } from '../../api/endpoints'
 
 const money = (value) => `${Number(value || 0).toLocaleString()} RWF`
 
 export default function Profit() {
   const { orders } = useOrders()
   const { users } = useUsers()
+  const [refunds, setRefunds] = useState([])
+
+  useEffect(() => {
+    fetchRefunds()
+      .then((data) => setRefunds(data || []))
+      .catch(() => setRefunds([]))
+  }, [])
 
   const figures = useMemo(() => {
     const revenue = orders
       .filter((o) => o.status === 'Paid' || o.status === 'Served')
       .reduce((sum, o) => sum + (Number(o.total) || 0), 0)
 
-    // Costs: total monthly salary owed to active workers.
+    const refundTotal = refunds.reduce((sum, r) => sum + (Number(r.amount) || 0), 0)
+    const netRevenue = revenue - refundTotal
+
     const salaryCost = users.reduce((sum, u) => sum + (Number(u.salary) || 0), 0)
     const costs = salaryCost
-    const profit = revenue - costs
-    const margin = revenue ? (profit / revenue) * 100 : 0
+    const profit = netRevenue - costs
+    const margin = netRevenue ? (profit / netRevenue) * 100 : 0
+    const retention = netRevenue - salaryCost
 
-    // Simple comparison: current revenue vs salary cost (what the business keeps).
-    const retention = revenue - salaryCost
-
-    return { revenue, salaryCost, costs, profit, margin, retention }
-  }, [orders, users])
+    return { revenue: netRevenue, salaryCost, costs, profit, margin, retention, refundTotal }
+  }, [orders, users, refunds])
 
   return (
     <div className="page accountant-profit">
@@ -39,7 +47,11 @@ export default function Profit() {
       <div className="user-info-grid">
         <div className="summary-card">
           <strong>{money(figures.revenue)}</strong>
-          <span>Revenue</span>
+          <span>Net Revenue</span>
+        </div>
+        <div className="summary-card">
+          <strong>{money(figures.refundTotal)}</strong>
+          <span>Refunds</span>
         </div>
         <div className="summary-card">
           <strong>{money(figures.costs)}</strong>
@@ -60,7 +72,7 @@ export default function Profit() {
         <div className="user-info-grid">
           <div className="summary-card">
             <strong>{money(figures.revenue)}</strong>
-            <span>Total revenue</span>
+            <span>Net revenue</span>
           </div>
           <div className="summary-card">
             <strong>{money(figures.salaryCost)}</strong>
