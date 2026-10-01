@@ -139,13 +139,32 @@ export default function ManagerStockMenu() {
       setError('Please select a valid image file.')
       return
     }
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      const base64 = reader.result
-      setForm((prev) => ({ ...prev, imageUrl: base64 }))
-      setImagePreview(base64)
+    const objectUrl = URL.createObjectURL(file)
+    const image = new Image()
+    image.onload = () => {
+      const maxDimension = 1200
+      const scale = Math.min(1, maxDimension / Math.max(image.width, image.height))
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.max(1, Math.round(image.width * scale))
+      canvas.height = Math.max(1, Math.round(image.height * scale))
+      const context = canvas.getContext('2d')
+      if (!context) {
+        URL.revokeObjectURL(objectUrl)
+        setError('Could not process the selected image.')
+        return
+      }
+      context.drawImage(image, 0, 0, canvas.width, canvas.height)
+      const compressedImage = canvas.toDataURL('image/jpeg', 0.82)
+      setForm((prev) => ({ ...prev, imageUrl: compressedImage }))
+      setImagePreview(compressedImage)
+      setError(null)
+      URL.revokeObjectURL(objectUrl)
     }
-    reader.readAsDataURL(file)
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      setError('Could not read the image. Choose a JPG, PNG, or WebP image.')
+    }
+    image.src = objectUrl
   }
 
   const triggerImageUpload = () => {
@@ -229,7 +248,7 @@ export default function ManagerStockMenu() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 onChange={handleImageUpload}
                 style={{ display: 'none' }}
               />
