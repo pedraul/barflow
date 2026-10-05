@@ -197,6 +197,13 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
                        border: '1px solid #e2e8f0', borderRadius: 8, padding: 10,
                        opacity: soldOut ? 0.5 : 1,
                      }}>
+                       {item.imageUrl ? (
+                         <div style={{ height: 80, marginBottom: 6, borderRadius: 4, overflow: 'hidden', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                           <img src={item.imageUrl} alt={item.name} style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
+                         </div>
+                       ) : (
+                         <div style={{ height: 80, marginBottom: 6, borderRadius: 4, backgroundColor: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#94a3b8' }}>No image</div>
+                       )}
                        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>{item.name}</div>
                       <div style={{ fontSize: 12, fontWeight: 600, color: '#1e293b', marginBottom: 6 }}>{money(item.price)}</div>
                       {soldOut ? (
