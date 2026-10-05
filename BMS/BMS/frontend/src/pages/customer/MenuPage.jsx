@@ -139,9 +139,16 @@ export default function MenuPage() {
           <p className="text-slate-500 mt-1">Select a category to browse items</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-5">
             {(selectedSection === 'bar' ? barCategories : foodCategories).map((group) => (
-              <button key={group.name} onClick={() => setSelectedCategory(group.name)} className="border border-slate-200 rounded-xl shadow-sm bg-white p-5 text-left hover:border-amber-500 hover:shadow-md transition">
-                <div className="text-xl font-bold text-slate-900">{group.name}</div>
-                <div className="text-xs text-slate-500 mt-1">{group.items?.length || 0} items</div>
+              <button key={group.name} onClick={() => setSelectedCategory(group.name)} className="overflow-hidden border border-slate-200 rounded-xl shadow-sm bg-white text-left hover:border-amber-500 hover:shadow-md transition">
+                <img
+                  src={group.items?.find((item) => item.imageUrl)?.imageUrl || (selectedSection === 'bar' ? '/drinks.webp' : '/food.webp')}
+                  alt=""
+                  className="h-28 w-full object-cover"
+                />
+                <div className="p-4">
+                  <div className="text-xl font-bold text-slate-900">{group.name}</div>
+                  <div className="text-xs text-slate-500 mt-1">{group.items?.length || 0} items</div>
+                </div>
               </button>
             ))}
           </div>
