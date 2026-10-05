@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { Database, Upload, RefreshCw, HardDriveDownload, Clock, Trash2, Download } from 'lucide-react'
 import { fetchPlatformBackups, createPlatformBackup, deletePlatformBackup, restorePlatformBackup, fetchPlatformSettings, updatePlatformSettings } from '../../api/endpoints'
+import { useToast } from '../../context/ToastContext'
 
 export default function BackupRestore() {
+  const { showSuccess } = useToast()
   const [history, setHistory] = useState([])
   const [settings, setSettings] = useState({})
   const [backupType, setBackupType] = useState('full')
@@ -32,7 +34,7 @@ export default function BackupRestore() {
     try {
       await createPlatformBackup(backupType)
       await load()
-      flash('✅ Backup created successfully.')
+      showSuccess('Backup created successfully.')
     } catch (e) {
       flash('❌ ' + (e.response?.data?.error || 'Backup failed.'))
     } finally {
@@ -45,6 +47,7 @@ export default function BackupRestore() {
     try {
       await deletePlatformBackup(id)
       await load()
+      showSuccess('Deleted successfully.')
     } catch (e) {
       alert(e.response?.data?.error || 'Delete failed.')
     }
@@ -54,7 +57,7 @@ export default function BackupRestore() {
     if (!window.confirm(`Restore from "${rec.name}"? This will overwrite current platform data.`)) return
     try {
       await restorePlatformBackup(rec.id)
-      flash(`✅ Restore from "${rec.name}" completed.`)
+      showSuccess('Backup restored successfully.')
       await load()
     } catch (e) {
       flash('❌ ' + (e.response?.data?.error || 'Restore failed.'))
@@ -79,7 +82,7 @@ export default function BackupRestore() {
         backup_frequency: settings.backup_frequency,
         backup_retention_days: settings.backup_retention_days,
       })
-      flash('✅ Backup schedule saved.')
+      showSuccess('Changes saved successfully.')
     } catch (e) {
       flash('❌ ' + (e.response?.data?.error || 'Save failed.'))
     }

@@ -2,10 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { Search, Eye, Pencil, Trash2, ShieldCheck, Ban, Play, X, RefreshCw, Building2 } from 'lucide-react'
 import { fetchBusinesses, toggleBusinessStatus, setUnpaidBusinessAccess, updateBusiness, deleteBusiness } from '../../api/endpoints'
 import { PROVINCES, DISTRICTS_BY_PROVINCE } from '../../constants/locationOptions'
+import { useToast } from '../../context/ToastContext'
 
 const BUSINESS_TYPES = ['bar', 'restaurant', 'hotel', 'lounge', 'other']
 
 export default function BusinessList() {
+  const { showSuccess } = useToast()
   const [businesses, setBusinesses] = useState([])
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(null)
@@ -47,6 +49,7 @@ export default function BusinessList() {
     try {
       await toggleBusinessStatus(id, action)
       await load()
+      showSuccess('Status updated successfully.')
     } catch (e) {
       console.error('Action failed:', e)
       alert(e.response?.data?.error || 'Action failed.')
@@ -65,6 +68,7 @@ export default function BusinessList() {
     try {
       await setUnpaidBusinessAccess(business.id, granted)
       await load()
+      showSuccess('Access updated successfully.')
     } catch (e) {
       alert(e.response?.data?.error || 'Could not update unpaid access.')
     } finally {
@@ -78,6 +82,7 @@ export default function BusinessList() {
     try {
       await deleteBusiness(b.id)
       await load()
+      showSuccess('Deleted successfully.')
     } catch (e) {
       alert(e.response?.data?.error || 'Delete failed.')
     } finally {
@@ -108,6 +113,7 @@ export default function BusinessList() {
       await updateBusiness(editing.id, editForm)
       setEditing(null)
       await load()
+      showSuccess('Changes saved successfully.')
     } catch (e) {
       alert(e.response?.data?.error || 'Update failed.')
     } finally {

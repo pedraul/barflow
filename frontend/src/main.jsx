@@ -9,6 +9,7 @@ import { UsersProvider } from './context/UsersContext'
 import { SalaryProvider } from './context/SalaryContext'
 import { AuditLogProvider } from './context/AuditLogContext'
 import { AuthProvider } from './context/AuthContext'
+import { ToastProvider } from './context/ToastContext'
 import './styles.css'
 
 const openExternalLinkInEdge = (href) => {
@@ -61,17 +62,19 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       }}
     >
       <AuthProvider>
-        <SubscriptionProvider>
-          <OrdersProvider>
-            <UsersProvider>
-              <SalaryProvider>
-                <AuditLogProvider>
-                  <App />
-                </AuditLogProvider>
-              </SalaryProvider>
-            </UsersProvider>
-          </OrdersProvider>
-        </SubscriptionProvider>
+        <ToastProvider>
+          <SubscriptionProvider>
+            <OrdersProvider>
+              <UsersProvider>
+                <SalaryProvider>
+                  <AuditLogProvider>
+                    <App />
+                  </AuditLogProvider>
+                </SalaryProvider>
+              </UsersProvider>
+            </OrdersProvider>
+          </SubscriptionProvider>
+        </ToastProvider>
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>,

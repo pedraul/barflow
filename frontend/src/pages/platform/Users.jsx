@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { UserCog, Search, Plus, Pencil, Trash2, KeyRound, Power, X, ShieldCheck } from 'lucide-react'
 import { fetchAdmins, createAdmin, updateAdmin, resetAdminPassword, deleteAdmin } from '../../api/endpoints'
+import { useToast } from '../../context/ToastContext'
 
 const ALL_PERMISSIONS = ['businesses', 'subscriptions', 'payments', 'users', 'reports', 'settings', 'backup']
 const ROLES = ['super_admin', 'admin', 'billing']
 
 export default function Users() {
+  const { showSuccess } = useToast()
   const [admins, setAdmins] = useState([])
   const [loading, setLoading] = useState(true)
   const [q, setQ] = useState('')
@@ -39,6 +41,7 @@ export default function Users() {
       }
       setForm(null)
       await load()
+      showSuccess('Changes saved successfully.')
     } catch (e) {
       alert(e.response?.data?.error || 'Save failed.')
     } finally {
@@ -51,6 +54,7 @@ export default function Users() {
     try {
       await updateAdmin(a.id, { isActive: !a.isActive })
       await load()
+      showSuccess('Status updated successfully.')
     } catch (e) {
       alert(e.response?.data?.error || 'Failed.')
     } finally {
@@ -64,7 +68,7 @@ export default function Users() {
     setBusy(`${a.id}-pw`)
     try {
       await resetAdminPassword(a.id, pw)
-      alert('Password reset successfully.')
+      showSuccess('Password reset successfully.')
     } catch (e) {
       alert(e.response?.data?.error || 'Reset failed.')
     } finally {
@@ -78,6 +82,7 @@ export default function Users() {
     try {
       await deleteAdmin(a.id)
       await load()
+      showSuccess('Deleted successfully.')
     } catch (e) {
       alert(e.response?.data?.error || 'Delete failed.')
     } finally {

@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { CircleDollarSign, Search, Download, RefreshCw, Receipt, Undo2 } from 'lucide-react'
 import { fetchPlatformPayments, fetchPaymentStats, refundPayment, settlePayment } from '../../api/endpoints'
+import { useToast } from '../../context/ToastContext'
 
 const CURRENCY = 'RWF'
 const formatCurr = (v) => new Intl.NumberFormat('en-RW', { style: 'currency', currency: CURRENCY, minimumFractionDigits: 0 }).format(v || 0)
 const METHOD_LABEL = { mtn_momo: 'MTN MoMo', airtel_money: 'Airtel Money', bank: 'Bank Transfer', cash: 'Cash', pos: 'POS' }
 
 export default function Payments() {
+  const { showSuccess } = useToast()
   const [payments, setPayments] = useState([])
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -37,6 +39,7 @@ export default function Payments() {
     try {
       await refundPayment(p.id, reason)
       await load()
+      showSuccess('Payment updated successfully.')
     } catch (e) {
       alert(e.response?.data?.error || 'Refund failed.')
     } finally {
@@ -50,6 +53,7 @@ export default function Payments() {
     try {
       await settlePayment(p.id)
       await load()
+      showSuccess('Payment updated successfully.')
     } catch (e) {
       alert(e.response?.data?.error || 'Settle failed.')
     } finally {

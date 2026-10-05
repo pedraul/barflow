@@ -9,6 +9,7 @@ import {
   HardDriveDownload, ArrowLeft
 } from 'lucide-react'
 import { fetchPlatformStats, fetchBusinesses, fetchPlatformReports, fetchAdmins, createAdmin } from '../../api/endpoints'
+import { useToast } from '../../context/ToastContext'
 
 const CURRENCY = 'RWF'
 const formatCurr = (v) => new Intl.NumberFormat('en-RW', { style: 'currency', currency: CURRENCY, minimumFractionDigits: 0 }).format(v || 0)
@@ -23,6 +24,7 @@ import BackupRestore from './BackupRestore'
 
 export default function SuperAdminDashboard() {
   const { user, logout } = useAuth()
+  const { showSuccess } = useToast()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -88,7 +90,7 @@ export default function SuperAdminDashboard() {
     setAdminMsg('')
     try {
       await createAdmin({ name: adminForm.name, email: adminForm.email, phone: adminForm.phone, password: adminForm.password, role: adminForm.role, permissions: adminForm.role === 'super_admin' ? ['businesses', 'subscriptions', 'payments', 'users', 'reports', 'settings', 'backup'] : adminForm.permissions })
-      setAdminMsg('✅ Admin created successfully.')
+      showSuccess('Changes saved successfully.')
       setAdminForm({ name: '', email: '', phone: '', password: '', role: 'admin', permissions: ['businesses', 'subscriptions', 'payments', 'reports'] })
       setTimeout(() => setAdminOpen(false), 1200)
     } catch (e) {

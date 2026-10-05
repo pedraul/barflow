@@ -4,6 +4,7 @@ import {
   ShieldCheck, Database, ClipboardList, Plug, QrCode, ChevronRight, ChevronDown, ArrowLeft
 } from 'lucide-react'
 import { fetchPlatformSettings, updatePlatformSettings } from '../../api/endpoints'
+import { useToast } from '../../context/ToastContext'
 
 const SETTINGS_GROUPS = [
   {
@@ -53,11 +54,11 @@ function getTabFromHash() {
 }
 
 export default function Settings() {
+  const { showSuccess } = useToast()
   const [settings, setSettings] = useState({})
   const [activeTab, setActiveTab] = useState(getTabFromHash)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState('')
 
   useEffect(() => { load() }, [])
 
@@ -91,13 +92,11 @@ export default function Settings() {
 
   const save = async () => {
     setSaving(true)
-    setMessage('')
     try {
       await updatePlatformSettings(settings)
-      setMessage('✅ Settings saved successfully.')
-      setTimeout(() => setMessage(''), 3000)
+      showSuccess('Changes saved successfully.')
     } catch (e) {
-      setMessage('❌ ' + (e.response?.data?.error || 'Save failed.'))
+      alert(e.response?.data?.error || 'Save failed.')
     } finally {
       setSaving(false)
     }
@@ -121,8 +120,6 @@ export default function Settings() {
           <Save size={16} /> {saving ? 'Saving...' : 'Save Changes'}
         </button>
       </div>
-
-      {message && <div className={`p-3 rounded-lg text-sm font-medium border ${message.startsWith('❌') ? 'bg-red-50 border-red-200 text-red-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>{message}</div>}
 
       <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-start">
         {/* Tab nav - grouped - horizontal scroll on mobile */}

@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { fetchPlans, createPlan, updatePlan } from '../../api/endpoints'
+import { useToast } from '../../context/ToastContext'
 
 export default function SubscriptionPlans() {
+  const { showSuccess } = useToast()
   const [plans, setPlans] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -76,6 +78,7 @@ export default function SubscriptionPlans() {
       }
       resetForm()
       await load(false)
+      showSuccess('Changes saved successfully.')
     } catch (e) {
       console.error('Failed to save plan:', e)
       alert('Failed to save plan.')
