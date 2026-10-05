@@ -6,6 +6,7 @@ import {
   updateProduct,
   deleteProduct,
 } from '../../api/endpoints'
+import compressImage from '../../utils/compressImage'
 
 const BAR_CATEGORIES = [
   'Beer', 'Wine', 'Spirits', 'Cocktails', 'Mocktails',
@@ -127,20 +128,17 @@ export default function ManagerBarMenu() {
 
   const triggerImageUpload = () => fileInputRef.current?.click()
 
-  const handleImageUpload = (e) => {
+  const handleImageUpload = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
-    if (!file.type.startsWith('image/')) {
-      setError('Please select a valid image file.')
-      return
+    try {
+      const compressedImage = await compressImage(file)
+      setForm((prev) => ({ ...prev, imageUrl: compressedImage }))
+      setImagePreview(compressedImage)
+      setError(null)
+    } catch (uploadError) {
+      setError(uploadError.message)
     }
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      const base64 = reader.result
-      setForm((prev) => ({ ...prev, imageUrl: base64 }))
-      setImagePreview(base64)
-    }
-    reader.readAsDataURL(file)
   }
 
   return (

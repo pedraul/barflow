@@ -5,6 +5,7 @@ import {
   updateProduct,
   deleteProduct,
 } from '../../api/endpoints'
+import compressImage from '../../utils/compressImage'
 
 const emptyForm = {
   name: '',
@@ -132,39 +133,17 @@ export default function ManagerStockMenu() {
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
-  const handleImageUpload = (e) => {
+  const handleImageUpload = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
-    if (!file.type.startsWith('image/')) {
-      setError('Please select a valid image file.')
-      return
-    }
-    const objectUrl = URL.createObjectURL(file)
-    const image = new Image()
-    image.onload = () => {
-      const maxDimension = 1200
-      const scale = Math.min(1, maxDimension / Math.max(image.width, image.height))
-      const canvas = document.createElement('canvas')
-      canvas.width = Math.max(1, Math.round(image.width * scale))
-      canvas.height = Math.max(1, Math.round(image.height * scale))
-      const context = canvas.getContext('2d')
-      if (!context) {
-        URL.revokeObjectURL(objectUrl)
-        setError('Could not process the selected image.')
-        return
-      }
-      context.drawImage(image, 0, 0, canvas.width, canvas.height)
-      const compressedImage = canvas.toDataURL('image/jpeg', 0.82)
+    try {
+      const compressedImage = await compressImage(file)
       setForm((prev) => ({ ...prev, imageUrl: compressedImage }))
       setImagePreview(compressedImage)
       setError(null)
-      URL.revokeObjectURL(objectUrl)
+    } catch (uploadError) {
+      setError(uploadError.message)
     }
-    image.onerror = () => {
-      URL.revokeObjectURL(objectUrl)
-      setError('Could not read the image. Choose a JPG, PNG, or WebP image.')
-    }
-    image.src = objectUrl
   }
 
   const triggerImageUpload = () => {
