@@ -93,7 +93,10 @@ export function AuthProvider({ children }) {
   const login = ({ token: authToken, user: userProfile }) => {
     const role = String(userProfile?.role || '').toLowerCase()
     if (!['platform_admin', 'super_admin'].includes(role)) {
-      const branchId = role === 'owner' ? 'all' : userProfile?.branchId || 'all'
+      const branchId = role === 'owner' ? 'all' : userProfile?.branchId
+      if (!branchId) {
+        throw new Error('Your account is not assigned to a branch. Contact your business owner.')
+      }
       localStorage.setItem('barflow.activeBranchId', branchId)
       window.dispatchEvent(new CustomEvent('barflow-branch-changed', { detail: branchId }))
     }

@@ -103,7 +103,8 @@ export default function TwoFactorVerify() {
             token: result.token,
             user: result.user,
           })
-          const dashboard = ROLE_DASHBOARD[result.user?.role || role] || '/admin/dashboard'
+          const dashboardRole = String(result.user?.role || role || '').toLowerCase()
+          const dashboard = ROLE_DASHBOARD[dashboardRole] || '/admin/dashboard'
           setPendingDashboard(dashboard)
         }
       } else {
@@ -128,7 +129,8 @@ export default function TwoFactorVerify() {
               unpaidAccessGranted: rawUser.unpaidAccessGranted === true,
             },
           })
-          const dashboard = ROLE_DASHBOARD[rawUser.role || role] || '/'
+          const dashboardRole = String(rawUser.role || role || '').toLowerCase()
+          const dashboard = ROLE_DASHBOARD[dashboardRole] || '/'
           window.location.assign(buildWorkspaceUrl({ ...rawUser, businessSlug: rawUser.businessSlug }, dashboard))
         }
       }

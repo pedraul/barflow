@@ -47,7 +47,7 @@ export default function Login() {
          }
          setAuth({ token: data.token, user: data.user })
         // Route based on role
-        const role = data.user.role
+        const role = String(data.user.role || '').toLowerCase()
         if (data.user.subscriptionExpired && data.user.unpaidAccessGranted !== true && role !== 'owner') {
           window.location.assign(buildWorkspaceUrl(data.user, '/subscription-expired'))
           return
