@@ -25,6 +25,7 @@ export default function StationDisplay({
   newHeading = '🆕 New Orders',
   preparingHeading = '👨‍🍳 In Progress',
   readyHeading = '✅ Ready for Serving',
+  paidHeading = '💳 Paid — Waiting for Delivery',
   newAlert = '🔔 New Order Received!',
   startLabel = '▶ Start Preparing',
   readyLabel = '✓ Mark as Ready',
@@ -88,6 +89,7 @@ export default function StationDisplay({
   const newOrders = orders.filter((o) => o.status === 'Open')
   const preparingOrders = orders.filter((o) => o.status === 'Preparing')
   const readyOrders = orders.filter((o) => o.status === 'Ready')
+  const paidOrders = orders.filter((o) => o.status === 'Paid')
 
   const renderItem = (item, idx) => {
     if (showImage) {
@@ -147,6 +149,7 @@ export default function StationDisplay({
           <span style={styles.stat}>New: {newOrders.length}</span>
           <span style={styles.stat}>Preparing: {preparingOrders.length}</span>
           <span style={styles.stat}>Ready: {readyOrders.length}</span>
+          <span style={styles.stat}>Paid: {paidOrders.length}</span>
         </div>
       </div>
 
@@ -205,6 +208,31 @@ export default function StationDisplay({
                   <span style={styles.orderTotalValue}>{formatCurrency(order.total || 0)}</span>
                 </div>
                 <div style={{ ...styles.readyLabel, color: '#28a745' }}>Ready! 🎉</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {paidOrders.length > 0 && (
+        <div style={styles.section}>
+          <h2 style={{ ...styles.sectionTitle, color: '#0d6efd' }}>{paidHeading}</h2>
+          <div style={styles.ordersGrid}>
+            {paidOrders.map((order, idx) => (
+              <div key={order.id} style={{ ...styles.orderCard, borderLeft: '4px solid #0d6efd' }}>
+                <div style={styles.orderHeader}>
+                  <span style={styles.queueBadge}>#{idx + 1}</span>
+                  <span style={styles.orderNumber}>{formatOrderNumber(order.orderNumber)}</span>
+                  <span style={styles.tableBadge}>Table {order.tableNumber}</span>
+                </div>
+                <div style={styles.itemsList}>
+                  {order.items.map((item, idx) => renderItem(item, idx))}
+                </div>
+                <div style={styles.orderTotalRow}>
+                  <span style={styles.orderTotalLabel}>Total</span>
+                  <span style={styles.orderTotalValue}>{formatCurrency(order.total || 0)}</span>
+                </div>
+                <div style={{ ...styles.readyLabel, color: '#0d6efd' }}>Paid • awaiting pickup</div>
               </div>
             ))}
           </div>

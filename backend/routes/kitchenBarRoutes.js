@@ -31,14 +31,15 @@ router.get('/orders', authMiddleware, async (req, res) => {
               ) AS items
        FROM orders o
        WHERE LOWER(o.station) IN ('kitchen', 'both')
-         AND o.status IN ('Open', 'Preparing', 'Ready')
+         AND o.status IN ('Open', 'Preparing', 'Ready', 'Paid')
          AND o.business_id = $1
          AND ($2::uuid IS NULL OR o.branch_id = $2)
        ORDER BY 
          CASE o.status 
            WHEN 'Open' THEN 1
            WHEN 'Preparing' THEN 2 
-           WHEN 'Ready' THEN 3 
+           WHEN 'Ready' THEN 3
+           WHEN 'Paid' THEN 4
          END,
          o.created_at ASC`,
       [scope.businessId, scope.branchId]
@@ -75,7 +76,7 @@ router.get('/bar-orders', authMiddleware, async (req, res) => {
               ) AS items
        FROM orders o
        WHERE LOWER(o.station) IN ('bar', 'both')
-         AND o.status IN ('Open', 'Preparing', 'Ready')
+         AND o.status IN ('Open', 'Preparing', 'Ready', 'Paid')
          AND o.business_id = $1
          AND ($2::uuid IS NULL OR o.branch_id = $2)
        ORDER BY
@@ -83,6 +84,7 @@ router.get('/bar-orders', authMiddleware, async (req, res) => {
            WHEN 'Open' THEN 1
            WHEN 'Preparing' THEN 2
            WHEN 'Ready' THEN 3
+           WHEN 'Paid' THEN 4
          END,
          o.created_at ASC`,
       [scope.businessId, scope.branchId]

@@ -12,6 +12,7 @@ export default function BarDisplay() {
       newHeading="🆕 New Drink Orders"
       preparingHeading="🍸 Preparing"
       readyHeading="✅ Ready for Serving"
+      paidHeading="💳 Paid — Waiting for Delivery"
       newAlert="🍺 New Drink Order Received!"
       startLabel="▶ Start Mixing"
       readyLabel="✓ Mark as Ready"

@@ -12,6 +12,7 @@ export default function KitchenDisplay() {
       newHeading="🆕 New Orders"
       preparingHeading="👨‍🍳 In Progress"
       readyHeading="✅ Ready for Serving"
+      paidHeading="💳 Paid — Waiting for Delivery"
       newAlert="🔔 New Food Order Received!"
       startLabel="▶ Start Preparing"
       readyLabel="✓ Mark as Ready"
