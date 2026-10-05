@@ -199,10 +199,10 @@ export default function MenuPage() {
           </button>
           <h2 className="text-3xl font-extrabold mb-2">{selectedSection === 'bar' ? 'Bar menu' : 'Food menu'} — Categories</h2>
           <p className="text-slate-500 mt-1">Select a category to browse items</p>
-          {selectedSection === 'bar' && (
+          {selectedSection && (
             <img
-              src="/drinks.webp"
-              alt="Drinks menu"
+              src={selectedSection === 'bar' ? '/drinks.webp' : '/food.webp'}
+              alt={`${selectedSection === 'bar' ? 'Drinks' : 'Food'} menu`}
               className="mt-4 h-48 w-full max-w-3xl rounded-xl object-cover"
             />
           )}
