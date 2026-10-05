@@ -24,26 +24,19 @@ app.use('/api', apiRouter)
 
 // Prepare the database, then start the server
 async function start() {
-  if (process.env.RUN_DB_BOOTSTRAP === 'true') {
-    try {
-      console.log('Initializing database migrations...')
-      await migrate()
+  try {
+    console.log('Ensuring branch data schema is up to date...')
+    await migrate({ only: ['20261005_add_branch_owned_products.sql'] })
 
+    if (process.env.RUN_DB_BOOTSTRAP === 'true') {
       console.log('Running database seeders...')
       await seed()
-
-      console.log('Database preparation complete!')
-    } catch (error) {
-      // Check if the error is simply because the tables/relations already exist in PostgreSQL
-      if (error.message.includes('already exists') || error.code === '42P07') {
-        console.log('Database already initialized (tables already exist). Skipping migrations and seeders.')
-      } else {
-        // Log any actual connection or critical configuration failures
-        console.error('Database setup failed (is PostgreSQL running and DATABASE_URL set?):', error.message)
-      }
     }
-  } else {
-    console.log('Skipping database bootstrap. Set RUN_DB_BOOTSTRAP=true only for an intentional database setup.')
+
+    console.log('Database preparation complete.')
+  } catch (error) {
+    console.error('Database preparation failed; server startup cancelled:', error.message)
+    process.exit(1)
   }
 
   const server = app.listen(port, () => {

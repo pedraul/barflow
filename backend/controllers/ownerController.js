@@ -1127,8 +1127,8 @@ export async function getReportSummary(req, res) {
               COALESCE(SUM(o.total_amount), 0) AS total_revenue,
               COUNT(o.id) AS order_count
        FROM branches b
-       LEFT JOIN users u ON u.branch_id = b.id
-       LEFT JOIN orders o ON o.branch_id = b.id AND o.status IN ('Paid', 'Served')
+       LEFT JOIN orders o ON o.business_id = b.business_id AND o.branch_id = b.id
+         AND o.status IN ('Paid', 'Served')
       WHERE b.business_id = $1${scope.branchId ? ' AND b.id = $2' : ''}
        GROUP BY b.id, b.name
        ORDER BY total_revenue DESC`,
@@ -1141,8 +1141,13 @@ export async function getReportSummary(req, res) {
               al.ip_address AS ip, al.created_at
        FROM audit_logs al
        WHERE al.business_id = $1
+         ${scope.branchId ? `AND EXISTS (
+           SELECT 1 FROM users u
+           WHERE u.id = al.actor_id AND u.business_id = al.business_id
+             AND u.branch_id = $2
+         )` : ''}
        ORDER BY al.created_at DESC LIMIT 10`,
-      [businessId]
+      salesParams
     )
 
     // Dashboard stats

@@ -65,7 +65,7 @@ export default function Overview() {
         </div>
         <select value={activeBranchId} onChange={(e) => setActiveBranchId(e.target.value)} className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
           <option value="all">All branches</option>
-          {branches.filter((branch) => branch.name?.toLowerCase() !== 'main branch').map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
+          {branches.filter((branch) => branch.isActive !== false).map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
         </select>
       </div>
 

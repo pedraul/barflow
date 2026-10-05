@@ -7,7 +7,7 @@ import { query } from '../config/database.js'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const migrationsDir = path.resolve(__dirname, '../migrations')
 
-export async function migrate() {
+export async function migrate({ only } = {}) {
   await query(
     `CREATE TABLE IF NOT EXISTS schema_migrations (
        filename TEXT PRIMARY KEY,
@@ -18,6 +18,7 @@ export async function migrate() {
   const files = fs
     .readdirSync(migrationsDir)
     .filter((file) => file.endsWith('.sql'))
+    .filter((file) => !only || only.includes(file))
     .sort()
 
   for (const file of files) {
