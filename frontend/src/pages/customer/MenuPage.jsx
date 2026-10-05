@@ -199,6 +199,13 @@ export default function MenuPage() {
           </button>
           <h2 className="text-3xl font-extrabold mb-2">{selectedSection === 'bar' ? 'Bar menu' : 'Food menu'} — Categories</h2>
           <p className="text-slate-500 mt-1">Select a category to browse items</p>
+          {selectedSection === 'bar' && (
+            <img
+              src="/drinks.webp"
+              alt="Drinks menu"
+              className="mt-4 h-48 w-full max-w-3xl rounded-xl object-cover"
+            />
+          )}
           <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4 mt-5">
             {(selectedSection === 'bar' ? barCategories : foodCategories).map((group) => (
               <button key={group.name} onClick={() => setSelectedCategory(group.name)} className="border border-slate-200 rounded-xl shadow-sm bg-white p-5 text-left hover:border-amber-500 hover:shadow-md transition">
