@@ -364,8 +364,11 @@ export async function updateOperatorOrderStatus(id, status) {
   return data
 }
 
-export async function fetchQRCodes() {
-  const { data } = await api.get('/operator/qr-codes')
+export async function fetchQRCodes(branchId) {
+  const params = new URLSearchParams()
+  if (branchId && branchId !== 'all') params.set('branchId', branchId)
+  const query = params.toString()
+  const { data } = await api.get(`/operator/qr-codes${query ? `?${query}` : ''}`)
   return data
 }
 
@@ -735,4 +738,3 @@ export async function verifyQRPayment(payload) {
   const { data } = await api.post('/v1/owner/qr-payment/verify', payload)
   return data
 }
-

@@ -7,7 +7,9 @@ import { PUBLIC_APP_URL } from './config/publicAppUrl';
 export default function QRCode({ value, size = 200, fg = '#000000', bg = '#ffffff', level = 'M' }) {
   const navigate = useNavigate();
 
-  const qrValue = value || `${PUBLIC_APP_URL}/menu`;
+  const qrValue = value
+    ? value.startsWith('/') ? `${PUBLIC_APP_URL}${value}` : value
+    : `${PUBLIC_APP_URL}/menu`;
   const relativePath = qrValue.replace(PUBLIC_APP_URL, '') || '/menu';
 
   return (

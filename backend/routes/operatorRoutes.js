@@ -182,7 +182,7 @@ await logAudit({
 
     res.json({ id, status })
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    res.status(error.statusCode || 500).json({ error: error.message })
   }
 })
 
@@ -288,10 +288,16 @@ await logAudit({
 })
 router.get('/qr-codes', authMiddleware, async (req, res) => {
   try {
-    const businessId = req.user?.businessId
+    const scope = await getBranchContext(req, {
+      requestedBranchId: req.query.branchId,
+      allowOwnerAll: true,
+    })
     const { rows: branches } = await query(
-      `SELECT id, name FROM branches WHERE is_active = true AND business_id = $1`,
-      [businessId]
+      `SELECT id, name FROM branches
+       WHERE is_active = true AND business_id = $1
+         AND ($2::uuid IS NULL OR id = $2)
+       ORDER BY is_main DESC, created_at ASC`,
+      [scope.businessId, scope.branchId]
     )
 
     const qrCodes = []
@@ -299,16 +305,17 @@ router.get('/qr-codes', authMiddleware, async (req, res) => {
       for (let table = 1; table <= 10; table++) {
         qrCodes.push({
           tableNumber: table,
+          branchId: branch.id,
           branchName: branch.name,
-          qrData: generateQRCodeData(table, branch.name, businessId),
-          url: `/menu?table=${table}&businessId=${businessId}&branchId=${branch.id}`,
+          qrData: generateQRCodeData(table, branch.name, scope.businessId),
+          url: `/menu?table=${table}&businessId=${encodeURIComponent(scope.businessId)}&branchId=${encodeURIComponent(branch.id)}`,
         })
       }
     }
 
     res.json(qrCodes)
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    res.status(error.statusCode || 500).json({ error: error.message })
   }
 })
 

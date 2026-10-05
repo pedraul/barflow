@@ -1,11 +1,16 @@
 import React, { useState } from 'react'
 import QRCode from '../../components/QRCode'
 import { useAuth } from '../../context/AuthContext'
+import { useOwner } from '../../context/OwnerContext'
 import { PUBLIC_APP_URL } from '../../config/publicAppUrl'
 
 export default function QRCodeManager() {
   const { user } = useAuth()
+  const { activeBranchId } = useOwner()
   const [tableCount, setTableCount] = useState(12)
+  const branchId = String(user?.role || '').toLowerCase() === 'owner'
+    ? activeBranchId
+    : user?.branchId
 
   const tables = Array.from({ length: tableCount }, (_, i) => i + 1)
 
@@ -49,9 +54,10 @@ export default function QRCodeManager() {
 
       <div className="qr-grid">
         {tables.map((t) => {
-          const bizParam = user?.businessId ? `&businessId=${user.businessId}` : ''
-          const branchParam = user?.branchId ? `&branchId=${user.branchId}` : ''
-          const url = `${PUBLIC_APP_URL}/menu?table=${t}${bizParam}${branchParam}`
+          const params = new URLSearchParams({ table: String(t) })
+          if (user?.businessId) params.set('businessId', user.businessId)
+          if (branchId && branchId !== 'all') params.set('branchId', branchId)
+          const url = `${PUBLIC_APP_URL}/menu?${params.toString()}`
           return (
             <div className="qr-card" key={t}>
               <QRCode value={url} size={190} level="M" />

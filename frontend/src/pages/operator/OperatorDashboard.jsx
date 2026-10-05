@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { useOwner } from '../../context/OwnerContext'
 import { fetchOperatorDashboard, routeOrder, updateOperatorOrderStatus, fetchQRCodes, fetchKitchenOrders, fetchBarOrders } from '../../api/endpoints'
 import QRCode from '../../components/QRCode'
+import { PUBLIC_APP_URL } from '../../config/publicAppUrl'
 import {
   LayoutDashboard, ShoppingBag, ChefHat, CheckCircle2, BarChart3,
   Clock, FileText, Printer, Utensils, GlassWater, Users,
@@ -24,6 +26,7 @@ function generatePaymentCode(order) {
 
 export default function OperatorDashboard() {
   const { user, logout } = useAuth()
+  const { activeBranchId } = useOwner()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [dashboard, setDashboard] = useState({ stats: { newOrders: 0, preparing: 0, ready: 0 }, todaySales: 0, orders: [], businessName: 'BarFlow', currencyCode: 'RWF', businessAddress: '', businessCity: '', businessCountry: 'Rwanda', businessPhone: '', businessEmail: '', businessRegistrationCode: '', businessTaxId: '', totalOrders: 0, paidOrdersCount: 0, paidOrdersTotal: 0, qrSales: 0, waiterSales: 0, sourceBreakdown: { qr: 0, waiter: 0, other: 0 }, statusBreakdown: { Open: 0, Preparing: 0, Ready: 0, Served: 0, Paid: 0, Cancelled: 0 } })
@@ -36,6 +39,15 @@ export default function OperatorDashboard() {
   const [routingNotice, setRoutingNotice] = useState(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { pathname } = useLocation()
+  const qrBranchId = String(user?.role || '').toLowerCase() === 'owner'
+    ? activeBranchId
+    : user?.branchId
+
+  const loadQRCodes = async () => {
+    const codes = await fetchQRCodes(qrBranchId)
+    setQrCodes(codes)
+    setQrOpen(true)
+  }
 
   useEffect(() => {
     setMobileMenuOpen(false)
@@ -762,7 +774,7 @@ export default function OperatorDashboard() {
                 <div className="grid grid-cols-2 gap-2">
                   <QuickActionButton icon={<ChefHat size={16} className="text-emerald-600" />} label="View Kitchen Screen" onClick={() => navigate('/kitchen')} />
                   <QuickActionButton icon={<GlassWater size={16} className="text-purple-600" />} label="View Bar Screen" onClick={() => navigate('/bar')} />
-                  <QuickActionButton icon={<LayoutDashboard size={16} className="text-slate-600" />} label="All Tables" onClick={async () => { const d = await fetchQRCodes(); setQrCodes(d); setQrOpen(true) }} />
+                  <QuickActionButton icon={<LayoutDashboard size={16} className="text-slate-600" />} label="All Tables" onClick={loadQRCodes} />
                 </div>
               </div>
             </section>
@@ -782,7 +794,7 @@ export default function OperatorDashboard() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {qrCodes.map((qr) => (
                   <div key={`${qr.branchName}-${qr.tableNumber}`} className="border border-slate-200 rounded-lg p-4 flex flex-col items-center gap-3">
-                    <QRCode value={qr.url} size={160} level="M" />
+                    <QRCode value={`${PUBLIC_APP_URL}${qr.url}`} size={160} level="M" />
                     <div className="text-center">
                       <strong className="block text-sm">Table {qr.tableNumber}</strong>
                       <span className="text-xs text-slate-500">{qr.branchName}</span>

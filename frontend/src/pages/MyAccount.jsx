@@ -1,11 +1,13 @@
 import React, { useRef, useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useOwner } from '../context/OwnerContext'
 import { updateAvatar, fetchMySalaryStatus } from '../api/endpoints'
 import { useNavigate, useLocation } from 'react-router-dom'
 import MenuQRWidget from '../components/MenuQRWidget'
 
 export default function MyAccount() {
   const { user, updateUser } = useAuth()
+  const { activeBranchId } = useOwner()
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const activeTab = (() => {
@@ -245,7 +247,11 @@ export default function MyAccount() {
               <h2>Customer menu QR code</h2>
               <p className="text-sm">Print this code or let customers scan it to open your menu and place an order.</p>
             </div>
-            <MenuQRWidget embedded businessId={user?.businessId} />
+            <MenuQRWidget
+              embedded
+              businessId={user?.businessId}
+              branchId={String(user?.role || '').toLowerCase() === 'owner' ? activeBranchId : user?.branchId}
+            />
           </div>
         </section>
       )}

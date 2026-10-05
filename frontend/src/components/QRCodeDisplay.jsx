@@ -1,6 +1,7 @@
 import React from 'react'
 import { QrCode, Smartphone } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useOwner } from '../context/OwnerContext'
 import { PUBLIC_APP_URL } from '../config/publicAppUrl'
 
 /**
@@ -13,8 +14,14 @@ const QR_SIZE = 132
 
 export default function QRCodeDisplay() {
   const { user } = useAuth()
+  const { activeBranchId } = useOwner()
   const businessId = user?.businessId
-  const menuUrl = businessId ? `${FRONTEND_URL}/menu?businessId=${businessId}` : `${FRONTEND_URL}/menu`
+  const branchId = String(user?.role || '').toLowerCase() === 'owner' ? activeBranchId : user?.branchId
+  const params = new URLSearchParams()
+  if (businessId) params.set('businessId', businessId)
+  if (branchId && branchId !== 'all') params.set('branchId', branchId)
+  const query = params.toString()
+  const menuUrl = `${FRONTEND_URL}/menu${query ? `?${query}` : ''}`
 
   return (
     <aside className="w-full sm:w-auto max-w-sm rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50 via-white to-indigo-50 p-3 shadow-sm flex items-center gap-3">
