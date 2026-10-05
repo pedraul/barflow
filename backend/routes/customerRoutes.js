@@ -37,7 +37,7 @@ router.get('/menu', async (req, res) => {
           COALESCE(bs.quantity, 0) AS quantity
        FROM products p
        LEFT JOIN branch_stock bs ON bs.product_id = p.id AND bs.branch_id = $2::uuid
-       WHERE p.is_active = true AND p.business_id = $1
+       WHERE p.is_active = TRUE AND p.business_id = $1 AND p.branch_id = $2
        ORDER BY p.category, p.name`,
       [businessId, resolvedBranchId]
     )
@@ -99,8 +99,12 @@ router.post('/order', async (req, res) => {
       const productIds = items.map((i) => i.productId).filter(Boolean)
       if (productIds.length === items.length && items.length > 0) {
         const { rows: recent } = await query(
-          `SELECT id FROM orders WHERE table_number = $1 AND status IN ('Open','Preparing','Pending') AND created_at > NOW() - INTERVAL '10 seconds' ORDER BY created_at DESC LIMIT 1`,
-          [tableNumber]
+          `SELECT id FROM orders
+           WHERE table_number = $1 AND business_id = $2 AND branch_id = $3
+             AND status IN ('Open','Preparing','Pending')
+             AND created_at > NOW() - INTERVAL '10 seconds'
+           ORDER BY created_at DESC LIMIT 1`,
+          [tableNumber, resolvedBusinessId, branchId]
         )
         if (recent.length) {
           const recentOrderId = recent[0].id
@@ -250,24 +254,23 @@ router.get('/orders/table', async (req, res) => {
   if (!tableNumber) {
     return res.status(400).json({ error: 'table is required' })
   }
+  if (!businessId || !branchId) {
+    return res.status(400).json({ error: 'businessId and branchId are required.' })
+  }
 
   try {
-    const params = [tableNumber]
-    const filters = ['table_number = $1', "status NOT IN ('Paid', 'Cancelled')"]
-    if (businessId) {
-      params.push(businessId)
-      filters.push(`business_id = $${params.length}`)
-    }
-    if (branchId) {
-      params.push(branchId)
-      filters.push(`branch_id = $${params.length}`)
-    }
+    const { rows: branchRows } = await query(
+      'SELECT id FROM branches WHERE id = $1 AND business_id = $2 AND COALESCE(is_active, TRUE) = TRUE',
+      [branchId, businessId]
+    )
+    if (!branchRows.length) return res.status(400).json({ error: 'Invalid or inactive branch.' })
     const { rows } = await query(
       `SELECT id, order_number, status, total_amount, table_number, order_type, source, created_at
        FROM orders
-       WHERE ${filters.join(' AND ')}
+       WHERE table_number = $1 AND business_id = $2 AND branch_id = $3
+         AND status NOT IN ('Paid', 'Cancelled')
        ORDER BY created_at DESC`,
-      params
+      [tableNumber, businessId, branchId]
     )
 
     const orders = []
@@ -337,7 +340,13 @@ router.post('/orders/:id/add-items', async (req, res) => {
       return res.status(400).json({ error: `Order cannot be modified because it is already ${order.status}` })
     }
 
-    const result = await addItemsToOrder({ orderId: id, items, req })
+    const result = await addItemsToOrder({
+      orderId: id,
+      items,
+      req,
+      businessId: order.business_id,
+      branchId: order.branch_id,
+    })
 
     res.json(result)
   } catch (error) {

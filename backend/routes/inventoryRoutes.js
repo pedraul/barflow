@@ -17,6 +17,7 @@ router.get('/', authMiddleware, async (req, res) => {
        FROM branch_stock bs
        JOIN branches b ON b.id = bs.branch_id AND b.business_id = $1
        JOIN products p ON p.id = bs.product_id AND p.business_id = $1
+         AND p.branch_id = bs.branch_id
        WHERE 1 = 1${branchFilter}
        ORDER BY b.name, p.name`,
       params
@@ -34,6 +35,11 @@ router.patch('/:productId', authMiddleware, async (req, res) => {
   }
   try {
     const scope = await getBranchContext(req, { requestedBranchId: branchId, allowOwnerAll: false })
+    const { rows: products } = await query(
+      'SELECT id FROM products WHERE id = $1 AND business_id = $2 AND branch_id = $3',
+      [req.params.productId, scope.businessId, scope.branchId]
+    )
+    if (!products.length) return res.status(404).json({ error: 'Product not found in your branch.' })
     await query(
       `INSERT INTO branch_stock (branch_id, product_id, quantity, updated_at)
        VALUES ($1, $2, $3, NOW())
@@ -58,7 +64,7 @@ router.patch('/:productId', authMiddleware, async (req, res) => {
 
     res.json({ ok: true })
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    res.status(error.statusCode || 500).json({ error: error.message })
   }
 })
 

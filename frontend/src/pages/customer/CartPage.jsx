@@ -10,7 +10,7 @@ export default function CartPage() {
   const {
     cart, updateQuantity, removeFromCart, getCartTotal, getCartCount, placeOrder,
     currentOrder, deferredOrder, placeDeferredOrder, clearDeferredOrder, setCurrentOrder,
-    tableNumber
+    tableNumber, businessId, branchId
   } = useCustomer()
   const [ordering, setOrdering] = useState(false)
   const [error, setError] = useState(null)
@@ -22,7 +22,7 @@ export default function CartPage() {
   const reloadOrder = async (orderId) => {
     setReloading(true)
     try {
-      const data = await fetchOrdersByTable(tableNumber)
+      const data = await fetchOrdersByTable(tableNumber, businessId, branchId)
       const updated = data.orders.find((o) => o.orderId === orderId)
       if (updated) {
         const mapped = {

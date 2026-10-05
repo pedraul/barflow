@@ -191,14 +191,16 @@ router.post('/withdrawals/:id/approve', ...managerOrOwner, async (req, res) => {
 // Full refund history for the manager's business.
 router.get('/refunds', ...managerOrOwner, async (req, res) => {
   try {
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
     const { rows } = await query(
       `SELECT r.id, r.amount, r.reason, r.status, r.created_at,
               o.order_number
        FROM refunds r
        JOIN orders o ON o.id = r.order_id
-       WHERE r.business_id = $1
+       WHERE r.business_id = $1 AND o.business_id = $1
+         AND ($2::uuid IS NULL OR o.branch_id = $2)
        ORDER BY r.created_at DESC`,
-      [req.user.businessId]
+      [scope.businessId, scope.branchId]
     )
     res.json(rows.map((r) => ({
       id: r.id,
@@ -215,12 +217,14 @@ router.get('/refunds', ...managerOrOwner, async (req, res) => {
 
 router.get('/refunds/pending', ...managerOnly, async (req, res) => {
   try {
+    const scope = await getBranchContext(req)
     const { rows } = await query(
       `SELECT r.*, o.id AS order_id, o.order_number
         FROM refunds r
-        JOIN orders o ON o.id = r.order_id
-        WHERE r.status = 'pending'
+        JOIN orders o ON o.id = r.order_id AND o.business_id = r.business_id
+        WHERE r.status = 'pending' AND r.business_id = $1 AND o.branch_id = $2
         ORDER BY r.created_at DESC`,
+      [scope.businessId, scope.branchId]
     )
 
 await logAudit({
@@ -254,9 +258,14 @@ router.post('/refunds', ...managerOwnerWaiter, async (req, res) => {
     if (!orderId || !amount || !reason) {
       return res.status(400).json({ error: 'Order, amount, and reason are required.' })
     }
+    const scope = await getBranchContext(req, {
+      requestedBranchId: req.body.branchId || req.query.branchId,
+      allowOwnerAll: false,
+    })
     const { rows: orderRows } = await query(
-      `SELECT id, order_number, customer_phone, status FROM orders WHERE id = $1 AND business_id = $2`,
-      [orderId, req.user.businessId]
+      `SELECT id, order_number, customer_phone, status FROM orders
+       WHERE id = $1 AND business_id = $2 AND branch_id = $3`,
+      [orderId, scope.businessId, scope.branchId]
     )
     if (!orderRows.length) {
       return res.status(404).json({ error: 'Order not found.' })
@@ -267,16 +276,16 @@ router.post('/refunds', ...managerOwnerWaiter, async (req, res) => {
     }
     const refundPhone = order.customer_phone || ''
     const { rows } = await query(
-      `INSERT INTO refunds (business_id, order_id, amount, reason, status, approved_by, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, 'approved', $5, NOW(), NOW()) RETURNING *`,
-      [req.user.businessId, orderId, Number(amount), reason, req.user.id]
+      `INSERT INTO refunds (business_id, branch_id, order_id, amount, reason, status, approved_by, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, 'approved', $6, NOW(), NOW()) RETURNING *`,
+      [scope.businessId, scope.branchId, orderId, Number(amount), reason, req.user.id]
     )
     const refund = rows[0]
     const paymentRef = `REFUND-${refund.id}-${Date.now().toString(36).toUpperCase()}`
     await query(
-      `INSERT INTO payments (order_id, received_by, method, amount, reference, paid_at)
-       VALUES ($1, $2, $3, $4, $5, NOW())`,
-      [orderId, null, 'pos', Number(amount) || 0, paymentRef]
+      `INSERT INTO payments (order_id, business_id, branch_id, received_by, method, amount, reference, paid_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
+      [orderId, scope.businessId, scope.branchId, null, 'pos', Number(amount) || 0, paymentRef]
     )
     await logAudit({
       userId: req.user.id,
@@ -304,13 +313,14 @@ router.post('/refunds/:id/approve', ...managerOnly, async (req, res) => {
   try {
     const { id } = req.params
     const { action } = req.body
+    const scope = await getBranchContext(req)
     if (!['approved', 'rejected'].includes(action)) {
       return res.status(400).json({ error: 'Action must be "approved" or "rejected".' })
     }
     const { rows } = await query(
       `UPDATE refunds SET status = $1, approved_by = $2, updated_at = NOW()
-        WHERE id = $3 RETURNING *`,
-      [action, req.user.id, id],
+        WHERE id = $3 AND business_id = $4 AND branch_id = $5 RETURNING *`,
+      [action, req.user.id, id, scope.businessId, scope.branchId],
     )
     if (!rows.length) {
       return res.status(404).json({ error: 'Refund not found.' })
@@ -388,9 +398,9 @@ router.post('/payrolls/:id/approve', ...managerOrOwner, async (req, res) => {
       const sp = rows[0]
       const paymentRef = `SALARY-${sp.id}-${Date.now().toString(36).toUpperCase()}`
       await query(
-        `INSERT INTO payments (order_id, received_by, method, amount, reference, paid_at)
-         VALUES ($1, $2, $3, $4, $5, NOW())`,
-        [null, null, sp.method || 'mtn_momo', Number(sp.net_amount) || 0, paymentRef]
+        `INSERT INTO payments (order_id, business_id, branch_id, received_by, method, amount, reference, paid_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
+        [null, sp.business_id, sp.branch_id || scope.branchId, null, sp.method || 'mtn_momo', Number(sp.net_amount) || 0, paymentRef]
       )
       await logAudit({
         userId: req.user.id,
@@ -455,12 +465,15 @@ router.get('/audit-logs', ...managerOnly, async (req, res) => {
 // Stock report
 router.get('/reports/stock', ...managerOnly, async (req, res) => {
   try {
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: false })
     const { rows } = await query(
-      `SELECT ROW_NUMBER() OVER (ORDER BY name ASC) AS seq, name, category, selling_price, quantity, created_at
-       FROM products
-       WHERE business_id = $1
-       ORDER BY name ASC`,
-      [req.user.businessId]
+      `SELECT ROW_NUMBER() OVER (ORDER BY p.name ASC) AS seq,
+              p.name, p.category, p.selling_price, COALESCE(bs.quantity, 0) AS quantity, p.created_at
+       FROM products p
+       LEFT JOIN branch_stock bs ON bs.product_id = p.id AND bs.branch_id = $2
+       WHERE p.business_id = $1 AND p.branch_id = $2
+       ORDER BY p.name ASC`,
+      [scope.businessId, scope.branchId]
     )
     res.json(rows.map(p => ({
       id: String(p.seq).padStart(2, '0'),
@@ -634,14 +647,15 @@ router.get('/reports/transfers', ...managerOnly, async (req, res) => {
 // Refunds approved report
 router.get('/reports/refunds', ...managerOnly, async (req, res) => {
   try {
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: false })
     const { rows } = await query(
       `SELECT r.id, r.amount, r.reason, r.status, r.approved_by, r.created_at,
               o.id AS order_id, o.order_number
        FROM refunds r
        JOIN orders o ON o.id = r.order_id
-       WHERE r.business_id = $1
+       WHERE r.business_id = $1 AND o.business_id = $1 AND o.branch_id = $2
        ORDER BY r.created_at DESC`,
-      [req.user.businessId]
+      [scope.businessId, scope.branchId]
     )
     res.json(rows.map(r => ({
       id: r.id,
@@ -659,17 +673,18 @@ router.get('/reports/refunds', ...managerOnly, async (req, res) => {
 // Revenue report
 router.get('/reports/revenue', ...managerOnly, async (req, res) => {
   try {
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: false })
     const { from, to } = req.query
-    const clauses = ['o.business_id = $1', "o.status IN ('Paid', 'Served')"]
-    const params = [req.user.businessId]
-    let idx = 2
+    const clauses = ['o.business_id = $1', 'o.branch_id = $2', "o.status IN ('Paid', 'Served')"]
+    const params = [scope.businessId, scope.branchId]
+    let idx = 3
     if (from) { clauses.push(`o.created_at >= $${idx++}`); params.push(from) }
     if (to) { clauses.push(`o.created_at < $${idx++}`); params.push(to) }
     const where = clauses.join(' AND ')
 
-    const refundClauses = ['r.business_id = $1', "r.status = 'approved'"]
-    const refundParams = [req.user.businessId]
-    let ridx = 2
+    const refundClauses = ['r.business_id = $1', 'r.branch_id = $2', "r.status = 'approved'"]
+    const refundParams = [scope.businessId, scope.branchId]
+    let ridx = 3
     if (from) { refundClauses.push(`r.created_at >= $${ridx++}`); refundParams.push(from) }
     if (to) { refundClauses.push(`r.created_at < $${ridx++}`); refundParams.push(to) }
     const refundWhere = refundClauses.join(' AND ')
@@ -701,7 +716,7 @@ router.get('/reports/revenue', ...managerOnly, async (req, res) => {
       `SELECT COALESCE(SUM(r.amount), 0) AS total FROM refunds r WHERE ${refundWhere}`,
       refundParams
     )
-    const financialSummary = await getFinancialSummary(req.user.businessId)
+    const financialSummary = await getFinancialSummary(scope.businessId, scope.branchId)
     const totalRevenue = financialSummary.totalSales
     const bySource = { qr: 0, waiter: 0, other: 0 }
     orders.forEach(o => { const src = o.source === 'qr' || o.source === 'waiter' ? o.source : 'other'; bySource[src] += o.total })

@@ -8,5 +8,6 @@ backend/dist
 .DS_Store
 *.dump
 *.sql
+!backend/migrations/20261005_add_branch_owned_products.sql
 *.bak
 *.log

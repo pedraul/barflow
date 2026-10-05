@@ -48,24 +48,36 @@ async function reuseCategoryName(businessId, category) {
 router.get('/public-menu', async (req, res) => {
   const tableNumber = req.query.table || '1'
   const businessId = req.query.businessId || req.user?.businessId
-  const branchId = req.query.branchId || null
+  const requestedBranchId = req.query.branchId || null
   try {
     if (!businessId) {
       return res.json({ tableNumber, categories: [] })
     }
 
+    const { rows: branchRows } = await query(
+      `SELECT id FROM branches
+       WHERE business_id = $1 AND COALESCE(is_active, TRUE) = TRUE
+         AND ($2::uuid IS NULL OR id = $2::uuid)
+       ORDER BY COALESCE(is_main, FALSE) DESC, created_at ASC
+       LIMIT 1`,
+      [businessId, requestedBranchId]
+    )
+    const branchId = branchRows[0]?.id
+    if (!branchId) return res.status(400).json({ error: 'No active branch is configured for this menu.' })
+
     const { rows } = await query(
       `SELECT p.id, p.name, p.category, p.selling_price, p.image_url, p.stock_unit,
-              COALESCE(bs.quantity, p.quantity) AS quantity
+              COALESCE(bs.quantity, 0) AS quantity
        FROM products p
-       LEFT JOIN branch_stock bs ON bs.product_id = p.id AND bs.branch_id = $2::uuid
-       WHERE p.is_active = true AND p.business_id = $1
+       LEFT JOIN branch_stock bs ON bs.product_id = p.id AND bs.branch_id = $2
+       WHERE p.is_active = TRUE AND p.business_id = $1 AND p.branch_id = $2
        ORDER BY p.category, p.name`,
       [businessId, branchId]
     )
 
     res.json({
       tableNumber,
+      branchId,
       categories: groupProductsByCategory(rows),
     })
   } catch (error) {
@@ -84,7 +96,7 @@ router.get('/', ...managerOnly, async (req, res) => {
               p.is_active, p.created_at
        FROM products p
        LEFT JOIN branch_stock bs ON bs.product_id = p.id AND bs.branch_id = $2
-       WHERE p.business_id = $1
+       WHERE p.business_id = $1 AND p.branch_id = $2
        ORDER BY p.created_at DESC`,
       [businessId, branchId]
     )
@@ -118,23 +130,23 @@ router.post('/', ...managerOnly, async (req, res) => {
     if (!businessId) {
       return res.status(400).json({ error: 'No business associated with this account.' })
     }
+    const branchId = req.user?.branchId
+    if (!branchId) return res.status(403).json({ error: 'This manager is not assigned to a branch.' })
     const { rows } = await query(
-      `INSERT INTO products (business_id, name, category, selling_price, cost_price, stock_unit, low_stock_threshold, image_url, quantity)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `INSERT INTO products (business_id, branch_id, name, category, selling_price, cost_price, stock_unit, low_stock_threshold, image_url, quantity)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING id, name, category, selling_price, cost_price, stock_unit, low_stock_threshold, image_url, quantity, is_active, created_at`,
-      [businessId, name, await reuseCategoryName(businessId, category), price, costPrice || 0, unit || 'unit', minStockLevel || 0, imageUrl || '', quantity || 0]
+      [businessId, branchId, name, await reuseCategoryName(businessId, category), price, costPrice || 0, unit || 'unit', minStockLevel || 0, imageUrl || '', quantity || 0]
     )
     const p = rows[0]
-    if (req.user?.branchId) {
-      await query(
-        `INSERT INTO branch_stock (branch_id, product_id, quantity, updated_at)
-         VALUES ($1, $2, $3, NOW())
-         ON CONFLICT (branch_id, product_id)
-         DO UPDATE SET quantity = EXCLUDED.quantity, updated_at = NOW()`,
-        [req.user.branchId, p.id, quantity || 0]
-      )
-      p.quantity = quantity || 0
-    }
+    await query(
+      `INSERT INTO branch_stock (branch_id, product_id, quantity, updated_at)
+       VALUES ($1, $2, $3, NOW())
+       ON CONFLICT (branch_id, product_id)
+       DO UPDATE SET quantity = EXCLUDED.quantity, updated_at = NOW()`,
+      [branchId, p.id, quantity || 0]
+    )
+    p.quantity = quantity || 0
 
 await logAudit({
        userId: req.user?.id,
@@ -187,9 +199,11 @@ router.patch('/:id', ...managerOnly, async (req, res) => {
       return res.status(400).json({ error: 'No fields provided to update.' })
     }
 
-    params.push(id, req.user?.businessId)
+    const branchId = req.user?.branchId
+    if (!branchId) return res.status(403).json({ error: 'This manager is not assigned to a branch.' })
+    params.push(id, req.user?.businessId, branchId)
     const { rows } = await query(
-      `UPDATE products SET ${fields.join(', ')} WHERE id = $${idx} AND business_id = $${idx + 1} RETURNING id, name, category, selling_price, cost_price, stock_unit, low_stock_threshold, image_url, quantity, is_active, created_at`,
+      `UPDATE products SET ${fields.join(', ')} WHERE id = $${idx} AND business_id = $${idx + 1} AND branch_id = $${idx + 2} RETURNING id, name, category, selling_price, cost_price, stock_unit, low_stock_threshold, image_url, quantity, is_active, created_at`,
       params
     )
 
@@ -218,7 +232,7 @@ await logAudit({
 
     const { rows: stockRows } = await query(
       'SELECT quantity FROM branch_stock WHERE branch_id = $1 AND product_id = $2',
-      [req.user.branchId, id]
+      [branchId, id]
     )
     const p = { ...rows[0], quantity: stockRows[0]?.quantity ?? 0 }
     res.json({
@@ -242,7 +256,9 @@ await logAudit({
 router.delete('/:id', ...managerOnly, async (req, res) => {
   try {
     const businessId = req.user?.businessId
-    const { rows } = await query('DELETE FROM products WHERE id = $1 AND business_id = $2 RETURNING id, name', [req.params.id, businessId])
+    const branchId = req.user?.branchId
+    if (!branchId) return res.status(403).json({ error: 'This manager is not assigned to a branch.' })
+    const { rows } = await query('DELETE FROM products WHERE id = $1 AND business_id = $2 AND branch_id = $3 RETURNING id, name', [req.params.id, businessId, branchId])
     if (!rows.length) {
       return res.status(404).json({ error: 'Product not found in your business.' })
     }

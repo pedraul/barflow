@@ -71,7 +71,7 @@ export default function PaymentPage() {
                     setLookupLoading(true)
                     setLookupError(null)
                     try {
-                      const data = await api.fetchOrdersByTable(lookupTable)
+                      const data = await api.fetchOrdersByTable(lookupTable, businessId, branchId)
                       setLookupResults(data.orders || [])
                     } catch (err) {
                       setLookupError(err.message)
@@ -219,7 +219,7 @@ export default function PaymentPage() {
   const reloadOrder = async (orderId) => {
     setReloading(true)
     try {
-      const data = await api.fetchOrdersByTable(activeOrder.tableNumber)
+      const data = await api.fetchOrdersByTable(activeOrder.tableNumber, businessId, branchId)
       const updated = data.orders.find((o) => o.orderId === orderId)
       if (updated) {
         setCurrentOrder({

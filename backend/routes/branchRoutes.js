@@ -52,7 +52,7 @@ router.post('/', ...ownerOnly, async (req, res) => {
       `INSERT INTO branch_stock (branch_id, product_id, quantity, updated_at)
        SELECT $1, p.id, 0, NOW()
        FROM products p
-       WHERE p.business_id = $2
+       WHERE p.business_id = $2 AND p.branch_id = $1
        ON CONFLICT (branch_id, product_id) DO NOTHING`,
       [rows[0].id, req.user.businessId]
     )

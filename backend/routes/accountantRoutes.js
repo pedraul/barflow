@@ -13,7 +13,7 @@ const accountantOnly = [authMiddleware, roleMiddleware('accountant')]
 // GET /api/accountant/summary
 router.get('/summary', ...accountantOnly, async (req, res) => {
   try {
-    const businessId = req.user?.businessId
+    const { businessId, branchId } = await getBranchContext(req)
 
     async function safeQuery(sql, params) {
       try {
@@ -27,37 +27,37 @@ router.get('/summary', ...accountantOnly, async (req, res) => {
     const revenueRows = (await safeQuery(
       `SELECT COALESCE(SUM(total_amount), 0) AS revenue
        FROM orders
-       WHERE status IN ('Paid', 'Served') AND business_id = $1`,
-      [businessId]
+       WHERE status IN ('Paid', 'Served') AND business_id = $1 AND branch_id = $2`,
+      [businessId, branchId]
     )).rows
     const expenseRows = (await safeQuery(
       `SELECT COALESCE(SUM(amount), 0) AS expenses
-       FROM salary_payments WHERE business_id = $1`,
-      [businessId]
+       FROM salary_payments WHERE business_id = $1 AND branch_id = $2`,
+      [businessId, branchId]
     )).rows
     const paymentRows = (await safeQuery(
       `SELECT COALESCE(SUM(amount), 0) AS payments
-       FROM payments WHERE business_id = $1`,
-      [businessId]
+       FROM payments WHERE business_id = $1 AND branch_id = $2`,
+      [businessId, branchId]
     )).rows
     const refundRows = (await safeQuery(
       `SELECT COALESCE(SUM(amount), 0) AS refunds
-       FROM refunds WHERE status != 'rejected' AND business_id = $1`,
-      [businessId]
+       FROM refunds WHERE status != 'rejected' AND business_id = $1 AND branch_id = $2`,
+      [businessId, branchId]
     )).rows
-    const orderCount = (await safeQuery(`SELECT COUNT(*) AS count FROM orders WHERE business_id = $1`, [businessId])).rows
+    const orderCount = (await safeQuery(`SELECT COUNT(*) AS count FROM orders WHERE business_id = $1 AND branch_id = $2`, [businessId, branchId])).rows
     const matchedCount = (await safeQuery(
-      `SELECT COUNT(*) AS count FROM orders WHERE status IN ('Paid', 'Served') AND business_id = $1`,
-      [businessId]
+      `SELECT COUNT(*) AS count FROM orders WHERE status IN ('Paid', 'Served') AND business_id = $1 AND branch_id = $2`,
+      [businessId, branchId]
     )).rows
     const bankBalanceRows = (await safeQuery(
       `SELECT COALESCE(SUM(amount), 0) AS balance
        FROM payments
-       WHERE method IN ('cash', 'mtn_momo', 'airtel_money') AND business_id = $1`,
-      [businessId]
+       WHERE method IN ('cash', 'mtn_momo', 'airtel_money') AND business_id = $1 AND branch_id = $2`,
+      [businessId, branchId]
     )).rows
 
-    const financialSummary = await getFinancialSummary(businessId)
+    const financialSummary = await getFinancialSummary(businessId, branchId)
     const expenses = financialSummary.expenses
     const payments = Number(paymentRows[0]?.payments || 0)
     const refunds = Number(refundRows[0]?.refunds || 0)
@@ -69,26 +69,27 @@ router.get('/summary', ...accountantOnly, async (req, res) => {
     const recentTransactions = (await safeQuery(
       `SELECT o.order_number, o.table_name, o.total_amount, o.status, o.source, o.created_at
        FROM orders o
-       WHERE o.business_id = $1
+       WHERE o.business_id = $1 AND o.branch_id = $2
        ORDER BY o.created_at DESC
        LIMIT 5`,
-      [businessId]
+      [businessId, branchId]
     )).rows
 
     const unmatchedBank = (await safeQuery(
-      `SELECT COUNT(*) AS count FROM orders WHERE status NOT IN ('Paid', 'Served', 'Cancelled') AND business_id = $1`,
-      [businessId]
+      `SELECT COUNT(*) AS count FROM orders WHERE status NOT IN ('Paid', 'Served', 'Cancelled') AND business_id = $1 AND branch_id = $2`,
+      [businessId, branchId]
     )).rows
     const inSystemOnly = (await safeQuery(
-      `SELECT COUNT(*) AS count FROM orders WHERE status = 'Open' AND business_id = $1`,
-      [businessId]
+      `SELECT COUNT(*) AS count FROM orders WHERE status = 'Open' AND business_id = $1 AND branch_id = $2`,
+      [businessId, branchId]
     )).rows
     const inStatementOnly = (await safeQuery(
       `SELECT COUNT(*) AS count FROM payments p
-       WHERE NOT EXISTS (
-         SELECT 1 FROM orders o WHERE o.id = p.order_id AND o.status IN ('Paid', 'Served') AND o.business_id = $1
+       WHERE p.business_id = $1 AND p.branch_id = $2 AND NOT EXISTS (
+         SELECT 1 FROM orders o WHERE o.id = p.order_id AND o.status IN ('Paid', 'Served')
+           AND o.business_id = $1 AND o.branch_id = $2
        )`,
-      [businessId]
+      [businessId, branchId]
     )).rows
 
     const monthlySummary = (await safeQuery(
@@ -96,11 +97,11 @@ router.get('/summary', ...accountantOnly, async (req, res) => {
               COALESCE(SUM(total_amount), 0) AS revenue,
               COALESCE(SUM(CASE WHEN status IN ('Paid', 'Served') THEN total_amount ELSE 0 END), 0) AS recognized_revenue
        FROM orders
-       WHERE business_id = $1
+       WHERE business_id = $1 AND branch_id = $2
        GROUP BY TO_CHAR(created_at, 'YYYY-MM')
        ORDER BY month DESC
        LIMIT 2`,
-      [businessId]
+      [businessId, branchId]
     )).rows
 
     const totalSales = financialSummary.totalSales
@@ -152,13 +153,13 @@ router.get('/summary', ...accountantOnly, async (req, res) => {
 // GET /api/accountant/transfers
 router.get('/transfers', ...accountantOnly, async (req, res) => {
   try {
-    const businessId = req.user?.businessId
+    const { businessId, branchId } = await getBranchContext(req)
     const { rows } = await query(
       `SELECT id, to_phone AS phone, amount, description AS purpose, status, created_at
        FROM transfers
-       WHERE business_id = $1
+       WHERE business_id = $1 AND branch_id = $2
        ORDER BY created_at DESC`,
-      [businessId]
+      [businessId, branchId]
     )
     res.json(
       rows.map((r) => ({
@@ -206,13 +207,13 @@ await logAudit({
 // GET /api/accountant/refunds
 router.get('/refunds', ...accountantOnly, async (req, res) => {
   try {
-    const businessId = req.user?.businessId
+    const { businessId, branchId } = await getBranchContext(req)
     const { rows } = await query(
       `SELECT id, amount, reason, status, approved_by, created_at
        FROM refunds
-       WHERE business_id = $1
+       WHERE business_id = $1 AND branch_id = $2
        ORDER BY created_at DESC`,
-      [businessId]
+      [businessId, branchId]
     )
     res.json(
       rows.map((r) => ({
@@ -285,13 +286,13 @@ await logAudit({
 // GET /api/accountant/expenses
 router.get('/expenses', ...accountantOnly, async (req, res) => {
   try {
-    const businessId = req.user?.businessId
+    const { businessId, branchId } = await getBranchContext(req)
     const { rows } = await query(
       `SELECT s.id, s.name, s.amount, s.method, s.actor, s.paid_at
        FROM salary_payments s
-       WHERE s.business_id = $1
+       WHERE s.business_id = $1 AND s.branch_id = $2
        ORDER BY s.paid_at DESC`,
-      [businessId]
+      [businessId, branchId]
     )
     res.json(
       rows.map((r) => ({
@@ -312,13 +313,13 @@ router.get('/expenses', ...accountantOnly, async (req, res) => {
 // GET /api/accountant/payments
 router.get('/payments', ...accountantOnly, async (req, res) => {
   try {
-    const businessId = req.user?.businessId
+    const { businessId, branchId } = await getBranchContext(req)
     const { rows } = await query(
       `SELECT p.id, p.order_id, p.method, p.amount, p.reference, p.paid_at
        FROM payments p
-       WHERE p.business_id = $1
+       WHERE p.business_id = $1 AND p.branch_id = $2
        ORDER BY p.paid_at DESC`,
-      [businessId]
+      [businessId, branchId]
     )
     res.json(
       rows.map((r) => ({
@@ -338,10 +339,10 @@ router.get('/payments', ...accountantOnly, async (req, res) => {
 // GET /api/accountant/sales
 router.get('/sales', ...accountantOnly, async (req, res) => {
   try {
-    const businessId = req.user?.businessId
+    const { businessId, branchId } = await getBranchContext(req)
     const { from, to } = req.query
-    let where = "WHERE status IN ('Paid', 'Served') AND business_id = $1"
-    const params = [businessId]
+    let where = "WHERE status IN ('Paid', 'Served') AND business_id = $1 AND branch_id = $2"
+    const params = [businessId, branchId]
     if (from) {
       params.push(new Date(from).toISOString())
       where += ` AND created_at >= $${params.length}`
@@ -376,14 +377,14 @@ router.get('/sales', ...accountantOnly, async (req, res) => {
 // GET /api/accountant/purchases
 router.get('/purchases', ...accountantOnly, async (req, res) => {
   try {
-    const businessId = req.user?.businessId
+    const { businessId, branchId } = await getBranchContext(req)
     const { rows } = await query(
       `SELECT p.id, p.name, p.category_id, c.name AS category_name, p.price, p.stock_quantity
        FROM products p
        LEFT JOIN categories c ON c.id = p.category_id
-       WHERE p.business_id = $1
+       WHERE p.business_id = $1 AND p.branch_id = $2
        ORDER BY p.created_at DESC`,
-      [businessId]
+      [businessId, branchId]
     )
     res.json(
       rows.map((r) => ({
@@ -402,26 +403,26 @@ router.get('/purchases', ...accountantOnly, async (req, res) => {
 // GET /api/accountant/taxes
 router.get('/taxes', ...accountantOnly, async (req, res) => {
   try {
-    const businessId = req.user?.businessId
+    const { businessId, branchId } = await getBranchContext(req)
     const { rows: vatRows } = await query(
       `SELECT COALESCE(SUM(total_amount), 0) AS total_sales,
               COALESCE(SUM(tax_amount), 0) AS vat_output,
               COUNT(*) FILTER (WHERE status IN ('Paid', 'Served')) AS reconciled_count
-       FROM orders WHERE business_id = $1`,
-      [businessId]
+       FROM orders WHERE business_id = $1 AND branch_id = $2`,
+      [businessId, branchId]
     )
     const { rows: expenseRows } = await query(
       `SELECT COALESCE(SUM(amount), 0) AS total_expenses
-       FROM salary_payments WHERE business_id = $1`,
-      [businessId]
+       FROM salary_payments WHERE business_id = $1 AND branch_id = $2`,
+      [businessId, branchId]
     )
     const { rows: vatOrderRows } = await query(
       `SELECT id, order_number, table_name, total_amount, tax_amount, status, created_at
        FROM orders
-       WHERE tax_amount > 0 AND business_id = $1
+       WHERE tax_amount > 0 AND business_id = $1 AND branch_id = $2
        ORDER BY created_at DESC
        LIMIT 50`,
-      [businessId]
+      [businessId, branchId]
     )
 
     const totalSales = Number(vatRows[0]?.total_sales || 0)
@@ -481,31 +482,31 @@ router.get('/chart-of-accounts', ...accountantOnly, async (_req, res) => {
 // GET /api/accountant/reports
 router.get('/reports', ...accountantOnly, async (req, res) => {
   try {
-    const businessId = req.user?.businessId
+    const { businessId, branchId } = await getBranchContext(req)
     const { rows: orderRows } = await query(
       `SELECT COUNT(*) AS orders, COALESCE(SUM(total_amount), 0) AS revenue
-       FROM orders WHERE status IN ('Paid', 'Served') AND business_id = $1`,
-      [businessId]
+       FROM orders WHERE status IN ('Paid', 'Served') AND business_id = $1 AND branch_id = $2`,
+      [businessId, branchId]
     )
     const { rows: refundTotalRows } = await query(
       `SELECT COALESCE(SUM(amount), 0) AS total_refunds
-       FROM refunds WHERE status = 'approved' AND business_id = $1`,
-      [businessId]
+       FROM refunds WHERE status = 'approved' AND business_id = $1 AND branch_id = $2`,
+      [businessId, branchId]
     )
     const { rows: paymentRows } = await query(
       `SELECT COUNT(*) AS payments, COALESCE(SUM(amount), 0) AS total_payments
-       FROM payments WHERE business_id = $1`,
-      [businessId]
+       FROM payments WHERE business_id = $1 AND branch_id = $2`,
+      [businessId, branchId]
     )
     const { rows: refundRows } = await query(
       `SELECT COUNT(*) AS refunds, COALESCE(SUM(amount), 0) AS total_refunds
-       FROM refunds WHERE status != 'rejected' AND business_id = $1`,
-      [businessId]
+       FROM refunds WHERE status != 'rejected' AND business_id = $1 AND branch_id = $2`,
+      [businessId, branchId]
     )
     const { rows: salaryRows } = await query(
       `SELECT COUNT(*) AS salaries, COALESCE(SUM(amount), 0) AS total_salaries
-       FROM salary_payments WHERE business_id = $1`,
-      [businessId]
+       FROM salary_payments WHERE business_id = $1 AND branch_id = $2`,
+      [businessId, branchId]
     )
     const { rows: reportRows } = await query(
       `SELECT id, category, title, format, generated_by, created_at

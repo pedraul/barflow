@@ -30,7 +30,8 @@ export async function createOrderCore({
               COALESCE(bs.quantity, 0) AS quantity
        FROM products p
        LEFT JOIN branch_stock bs ON bs.product_id = p.id AND bs.branch_id = $2
-       WHERE p.business_id = $1 AND (p.id = ANY($3) OR p.name = ANY($4))`,
+       WHERE p.business_id = $1 AND p.branch_id = $2
+         AND (p.id = ANY($3) OR p.name = ANY($4))`,
       [businessId, branchId, productIds, items.map((i) => i.name)]
     )
   const productMap = {}
@@ -141,7 +142,10 @@ export async function createOrderCore({
   const totalAmount = subtotal
 
   const countResult = await query(
-    `SELECT COUNT(*)::int AS count FROM orders WHERE created_at::date = CURRENT_DATE`
+    `SELECT COUNT(*)::int AS count
+     FROM orders
+     WHERE business_id = $1 AND branch_id = $2 AND created_at::date = CURRENT_DATE`,
+    [businessId, branchId]
   )
   const orderNumber = String(countResult.rows[0].count + 1).padStart(3, '0')
 
@@ -245,12 +249,15 @@ export async function createOrderCore({
   }
 }
 
-export async function addItemsToOrder({ orderId, items, req }) {
+export async function addItemsToOrder({ orderId, items, req, businessId, branchId }) {
   if (!items || !Array.isArray(items) || !items.length) {
     throw new Error('No items provided to add')
   }
 
-  const orderResult = await query('SELECT * FROM orders WHERE id = $1', [orderId])
+  const orderResult = await query(
+    'SELECT * FROM orders WHERE id = $1 AND business_id = $2 AND branch_id = $3',
+    [orderId, businessId, branchId]
+  )
   if (!orderResult.rows.length) {
     throw new Error('Order not found')
   }
@@ -263,16 +270,16 @@ export async function addItemsToOrder({ orderId, items, req }) {
     throw err
   }
 
-  const businessId = order.business_id
-  const branchId = order.branch_id
-
   // Resolve products
   const productIds = items.map((i) => i.productId).filter(Boolean)
 const productsResult = await query(
-    `SELECT id, name, category, selling_price, quantity
-      FROM products
-      WHERE business_id = $1 AND (id = ANY($2) OR name = ANY($3))`,
-    [businessId, productIds, items.map((i) => i.name)]
+    `SELECT p.id, p.name, p.category, p.selling_price,
+            COALESCE(bs.quantity, 0) AS quantity
+      FROM products p
+      LEFT JOIN branch_stock bs ON bs.product_id = p.id AND bs.branch_id = $2
+      WHERE p.business_id = $1 AND p.branch_id = $2
+        AND (p.id = ANY($3) OR p.name = ANY($4))`,
+    [businessId, branchId, productIds, items.map((i) => i.name)]
   )
   const productMap = {}
   for (const p of productsResult.rows) {
@@ -418,7 +425,7 @@ const productsResult = await query(
   }
 }
 
-export async function restockOrderItems({ orderId, items, reason, req }) {
+export async function restockOrderItems({ orderId, items, reason, req, businessId, branchId }) {
   if (!items || !Array.isArray(items) || !items.length) {
     throw new Error('No items provided for restocking')
   }
@@ -426,8 +433,10 @@ export async function restockOrderItems({ orderId, items, reason, req }) {
     throw new Error('Reason for restocking is required')
   }
 
-  const businessId = req?.user?.businessId
-  const orderResult = await query('SELECT * FROM orders WHERE id = $1 AND business_id = $2', [orderId, businessId])
+  const orderResult = await query(
+    'SELECT * FROM orders WHERE id = $1 AND business_id = $2 AND branch_id = $3',
+    [orderId, businessId, branchId]
+  )
   if (!orderResult.rows.length) {
     throw new Error('Order not found')
   }

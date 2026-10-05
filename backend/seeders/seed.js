@@ -83,10 +83,18 @@ export async function seed() {
     )
 
     for (const product of SEED_PRODUCTS) {
+      const { rows } = await query(
+        `INSERT INTO products (business_id, branch_id, name, category, selling_price, cost_price, quantity, stock_unit, is_active)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE)
+         RETURNING id`,
+        [business.id, branchByName['Head Office'], product.name, product.category, product.price, product.cost, product.stock, product.unit]
+      )
       await query(
-        `INSERT INTO products (business_id, name, category, selling_price, cost_price, quantity, stock_unit, is_active)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE)`,
-        [business.id, product.name, product.category, product.price, product.cost, product.stock, product.unit]
+        `INSERT INTO branch_stock (branch_id, product_id, quantity, updated_at)
+         VALUES ($1, $2, $3, NOW())
+         ON CONFLICT (branch_id, product_id) DO UPDATE
+         SET quantity = EXCLUDED.quantity, updated_at = NOW()`,
+        [branchByName['Head Office'], rows[0].id, product.stock]
       )
     }
 

@@ -159,8 +159,12 @@ router.post('/', authMiddleware, async (req, res) => {
       const productIds = items.map((i) => i.productId).filter(Boolean)
       if (productIds.length === items.length && items.length > 0) {
         const { rows: recent } = await query(
-          `SELECT id FROM orders WHERE table_name = $1 AND user_id = $2 AND status IN ('Open','Preparing','Pending') AND created_at > NOW() - INTERVAL '10 seconds' ORDER BY created_at DESC LIMIT 1`,
-          [customer, req.user?.id]
+          `SELECT id FROM orders
+           WHERE table_name = $1 AND user_id = $2 AND business_id = $3 AND branch_id = $4
+             AND status IN ('Open','Preparing','Pending')
+             AND created_at > NOW() - INTERVAL '10 seconds'
+           ORDER BY created_at DESC LIMIT 1`,
+          [customer, req.user?.id, businessId, branchId]
         )
         if (recent.length) {
           const recentOrderId = recent[0].id
@@ -245,10 +249,13 @@ router.post('/:id/add-items', authMiddleware, async (req, res) => {
   }
 
   try {
+    const scope = await getBranchContext(req)
     const result = await addItemsToOrder({
       orderId: id,
       items,
       req,
+      businessId: scope.businessId,
+      branchId: scope.branchId,
     })
 
     await logAudit({
@@ -284,11 +291,14 @@ router.patch('/:id/restock', authMiddleware, async (req, res) => {
   }
 
   try {
+    const scope = await getBranchContext(req)
     const result = await restockOrderItems({
       orderId: id,
       items,
       reason: reason.trim(),
       req,
+      businessId: scope.businessId,
+      branchId: scope.branchId,
     })
 
     await logAudit({
@@ -308,7 +318,12 @@ router.patch('/:id/restock', authMiddleware, async (req, res) => {
 
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
-    await query('DELETE FROM orders WHERE id = $1 AND business_id = $2', [req.params.id, req.user.businessId])
+    const scope = await getBranchContext(req)
+    const result = await query(
+      'DELETE FROM orders WHERE id = $1 AND business_id = $2 AND branch_id = $3 RETURNING id',
+      [req.params.id, scope.businessId, scope.branchId]
+    )
+    if (!result.rows.length) return res.status(404).json({ error: 'Order not found in your branch.' })
 
     await logAudit({
       userId: req.user?.id,
