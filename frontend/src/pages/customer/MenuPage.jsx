@@ -182,13 +182,19 @@ export default function MenuPage() {
           <h2 className="text-3xl font-extrabold mb-2">Menu</h2>
           <p className="text-slate-500 mt-1">Choose a menu section, then pick a category</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
-            <button onClick={() => setSelectedSection('bar')} className="border border-slate-200 rounded-xl shadow-sm bg-white p-8 text-left hover:border-amber-500 hover:shadow-md transition">
-              <div className="text-2xl font-black text-slate-900">Bar menu</div>
-               <div className="text-sm text-slate-500 mt-1">Beer, Wine, Spirits, Cocktails, Soft Drinks, Juices, Water, Energy Drinks, Tea and Coffee</div>
+            <button onClick={() => setSelectedSection('bar')} className="overflow-hidden border border-slate-200 rounded-xl shadow-sm bg-white text-left hover:border-amber-500 hover:shadow-md transition">
+              <img src="/drinks.webp" alt="" className="h-48 w-full object-cover" />
+              <div className="p-6">
+                <div className="text-2xl font-black text-slate-900">Bar menu</div>
+                <div className="text-sm text-slate-500 mt-1">Beer, Wine, Spirits, Cocktails, Soft Drinks, Juices, Water, Energy Drinks, Tea and Coffee</div>
+              </div>
             </button>
-            <button onClick={() => setSelectedSection('food')} className="border border-slate-200 rounded-xl shadow-sm bg-white p-8 text-left hover:border-amber-500 hover:shadow-md transition">
-              <div className="text-2xl font-black text-slate-900">Food menu</div>
-              <div className="text-sm text-slate-500 mt-1">Appetizers, Snacks, BBQ & Grills, Chicken, Beef, Pork, Fish & Seafood, Burgers, Pizza, Sandwiches, Fries, Main Meals, Local Dishes, Salads, Desserts</div>
+            <button onClick={() => setSelectedSection('food')} className="overflow-hidden border border-slate-200 rounded-xl shadow-sm bg-white text-left hover:border-amber-500 hover:shadow-md transition">
+              <img src="/food.webp" alt="" className="h-48 w-full object-cover" />
+              <div className="p-6">
+                <div className="text-2xl font-black text-slate-900">Food menu</div>
+                <div className="text-sm text-slate-500 mt-1">Appetizers, Snacks, BBQ & Grills, Chicken, Beef, Pork, Fish & Seafood, Burgers, Pizza, Sandwiches, Fries, Main Meals, Local Dishes, Salads, Desserts</div>
+              </div>
             </button>
           </div>
         </section>
@@ -199,13 +205,6 @@ export default function MenuPage() {
           </button>
           <h2 className="text-3xl font-extrabold mb-2">{selectedSection === 'bar' ? 'Bar menu' : 'Food menu'} — Categories</h2>
           <p className="text-slate-500 mt-1">Select a category to browse items</p>
-          {selectedSection && (
-            <img
-              src={selectedSection === 'bar' ? '/drinks.webp' : '/food.webp'}
-              alt={`${selectedSection === 'bar' ? 'Drinks' : 'Food'} menu`}
-              className="mt-4 h-48 w-full max-w-3xl rounded-xl object-cover"
-            />
-          )}
           <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4 mt-5">
             {(selectedSection === 'bar' ? barCategories : foodCategories).map((group) => (
               <button key={group.name} onClick={() => setSelectedCategory(group.name)} className="border border-slate-200 rounded-xl shadow-sm bg-white p-5 text-left hover:border-amber-500 hover:shadow-md transition">
