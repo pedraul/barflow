@@ -1,5 +1,7 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import * as api from '../api/endpoints'
+import { useAuth } from '../context/AuthContext'
+import { useOwner } from '../context/OwnerContext'
 
 function formatCurrency(amount) {
   return 'RWF ' + Number(amount).toLocaleString('en-US', {
@@ -31,14 +33,21 @@ export default function StationDisplay({
   readyLabel = '✓ Mark as Ready',
   showImage = false,
 }) {
+  const { user } = useAuth()
+  const { activeBranchId } = useOwner()
+  const branchId = String(user?.role || '').toLowerCase() === 'owner'
+    ? activeBranchId
+    : user?.branchId
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [soundAlert, setSoundAlert] = useState(false)
+  const activeBranchRef = useRef(branchId)
 
   const loadOrders = async () => {
     try {
-      const data = await fetchOrders()
+      const data = await fetchOrders(branchId)
+      if (activeBranchRef.current !== branchId) return
       setOrders(data)
       setError(null)
       const newOrders = data.filter((o) => o.status === 'Open')
@@ -47,21 +56,26 @@ export default function StationDisplay({
         setTimeout(() => setSoundAlert(false), 3000)
       }
     } catch (err) {
+      if (activeBranchRef.current !== branchId) return
       setError(err.message)
     } finally {
-      setLoading(false)
+      if (activeBranchRef.current === branchId) setLoading(false)
     }
   }
 
   useEffect(() => {
+    activeBranchRef.current = branchId
+    setOrders([])
+    setLoading(true)
+    setError(null)
     loadOrders()
     const interval = setInterval(loadOrders, 5000)
     return () => clearInterval(interval)
-  }, [fetchOrders])
+  }, [fetchOrders, branchId])
 
   const handleStart = async (id) => {
     try {
-      await api.startPreparing(id)
+      await api.startPreparing(id, branchId)
       loadOrders()
     } catch (err) {
       alert('Error: ' + err.message)
@@ -70,7 +84,7 @@ export default function StationDisplay({
 
   const handleReady = async (id) => {
     try {
-      await api.markAsReady(id)
+      await api.markAsReady(id, branchId)
       loadOrders()
     } catch (err) {
       alert('Error: ' + err.message)

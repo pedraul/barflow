@@ -24,8 +24,8 @@ export default function WaiterOrders() {
   const loadOrders = async () => {
     try {
       const [kitchen, bar, operatorData] = await Promise.all([
-        api.fetchKitchenOrders(),
-        api.fetchBarOrders(),
+        api.fetchKitchenOrders(user?.branchId),
+        api.fetchBarOrders(user?.branchId),
         api.fetchOperatorOrders().catch(() => []),
       ])
       const combined = [...kitchen, ...bar, ...operatorData]

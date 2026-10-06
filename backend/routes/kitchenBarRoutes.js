@@ -15,7 +15,7 @@ router.get('/orders', authMiddleware, async (req, res) => {
   try {
     const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
     const { rows } = await query(
-      `SELECT o.id, o.order_number, o.table_number, o.status, o.source, o.station, o.created_at, o.user_id,
+      `SELECT o.id, o.order_number, o.table_number, o.status, o.source, o.station, o.total_amount, o.created_at, o.user_id,
               (
                 SELECT COALESCE(json_agg(json_build_object(
                   'productId', p.id,
@@ -60,7 +60,7 @@ router.get('/bar-orders', authMiddleware, async (req, res) => {
   try {
     const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
     const { rows } = await query(
-      `SELECT o.id, o.order_number, o.table_number, o.status, o.source, o.station, o.created_at, o.user_id,
+      `SELECT o.id, o.order_number, o.table_number, o.status, o.source, o.station, o.total_amount, o.created_at, o.user_id,
               (
                 SELECT COALESCE(json_agg(json_build_object(
                   'productId', p.id,
@@ -103,10 +103,14 @@ router.get('/bar-orders', authMiddleware, async (req, res) => {
 router.patch('/orders/:id/start', authMiddleware, async (req, res) => {
   const { id } = req.params
   try {
-    await query(
-      `UPDATE orders SET status = 'Preparing' WHERE id = $1 AND status = 'Open'`,
-      [id]
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
+    const { rows } = await query(
+      `UPDATE orders SET status = 'Preparing'
+       WHERE id = $1 AND business_id = $2 AND ($3::uuid IS NULL OR branch_id = $3) AND status = 'Open'
+       RETURNING id`,
+      [id, scope.businessId, scope.branchId]
     )
+    if (!rows.length) return res.status(404).json({ error: 'Open order not found in your branch.' })
 
     await query(
       `INSERT INTO order_status_history (order_id, status, changed_by, note)
@@ -125,7 +129,7 @@ await logAudit({
 
     res.json({ id, status: 'Preparing' })
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    res.status(error.statusCode || 500).json({ error: error.message })
   }
 })
 
@@ -136,10 +140,14 @@ await logAudit({
 router.patch('/orders/:id/ready', authMiddleware, async (req, res) => {
   const { id } = req.params
   try {
-    await query(
-      `UPDATE orders SET status = 'Ready' WHERE id = $1 AND status = 'Preparing'`,
-      [id]
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
+    const { rows } = await query(
+      `UPDATE orders SET status = 'Ready'
+       WHERE id = $1 AND business_id = $2 AND ($3::uuid IS NULL OR branch_id = $3) AND status = 'Preparing'
+       RETURNING id`,
+      [id, scope.businessId, scope.branchId]
     )
+    if (!rows.length) return res.status(404).json({ error: 'Preparing order not found in your branch.' })
 
     await query(
       `INSERT INTO order_status_history (order_id, status, changed_by, note)
@@ -158,7 +166,7 @@ await logAudit({
 
     res.json({ id, status: 'Ready' })
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    res.status(error.statusCode || 500).json({ error: error.message })
   }
 })
 

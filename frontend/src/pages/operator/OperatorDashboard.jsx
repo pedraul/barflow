@@ -39,12 +39,12 @@ export default function OperatorDashboard() {
   const [routingNotice, setRoutingNotice] = useState(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { pathname } = useLocation()
-  const qrBranchId = String(user?.role || '').toLowerCase() === 'owner'
+  const branchId = String(user?.role || '').toLowerCase() === 'owner'
     ? activeBranchId
     : user?.branchId
 
   const loadQRCodes = async () => {
-    const codes = await fetchQRCodes(qrBranchId)
+    const codes = await fetchQRCodes(branchId)
     setQrCodes(codes)
     setQrOpen(true)
   }
@@ -55,7 +55,7 @@ export default function OperatorDashboard() {
 
   const loadStations = async () => {
     try {
-      const [k, b] = await Promise.all([fetchKitchenOrders(), fetchBarOrders()])
+      const [k, b] = await Promise.all([fetchKitchenOrders(branchId), fetchBarOrders(branchId)])
       setKitchenOrders(k || [])
       setBarOrders(b || [])
     } catch (e) {
@@ -74,11 +74,11 @@ export default function OperatorDashboard() {
     }
   }
 
-  useEffect(() => { load(); loadStations() }, [])
+  useEffect(() => { load(); loadStations() }, [branchId])
   useEffect(() => {
     const id = setInterval(() => { load(); loadStations() }, 8000)
     return () => clearInterval(id)
-  }, [])
+  }, [branchId])
 
   const handleRoute = async (orderId, destination) => {
     setActionLoading(true)

@@ -403,18 +403,18 @@ export async function markOrderAsPaid(id, method) {
 }
 
 // ===== KITCHEN =====
-export async function fetchKitchenOrders() {
-  const { data } = await api.get('/kitchen/orders')
+export async function fetchKitchenOrders(branchId) {
+  const { data } = await api.get('/kitchen/orders', branchId ? { params: { branchId } } : undefined)
   return data
 }
 
-export async function startPreparing(id) {
-  const { data } = await api.patch(`/kitchen/orders/${id}/start`)
+export async function startPreparing(id, branchId) {
+  const { data } = await api.patch(`/kitchen/orders/${id}/start`, {}, branchId ? { params: { branchId } } : undefined)
   return data
 }
 
-export async function markAsReady(id) {
-  const { data } = await api.patch(`/kitchen/orders/${id}/ready`)
+export async function markAsReady(id, branchId) {
+  const { data } = await api.patch(`/kitchen/orders/${id}/ready`, {}, branchId ? { params: { branchId } } : undefined)
   return data
 }
 
@@ -424,8 +424,8 @@ export async function fetchCompletedOrders() {
 }
 
 // ===== BAR =====
-export async function fetchBarOrders() {
-  const { data } = await api.get('/bar/bar-orders')
+export async function fetchBarOrders(branchId) {
+  const { data } = await api.get('/bar/bar-orders', branchId ? { params: { branchId } } : undefined)
   return data
 }
 
