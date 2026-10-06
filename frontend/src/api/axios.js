@@ -23,4 +23,23 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const config = error.config
+    const retryable = config &&
+      config.method?.toLowerCase() === 'get' &&
+      !axios.isCancel(error) &&
+      (!error.response || [502, 503, 504].includes(error.response.status))
+
+    if (!retryable || (config.__retryCount || 0) >= 2) {
+      return Promise.reject(error)
+    }
+
+    config.__retryCount = (config.__retryCount || 0) + 1
+    await new Promise((resolve) => setTimeout(resolve, 400 * 2 ** (config.__retryCount - 1)))
+    return api.request(config)
+  }
+)
+
 export default api
