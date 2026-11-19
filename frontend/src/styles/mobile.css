@@ -6,6 +6,30 @@
    ============================================================ */
 
 @media (max-width: 768px) {
+  /* Modal dialogs must sit above the fixed app preferences and mobile bars. */
+  .owner-user-modal-backdrop {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 1300 !important;
+    padding: max(0.75rem, env(safe-area-inset-top)) 0.75rem max(0.75rem, env(safe-area-inset-bottom)) !important;
+  }
+
+  .owner-user-modal {
+    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 1.5rem) !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
+
+  .owner-user-modal-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--surface) !important;
+  }
+
   /* Keep the document as the phone's vertical scroll surface.  The app has
      several full-screen layouts, so explicitly allow native one-finger pans
      on the document and on the standalone owner subscription page. */

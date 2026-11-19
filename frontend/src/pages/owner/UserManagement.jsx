@@ -173,9 +173,9 @@ export default function UserManagement() {
       {loading && <p className="text-center text-slate-400">{t('Loading…')}</p>}
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowModal(false)}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-between items-center p-5 border-b border-slate-200">
+        <div className="owner-user-modal-backdrop fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowModal(false)}>
+          <div className="owner-user-modal bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="owner-user-modal-header flex justify-between items-center p-5 border-b border-slate-200">
               <h2 className="text-lg font-bold text-slate-900">{editingUser ? t('Edit Employee') : t('Register New Employee')}</h2>
               <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
             </div>
