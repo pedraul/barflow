@@ -273,7 +273,7 @@ export default function Subscription() {
               const popular = cycle === 'quarterly'
               const accent = tone === 'green' ? 'text-emerald-700' : 'text-violet-700'
               return (
-                <label key={cycle} className={`billing-plan-card relative flex cursor-pointer flex-col rounded-2xl border p-5 text-center transition ${popular ? 'border-emerald-400 bg-emerald-50/60' : 'border-violet-200 bg-white'} ${active ? 'ring-2 ring-indigo-500 ring-offset-2' : 'hover:-translate-y-0.5 hover:shadow-md'}`}>
+                <label key={cycle} data-selected={active} data-popular={popular} className={`billing-plan-card relative flex cursor-pointer flex-col rounded-2xl border p-5 text-center transition ${popular ? 'border-emerald-400 bg-emerald-50/60' : 'border-violet-200 bg-white'} ${active ? 'ring-2 ring-indigo-500 ring-offset-2' : 'hover:-translate-y-0.5 hover:shadow-md'}`}>
                   {popular && <span className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-emerald-600 px-3 py-1 text-xs font-bold text-white shadow-sm">★ {t('Most Popular')}</span>}
                   <input type="radio" name="billingCycle" value={cycle} checked={active} onChange={() => setBillingCycle(cycle)} className="sr-only" />
                   <CalendarDays size={38} strokeWidth={2.2} className={`mx-auto mb-2 ${accent}`} />
@@ -296,30 +296,34 @@ export default function Subscription() {
           </div>
 
           <h2 className="mt-7 mb-4 text-lg font-bold text-slate-900">{t('3 · Payment')}</h2>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 sm:p-5">
+          <div className="payment-section-card rounded-2xl border border-slate-200 bg-slate-50/70 p-4 sm:p-5">
           <h3 className="mb-3 text-sm font-semibold text-slate-700">{t('Choose payment method')}</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="payment-method-grid grid grid-cols-1 md:grid-cols-2 gap-3">
             {PAYMENT_METHODS.map((m) => {
               const selected = paymentMethod === m.id
               return (
-                <label key={m.id} className={`flex items-center gap-3 border rounded-2xl p-4 cursor-pointer transition ${selected ? 'border-2 border-indigo-500 bg-indigo-50' : 'border-slate-200'}`}>
-                  <input type="radio" name="pm" checked={selected} onChange={() => setPaymentMethod(m.id)} className="h-5 w-5 shrink-0 accent-indigo-600" />
-                  <div>
-                    <div className="font-semibold text-slate-900">{t(m.label)}</div>
-                    <div className="text-xs text-slate-500">{t(m.hint)}</div>
-                  </div>
+                <label key={m.id} data-selected={selected} className="payment-method-card relative flex cursor-pointer items-center gap-3 rounded-2xl border p-4 transition">
+                  <input type="radio" name="pm" checked={selected} onChange={() => setPaymentMethod(m.id)} className="sr-only" />
+                  <span aria-hidden="true" className={`payment-provider-mark ${m.id === 'mtn_momo' ? 'payment-provider-mark--mtn' : 'payment-provider-mark--airtel'}`}>
+                    {m.id === 'mtn_momo' ? 'M' : 'A'}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-semibold">{t(m.label)}</span>
+                    <span className="mt-1 block text-xs opacity-75">{t(m.hint)}</span>
+                  </span>
+                  <CheckCircle2 aria-hidden="true" size={21} className="payment-method-check shrink-0" />
                 </label>
               )
             })}
           </div>
 
-          <div className="mt-4 grid gap-1.5">
+          <div className="payment-phone-field mt-4 grid gap-1.5">
             <label className="font-semibold text-sm text-slate-700">{t('Mobile-money phone number')}</label>
-            <input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder={t('+250700000000')} className="px-3 py-3 border border-slate-300 rounded-xl bg-white text-base focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" />
+            <input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder={t('+250700000000')} className="payment-phone-input px-3 py-3 border border-slate-300 rounded-xl bg-white text-base focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" />
           </div>
           </div>
 
-          <div className="sticky bottom-0 z-10 -mx-4 mt-5 flex flex-wrap items-center gap-3 border-t border-slate-200 bg-white/95 px-4 pt-3 backdrop-blur sm:static sm:mx-0 sm:mt-4 sm:justify-end sm:border-0 sm:bg-transparent sm:p-0" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
+          <div className="subscription-payment-summary sticky bottom-0 z-10 -mx-4 mt-5 flex flex-wrap items-center gap-3 border-t border-slate-200 bg-white/95 px-4 pt-3 backdrop-blur sm:static sm:mx-0 sm:mt-4 sm:justify-end sm:border-0 sm:bg-transparent sm:p-0" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
             <span className="font-semibold text-sm text-slate-700 sm:ml-auto">
               {t('Amount due:')} <strong className="text-lg text-indigo-600">{formatCurr(amountFor())}</strong>
               <span className="block text-xs font-normal text-slate-500">
