@@ -189,7 +189,7 @@ export default function Subscription() {
   )
 
   return (
-    <div className="p-4 sm:p-8 space-y-5 sm:space-y-7 max-w-[1280px] mx-auto w-full bg-white min-h-full">
+    <div className="owner-subscription-page p-4 sm:p-8 space-y-5 sm:space-y-7 max-w-[1280px] mx-auto w-full bg-white min-h-full">
       <div className="flex justify-between items-start gap-4">
         <div>
           <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wider">{t('Owner workspace')}</p>

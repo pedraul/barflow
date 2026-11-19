@@ -6,6 +6,72 @@
    ============================================================ */
 
 @media (max-width: 768px) {
+  /* Keep the document as the phone's vertical scroll surface.  The app has
+     several full-screen layouts, so explicitly allow native one-finger pans
+     on the document and on the standalone owner subscription page. */
+  html {
+    overflow-x: clip !important;
+    overflow-y: auto !important;
+    touch-action: pan-y;
+  }
+
+  body,
+  #root {
+    min-height: 100dvh;
+    touch-action: pan-y;
+  }
+
+  .owner-subscription-page {
+    min-height: 100dvh !important;
+    overflow: visible !important;
+    touch-action: pan-y;
+    padding: 1.25rem 1rem calc(1.5rem + env(safe-area-inset-bottom)) !important;
+    background: #f8fafc !important;
+  }
+
+  .owner-subscription-page > :first-child {
+    padding: 0.25rem 0 0.5rem;
+  }
+
+  .owner-subscription-page h1 {
+    max-width: 26ch;
+    line-height: 1.15 !important;
+    letter-spacing: -0.035em;
+  }
+
+  .owner-subscription-page > .bg-slate-900 {
+    border-radius: 1.25rem !important;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+  }
+
+  .owner-subscription-page > .bg-slate-900 > div {
+    padding: 0.9rem 0.75rem;
+  }
+
+  .owner-subscription-page > .bg-blue-50 {
+    gap: 0.75rem 1rem;
+    padding: 1rem !important;
+    border-radius: 1.25rem !important;
+  }
+
+  .owner-subscription-page > .bg-white.border {
+    padding: 1rem !important;
+    border-radius: 1.25rem !important;
+    box-shadow: 0 6px 22px rgba(15, 23, 42, 0.05);
+  }
+
+  .owner-subscription-page [role="radio"] {
+    min-height: 0;
+    padding: 1.1rem !important;
+    touch-action: pan-y;
+  }
+
+  .owner-subscription-page input,
+  .owner-subscription-page label,
+  .owner-subscription-page button {
+    touch-action: manipulation;
+  }
+
   /* ---- Base ------------------------------------------------ */
   html {
     -webkit-text-size-adjust: 100%;
