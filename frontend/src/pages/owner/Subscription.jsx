@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useOwner } from '../../context/OwnerContext'
 import { AlertTriangle, Download, ArrowLeft, CalendarDays, CheckCircle2, ShieldCheck } from 'lucide-react'
 import { usePreferences } from '../../context/PreferencesContext'
@@ -24,8 +25,14 @@ export default function Subscription() {
   const [step, setStep] = useState(0)
   const [message, setMessage] = useState('')
 
+  // The renew page links here with ?plan=<id>&cycle=monthly|quarterly|annually
+  const [searchParams] = useSearchParams()
+  const requestedPlanId = searchParams.get('plan')
+  const requestedCycle = searchParams.get('cycle')
   const [selectedPlan, setSelectedPlan] = useState(null)
-  const [billingCycle, setBillingCycle] = useState('monthly')
+  const [billingCycle, setBillingCycle] = useState(() => (
+    ['monthly', 'quarterly', 'annually'].includes(requestedCycle) ? requestedCycle : 'monthly'
+  ))
   const [paymentMethod, setPaymentMethod] = useState('mtn_momo')
   const [phoneNumber, setPhoneNumber] = useState('')
   const [pending, setPending] = useState(null)
@@ -53,9 +60,12 @@ export default function Subscription() {
     try {
       const plans = await fetchAvailableSubscriptionPlans()
       setAvailablePlans(plans)
-      setSelectedPlan((current) => current || plans[0] || null)
+      setSelectedPlan((current) => current
+        || plans.find((plan) => String(plan.id) === String(requestedPlanId))
+        || plans[0]
+        || null)
     } catch (e) { console.error(e) }
-  }, [fetchSubscription, fetchAvailableSubscriptionPlans])
+  }, [fetchSubscription, fetchAvailableSubscriptionPlans, requestedPlanId])
 
   const checkPayment = useCallback(async () => {
     if (!pending?.paymentId || pending.status !== 'pending') return

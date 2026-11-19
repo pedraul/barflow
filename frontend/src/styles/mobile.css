@@ -12,6 +12,16 @@
     text-size-adjust: 100%;
   }
 
+  /* Let the page itself be the only vertical scroller. overflow-x: hidden
+     turned body and #root into nested scroll boxes, which can swallow touch
+     swipes on phones (notably iOS Safari). clip hides sideways overflow
+     without creating a scroll box. */
+  body,
+  #root {
+    overflow-x: clip !important;
+    overflow-y: visible !important;
+  }
+
   body {
     background: var(--bg) !important;
     -webkit-font-smoothing: antialiased;
