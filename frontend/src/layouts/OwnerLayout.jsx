@@ -92,13 +92,15 @@ export default function OwnerLayout({ children }) {
         if (!active) return
         const activeSub = !!(sub && sub.isActive)
         const unpaidAccessGranted = sub?.unpaidAccessGranted === true
-        const subscriptionExpired = !activeSub && !unpaidAccessGranted
-        if (user?.unpaidAccessGranted !== unpaidAccessGranted || user?.subscriptionExpired !== subscriptionExpired) {
-          updateUser({ unpaidAccessGranted, subscriptionExpired })
+        const businessVerified = sub?.businessVerified === true
+        const hasBusinessAccess = activeSub || unpaidAccessGranted || businessVerified
+        const subscriptionExpired = !hasBusinessAccess
+        if (user?.unpaidAccessGranted !== unpaidAccessGranted || user?.businessVerified !== businessVerified || user?.subscriptionExpired !== subscriptionExpired) {
+          updateUser({ unpaidAccessGranted, businessVerified, subscriptionExpired })
         }
-        setHasActiveSubscription(activeSub)
+        setHasActiveSubscription(hasBusinessAccess)
         const allowed = ALLOWED_WITHOUT_SUBSCRIPTION.some((p) => pathname.startsWith(p))
-        const isBlocked = !activeSub && !allowed && !unpaidAccessGranted
+        const isBlocked = !hasBusinessAccess && !allowed
         setBlocked(isBlocked)
         if (isBlocked) navigate('/owner/subscription', { replace: true })
       } catch (e) {
@@ -115,7 +117,7 @@ export default function OwnerLayout({ children }) {
       window.clearInterval(interval)
       window.removeEventListener('focus', check)
     }
-  }, [pathname, fetchSubscription, navigate, updateUser, user?.unpaidAccessGranted, user?.subscriptionExpired])
+  }, [pathname, fetchSubscription, navigate, updateUser, user?.unpaidAccessGranted, user?.businessVerified, user?.subscriptionExpired])
 
   const handleLogout = async () => {
     await logout()

@@ -150,28 +150,13 @@ export async function ownerLogin(req, res) {
     let subscriptionStatus = 'active'
     let subscriptionExpired = false
     const unpaidAccessGranted = user.unpaid_access_granted === true
-    if (user.business_id && !unpaidAccessGranted) {
-      const { rows: biz } = await query('SELECT is_verified FROM businesses WHERE id = $1', [user.business_id])
-      if (biz.length && !biz[0].is_verified) {
-        subscriptionExpired = true
-      } else {
-        const { rows: subs } = await query(
-          `SELECT is_active, current_period_end, status, payment_status
-           FROM subscriptions WHERE business_id = $1 ORDER BY created_at DESC LIMIT 1`,
-          [user.business_id]
-        )
-        if (subs.length) {
-          const sub = subs[0]
-          subscriptionStatus = sub.status
-          if (sub.payment_status !== 'verified') {
-            subscriptionExpired = true
-          } else if (sub.current_period_end && new Date(sub.current_period_end) < new Date()) {
-            subscriptionExpired = true
-          }
-        } else {
-          subscriptionExpired = true
-        }
-      }
+    const businessVerified = user.business_verified === true
+    if (businessVerified) {
+      subscriptionStatus = 'verified_access'
+    } else if (unpaidAccessGranted) {
+      subscriptionStatus = 'access_granted'
+    } else if (user.business_id) {
+      subscriptionExpired = true
     }
 
     if (subscriptionExpired && String(user.role).toLowerCase() !== 'owner') {
@@ -192,6 +177,7 @@ export async function ownerLogin(req, res) {
       subscriptionStatus,
       subscriptionExpired,
       unpaidAccessGranted,
+      businessVerified,
     }
     const token = sign(tokenPayload)
 
@@ -218,6 +204,7 @@ export async function ownerLogin(req, res) {
         subscriptionStatus,
         subscriptionExpired,
         unpaidAccessGranted,
+        businessVerified,
       },
     })
   } catch (error) {
@@ -1467,6 +1454,7 @@ export async function exportAuditLogs(req, res) {
 export async function getSubscription(req, res) {
   try {
     const businessId = req.user?.businessId
+    const businessVerified = req.user?.businessVerified === true
     if (!businessId) {
       return res.json({
         plan: 'Free',
@@ -1479,6 +1467,7 @@ export async function getSubscription(req, res) {
         receiptNumber: null,
         amountPaid: 0,
         unpaidAccessGranted: req.user?.unpaidAccessGranted === true,
+        businessVerified: false,
       })
     }
 
@@ -1520,6 +1509,7 @@ export async function getSubscription(req, res) {
         receiptNumber: null,
         amountPaid: 0,
         unpaidAccessGranted: req.user?.unpaidAccessGranted === true,
+        businessVerified,
       })
     }
 
@@ -1563,6 +1553,7 @@ export async function getSubscription(req, res) {
       amountPaid: Number(sub.amount_paid) || 0,
       createdAt: new Date(sub.created_at).toISOString(),
       unpaidAccessGranted: req.user?.unpaidAccessGranted === true,
+      businessVerified,
     })
   } catch (error) {
     res.status(500).json({ error: error.message })

@@ -88,6 +88,7 @@ router.post('/login', async (req, res) => {
 
     let business = null
     let unpaidAccessGranted = false
+    let businessVerified = false
     if (u.business_id) {
       const { rows: bizRows } = await query(
         'SELECT is_suspended, is_verified, unpaid_access_granted FROM businesses WHERE id = $1',
@@ -98,37 +99,20 @@ router.post('/login', async (req, res) => {
         return res.status(403).json({ error: 'Your business account has been suspended. Contact support.', code: 'BUSINESS_SUSPENDED' })
       }
       unpaidAccessGranted = business?.unpaid_access_granted === true
+      businessVerified = business?.is_verified === true
     }
 
-    // Check business verification and subscription status
+    // Business verification or explicit admin access allows entry to the workspace.
     let subscriptionStatus = 'active'
     let subscriptionExpired = false
     if (u.business_id) {
-      if (business && !business.is_verified && !unpaidAccessGranted) {
-        subscriptionExpired = true
+      if (businessVerified) {
+        // Verification is the platform approval that lets this business enter its workspace.
+        subscriptionStatus = 'verified_access'
       } else if (unpaidAccessGranted) {
         subscriptionStatus = 'access_granted'
       } else {
-        // A pending renewal must not block an already verified subscription.
-        const { rows: subs } = await query(
-          `SELECT is_active, current_period_end, status, payment_status
-           FROM subscriptions
-           WHERE business_id = $1
-           ORDER BY (is_active = TRUE AND payment_status = 'verified') DESC, created_at DESC
-           LIMIT 1`,
-          [u.business_id]
-        )
-        if (subs.length) {
-          const sub = subs[0]
-          subscriptionStatus = sub.status
-          if (!sub.is_active || sub.payment_status !== 'verified') {
-            subscriptionExpired = true
-          } else if (sub.current_period_end && new Date(sub.current_period_end) < new Date()) {
-            subscriptionExpired = true
-          }
-        } else {
-          subscriptionExpired = true
-        }
+        subscriptionExpired = true
       }
     }
 
@@ -138,6 +122,7 @@ router.post('/login', async (req, res) => {
         code: 'SUBSCRIPTION_PENDING',
         subscriptionStatus,
         subscriptionExpired: true,
+        businessVerified,
       })
     }
 
@@ -184,10 +169,11 @@ router.post('/login', async (req, res) => {
         subscriptionStatus,
         subscriptionExpired,
         unpaidAccessGranted,
+        businessVerified,
         twoFactorPending: true,
       })
 
-      return res.json({ requires2FA: true, tempToken, method: twoFactorMethod, user: { id: u.id, email: u.email, name: u.full_name, phone: u.phone || '', role: u.role, branch: u.branch_name || '', branchId: u.verified_branch_id || null, businessId: u.business_id, businessName: u.business_name, businessSlug: u.business_slug, subscriptionStatus, subscriptionExpired, unpaidAccessGranted } })
+      return res.json({ requires2FA: true, tempToken, method: twoFactorMethod, user: { id: u.id, email: u.email, name: u.full_name, phone: u.phone || '', role: u.role, branch: u.branch_name || '', branchId: u.verified_branch_id || null, businessId: u.business_id, businessName: u.business_name, businessSlug: u.business_slug, subscriptionStatus, subscriptionExpired, unpaidAccessGranted, businessVerified } })
     }
 
     await query('UPDATE users SET last_login = NOW() WHERE id = $1', [u.id])
@@ -207,6 +193,7 @@ router.post('/login', async (req, res) => {
       subscriptionStatus,
       subscriptionExpired,
       unpaidAccessGranted,
+      businessVerified,
     }
     const token = sign(payload)
 

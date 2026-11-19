@@ -129,6 +129,7 @@ export default function TwoFactorVerify() {
               subscriptionStatus: rawUser.subscriptionStatus || '',
               subscriptionExpired: rawUser.subscriptionExpired,
               unpaidAccessGranted: rawUser.unpaidAccessGranted === true,
+              businessVerified: rawUser.businessVerified === true,
             },
           })
           const dashboardRole = String(rawUser.role || role || '').toLowerCase()

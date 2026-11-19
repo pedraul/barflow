@@ -11,7 +11,7 @@ const EXCLUDED_SUBSCRIPTION_PATHS = [
 
 export default function ProtectedRoute({ children, allow = [], checkSubscription = false, permission = null }) {
   const { user, permissions } = useAuth()
-  const { realStatus, loaded, error } = useSubscription()
+  const { realStatus, businessVerified, loaded, error } = useSubscription()
   const location = useLocation()
 
   if (!user) {
@@ -31,11 +31,10 @@ export default function ProtectedRoute({ children, allow = [], checkSubscription
 
   if (checkSubscription) {
     const isExcluded = EXCLUDED_SUBSCRIPTION_PATHS.includes(location.pathname)
-    if (!isExcluded) {
-      if (user.subscriptionExpired === true && user.unpaidAccessGranted !== true) {
-        return <Navigate to={user.role.toLowerCase() === 'owner' ? '/owner/subscription' : '/subscription-expired'} replace />
-      }
-      if (loaded && !error && realStatus !== 'active' && user.unpaidAccessGranted !== true) {
+    const hasVerifiedBusiness = user.businessVerified === true || businessVerified === true
+    const hasAdminAccess = user.unpaidAccessGranted === true
+    if (!isExcluded && loaded && !error && !hasVerifiedBusiness && !hasAdminAccess) {
+      if (realStatus !== 'active') {
         return <Navigate to={user.role.toLowerCase() === 'owner' ? '/owner/subscription' : '/subscription-expired'} replace />
       }
     }
