@@ -244,7 +244,7 @@ export default function Subscription() {
       {step === 0 && (
         <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 sm:p-6">
           <h2 className="text-lg font-bold text-slate-900 mb-4">{t('1 · Choose Subscription Plan')}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="subscription-plan-grid grid grid-cols-1 md:grid-cols-3 gap-4">
             {availablePlans.map((p, index) => {
               const selected = selectedPlan?.id === p.id
               const color = index === 1 ? 'text-emerald-600' : index === 2 ? 'text-violet-600' : 'text-blue-600'

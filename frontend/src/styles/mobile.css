@@ -66,6 +66,29 @@
     touch-action: pan-y;
   }
 
+  .owner-subscription-page .subscription-plan-grid {
+    display: grid !important;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 88%);
+    grid-template-columns: none !important;
+    gap: 0.85rem;
+    margin-right: -1rem;
+    padding: 0.25rem 1rem 0.75rem 0.1rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    touch-action: pan-x pan-y;
+  }
+
+  .owner-subscription-page .subscription-plan-grid > [role="radio"] {
+    width: 100%;
+    scroll-snap-align: start;
+    touch-action: pan-x pan-y;
+  }
+
   .owner-subscription-page input,
   .owner-subscription-page label,
   .owner-subscription-page button {
