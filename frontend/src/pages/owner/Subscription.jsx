@@ -189,12 +189,12 @@ export default function Subscription() {
   )
 
   return (
-    <div className="p-8 space-y-7 max-w-[1280px] mx-auto w-full bg-white min-h-full">
+    <div className="p-4 sm:p-8 space-y-5 sm:space-y-7 max-w-[1280px] mx-auto w-full bg-white min-h-full">
       <div className="flex justify-between items-start gap-4">
         <div>
           <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wider">{t('Owner workspace')}</p>
-          <h1 className="text-3xl font-extrabold text-slate-950">{sub?.isActive ? t('Choose Your Subscription Plan') : t('Activate Your Subscription')}</h1>
-          <p className="text-base text-slate-600 mt-2">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950">{sub?.isActive ? t('Choose Your Subscription Plan') : t('Activate Your Subscription')}</h1>
+          <p className="text-sm sm:text-base text-slate-600 mt-2">
             {sub?.isActive
               ? t('Select the perfect plan for your business. Upgrade or downgrade anytime.')
               : t('Select a plan and approve the mobile-money payment request. Access activates automatically after the provider confirms payment.')}
@@ -242,7 +242,7 @@ export default function Subscription() {
 
       {/* STEP 0 — Select plan */}
       {step === 0 && (
-        <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 sm:p-6">
           <h2 className="text-lg font-bold text-slate-900 mb-4">{t('1 · Choose Subscription Plan')}</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {availablePlans.map((p, index) => {
@@ -252,7 +252,7 @@ export default function Subscription() {
               const months = billingCycle === 'quarterly' ? 3 : billingCycle === 'annually' ? 12 : 1
               return (
                 <div key={p.id}
-                  className={`border rounded-xl p-6 min-h-[500px] flex flex-col gap-4 cursor-pointer transition shadow-sm ${selected ? 'border-2 border-indigo-500 ring-4 ring-indigo-50' : 'border-slate-200 hover:shadow-md'}`}
+                  className={`border rounded-2xl p-5 sm:p-6 sm:min-h-[320px] flex flex-col gap-4 cursor-pointer transition shadow-sm ${selected ? 'border-2 border-indigo-500 ring-4 ring-indigo-50' : 'border-slate-200 hover:shadow-md'}`}
                   role="radio"
                   aria-checked={selected}
                   tabIndex={0}
@@ -261,9 +261,15 @@ export default function Subscription() {
                   <div className="flex justify-between items-center">
                     <h3 className={`font-bold text-2xl ${color}`}>{planName}</h3><CalendarDays size={28} className={color} />
                   </div>
-                  <div className={`text-2xl font-extrabold ${color}`}>
-                    {formatCurr(p.priceMonthly)}
-                    <span className="text-sm text-slate-500 font-normal">{t('/month')}</span>
+                  <div>
+                    <div className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${color}`}>
+                      {formatCurr(amountFor(p, billingCycle))}
+                    </div>
+                    <div className="text-sm text-slate-500">
+                      {months === 1
+                        ? t('per month')
+                        : `${t('for')} ${months} ${t('months')} · ≈ ${formatCurr(Math.round(amountFor(p, billingCycle) / months))}${t('/month')}`}
+                    </div>
                   </div>
                   <ul className="grid gap-1.5 pl-5 text-sm text-slate-500">
                     <li>✓ {months} {t('month')}{months > 1 ? 's' : ''} {t('of access')}</li>
@@ -278,18 +284,34 @@ export default function Subscription() {
           <h2 className="text-lg font-bold text-slate-900 mt-6 mb-4">{t('2 · Billing Cycle')}</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {[
-              ['monthly', 'Monthly', 'Billed every month'],
-              ['quarterly', 'Quarterly', 'Billed every 3 months'],
-              ['annually', 'Annually', 'Billed every 12 months'],
-            ].map(([cycle, label, hint]) => (
-              <label key={cycle} className={`flex items-start gap-3 border rounded-lg p-3 cursor-pointer transition ${billingCycle === cycle ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200'}`}>
-                <input type="radio" name="billingCycle" value={cycle} checked={billingCycle === cycle} onChange={() => setBillingCycle(cycle)} />
-                <span>
-                  <span className="block font-semibold text-slate-900">{t(label)}</span>
-                  <span className="block text-xs text-slate-500">{t(hint)}</span>
-                </span>
-              </label>
-            ))}
+              ['monthly', 'Monthly', 'Billed every month', 1],
+              ['quarterly', 'Quarterly', 'Billed every 3 months', 3],
+              ['annually', 'Annually', 'Billed every 12 months', 12],
+            ].map(([cycle, label, hint, months]) => {
+              const plan = selectedPlan || availablePlans[0]
+              const total = amountFor(plan, cycle)
+              const full = Number(plan?.priceMonthly || 0) * months
+              const savePercent = full > 0 ? Math.round(((full - total) / full) * 100) : 0
+              const active = billingCycle === cycle
+              return (
+                <label key={cycle} className={`relative flex items-center gap-3 border rounded-2xl p-4 cursor-pointer transition ${active ? 'border-2 border-indigo-500 bg-indigo-50 shadow-sm' : 'border-slate-200 hover:border-slate-300'}`}>
+                  <input type="radio" name="billingCycle" value={cycle} checked={active} onChange={() => setBillingCycle(cycle)} className="h-5 w-5 shrink-0 accent-indigo-600" />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold text-slate-900">{t(label)}</span>
+                      {savePercent > 0 && (
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700">{t('Save')} {savePercent}%</span>
+                      )}
+                    </span>
+                    <span className="block text-xs text-slate-500">{t(hint)}</span>
+                  </span>
+                  <span className="shrink-0 text-right">
+                    <span className="block text-base font-extrabold text-slate-900">{formatCurr(total)}</span>
+                    {months > 1 && <span className="block text-[11px] text-slate-500">≈ {formatCurr(Math.round(total / months))}{t('/month')}</span>}
+                  </span>
+                </label>
+              )
+            })}
           </div>
 
           <h2 className="text-lg font-bold text-slate-900 mt-6 mb-4">{t('3 · Payment Method')}</h2>
@@ -297,8 +319,8 @@ export default function Subscription() {
             {PAYMENT_METHODS.map((m) => {
               const selected = paymentMethod === m.id
               return (
-                <label key={m.id} className={`flex items-center gap-3 border rounded-lg p-3 cursor-pointer transition ${selected ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200'}`}>
-                  <input type="radio" name="pm" checked={selected} onChange={() => setPaymentMethod(m.id)} />
+                <label key={m.id} className={`flex items-center gap-3 border rounded-2xl p-4 cursor-pointer transition ${selected ? 'border-2 border-indigo-500 bg-indigo-50' : 'border-slate-200'}`}>
+                  <input type="radio" name="pm" checked={selected} onChange={() => setPaymentMethod(m.id)} className="h-5 w-5 shrink-0 accent-indigo-600" />
                   <div>
                     <div className="font-semibold text-slate-900">{t(m.label)}</div>
                     <div className="text-xs text-slate-500">{t(m.hint)}</div>
@@ -310,14 +332,17 @@ export default function Subscription() {
 
           <div className="mt-4 grid gap-1.5">
             <label className="font-semibold text-sm text-slate-700">{t('Mobile-money phone number')}</label>
-            <input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder={t('+250700000000')} className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" />
+            <input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder={t('+250700000000')} className="px-3 py-3 border border-slate-300 rounded-xl text-base focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" />
           </div>
 
-          <div className="flex justify-end items-center gap-3 mt-4">
-            <span className="ml-auto font-semibold text-sm text-slate-700">
-              {t('Amount due:')} <strong className="text-indigo-600">{formatCurr(amountFor())}</strong>
+          <div className="sticky bottom-0 z-10 -mx-4 mt-5 flex flex-wrap items-center gap-3 border-t border-slate-200 bg-white/95 px-4 pt-3 backdrop-blur sm:static sm:mx-0 sm:mt-4 sm:justify-end sm:border-0 sm:bg-transparent sm:p-0" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
+            <span className="font-semibold text-sm text-slate-700 sm:ml-auto">
+              {t('Amount due:')} <strong className="text-lg text-indigo-600">{formatCurr(amountFor())}</strong>
+              <span className="block text-xs font-normal text-slate-500">
+                {billingCycle === 'quarterly' ? t('for 3 months') : billingCycle === 'annually' ? t('for 12 months') : t('for 1 month')}
+              </span>
             </span>
-            <button className="bg-indigo-600 hover:bg-indigo-800 text-white border border-indigo-600 px-4 py-2 rounded-lg font-semibold text-sm transition disabled:opacity-50" onClick={handleSelectPlan} disabled={loading}>
+            <button className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-800 text-white border border-indigo-600 px-5 py-3 rounded-xl font-semibold text-sm transition disabled:opacity-50" onClick={handleSelectPlan} disabled={loading}>
               {t('Continue to Payment')}
             </button>
           </div>

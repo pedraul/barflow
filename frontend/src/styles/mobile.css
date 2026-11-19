@@ -17,7 +17,19 @@
      swipes on phones (notably iOS Safari). clip hides sideways overflow
      without creating a scroll box. */
   body,
-  #root {
+  #root,
+  #root > *,
+  .layout-root,
+  .layout-body,
+  .app-content,
+  .page-screen,
+  .page-content,
+  .main-content,
+  .dashboard-container,
+  .content-container,
+  .dashboard-content,
+  .main-container,
+  .owner-content {
     overflow-x: clip !important;
     overflow-y: visible !important;
   }
