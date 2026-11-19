@@ -89,10 +89,79 @@
     touch-action: pan-x pan-y;
   }
 
+  .owner-subscription-page .subscription-plan-grid > *,
+  .owner-subscription-page .billing-plan-grid > * {
+    scroll-snap-align: start;
+    touch-action: pan-x pan-y;
+  }
+
+  .owner-subscription-page .billing-plan-grid {
+    display: grid !important;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 88%);
+    grid-template-columns: none !important;
+    gap: 0.85rem;
+    margin-right: -1rem;
+    padding: 0.75rem 1rem 1rem 0.1rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    touch-action: pan-x pan-y;
+  }
+
+  .owner-subscription-page .billing-plan-card {
+    min-height: 25rem;
+    touch-action: pan-x pan-y;
+  }
+
   .owner-subscription-page input,
   .owner-subscription-page label,
   .owner-subscription-page button {
     touch-action: manipulation;
+  }
+
+  .platform-business-list {
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  }
+
+  .platform-business-list > :first-child h1 {
+    font-size: 1.5rem !important;
+    line-height: 1.2 !important;
+  }
+
+  .platform-business-list > :first-child p {
+    font-size: 0.9rem !important;
+  }
+
+  .platform-business-filters {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem !important;
+  }
+
+  .platform-business-filters > .relative {
+    grid-column: 1 / -1;
+    min-width: 0 !important;
+  }
+
+  .platform-business-filters > select {
+    width: 100%;
+    min-width: 0;
+    min-height: 2.9rem;
+    padding: 0.65rem 0.75rem;
+    font-size: 0.875rem !important;
+  }
+
+  .platform-business-cards {
+    padding: 0 0.1rem;
+  }
+
+  .platform-business-card {
+    overflow: hidden;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.045);
   }
 
   /* ---- Base ------------------------------------------------ */

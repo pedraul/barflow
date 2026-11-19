@@ -365,21 +365,14 @@ export async function setUnpaidBusinessAccess(req, res) {
       `UPDATE businesses b
        SET unpaid_access_granted = $2
        WHERE b.id = $1
-         AND ($2 = FALSE OR (
-           b.is_suspended = FALSE
-           AND NOT EXISTS (
-             SELECT 1 FROM subscriptions s
-             WHERE s.business_id = b.id AND s.is_active = TRUE AND s.payment_status = 'verified'
-               AND (s.current_period_end IS NULL OR s.current_period_end > NOW())
-           )
-         ))
+         AND ($2 = FALSE OR COALESCE(b.is_suspended, FALSE) = FALSE)
        RETURNING b.id, b.name, b.unpaid_access_granted`,
       [id, granted]
     )
     if (!rows.length) {
       const { rows: existing } = await query('SELECT id FROM businesses WHERE id = $1', [id])
       if (!existing.length) return res.status(404).json({ error: 'Business not found.' })
-      return res.status(409).json({ error: 'Unpaid access can only be granted to non-suspended businesses without an active paid subscription.' })
+      return res.status(409).json({ error: 'Unpaid access cannot be granted to a suspended business.' })
     }
 
     await logAudit({

@@ -77,7 +77,7 @@ export default function BusinessList() {
 
   const handleUnpaidAccess = async (business, granted) => {
     const message = granted
-      ? `${t('Grant unpaid access to')} ${business.name}? ${t('They can use BarFlow without paying until an administrator revokes access. This will not mark their subscription as paid.')}`
+      ? `${t('Grant unpaid access to')} ${business.name}? ${t('They can use BarFlow under an administrator access override. Their paid subscription will not be changed.')}`
       : `${t('Revoke unpaid access from')} ${business.name}? ${t('Their next request will be blocked if they have no paid subscription.')}`
     if (!window.confirm(message)) return
 
@@ -162,7 +162,7 @@ export default function BusinessList() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="platform-business-list space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">{t('Businesses')}</h1>
@@ -174,7 +174,7 @@ export default function BusinessList() {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-3 flex-wrap">
+      <div className="platform-business-filters flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[220px]">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Search name, email, code, phone...')}
@@ -202,7 +202,7 @@ export default function BusinessList() {
         </select>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+      <div className="hidden md:block bg-white rounded-xl border border-slate-200 shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-xs min-w-[1120px]">
               <thead>
@@ -248,8 +248,6 @@ export default function BusinessList() {
                       <button type="button" title={t('Revoke unpaid platform access')} onClick={() => handleUnpaidAccess(b, false)} disabled={actionLoading === `${b.id}-access`} className="px-2.5 py-1.5 text-xs font-semibold text-red-700 bg-red-50 rounded-lg hover:bg-red-100 disabled:opacity-40">
                         {actionLoading === `${b.id}-access` ? t('Saving...') : t('Revoke access')}
                       </button>
-                    ) : b.hasActiveSubscription ? (
-                      <span className="text-xs text-emerald-700">{t('Subscription active')}</span>
                     ) : b.isSuspended ? (
                       <span className="text-xs text-slate-400">{t('Suspended')}</span>
                     ) : (
@@ -278,6 +276,61 @@ export default function BusinessList() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div className="platform-business-cards md:hidden space-y-3">
+        {filtered.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-10 text-center text-sm text-slate-500">
+            {t('No businesses found.')}
+          </div>
+        ) : filtered.map((b) => (
+          <article key={b.id} className="platform-business-card rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="truncate text-base font-bold text-slate-900">{b.name}</h2>
+                <p className="mt-1 truncate text-xs text-slate-500">{b.contactEmail || t('N/A')}</p>
+                <p className="mt-0.5 text-xs text-slate-500">{b.contactPhone || t('N/A')}</p>
+              </div>
+              {badge(b)}
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 text-sm">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t('Plan')}</p>
+                <p className="mt-0.5 font-semibold text-slate-800">{b.plan || t('N/A')}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t('Location')}</p>
+                <p className="mt-0.5 truncate font-semibold text-slate-800">{[b.district, b.province].filter(Boolean).join(', ') || b.city || t('N/A')}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t('Type')}</p>
+                <p className="mt-0.5 font-medium capitalize text-slate-700">{typeof BUSINESS_TYPE_LABELS[b.businessType] === 'string' ? t(BUSINESS_TYPE_LABELS[b.businessType]) : b.businessType || t('N/A')}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t('Registered')}</p>
+                <p className="mt-0.5 font-medium text-slate-700">{b.createdAt ? new Date(b.createdAt).toLocaleDateString() : t('N/A')}</p>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              {b.unpaidAccessGranted ? (
+                <button type="button" onClick={() => handleUnpaidAccess(b, false)} disabled={actionLoading === `${b.id}-access`} className="min-h-11 flex-1 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-50">
+                  {actionLoading === `${b.id}-access` ? t('Saving...') : t('Revoke access')}
+                </button>
+              ) : b.isSuspended ? (
+                <span className="flex-1 rounded-xl bg-slate-100 px-3 py-3 text-center text-sm font-medium text-slate-500">{t('Suspended')}</span>
+              ) : (
+                <button type="button" onClick={() => handleUnpaidAccess(b, true)} disabled={actionLoading === `${b.id}-access`} className="min-h-11 flex-1 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50">
+                  {actionLoading === `${b.id}-access` ? t('Saving...') : t('Grant unpaid access')}
+                </button>
+              )}
+              <button type="button" onClick={() => setViewing(b)} className="min-h-11 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">{t('View')}</button>
+              <button type="button" onClick={() => openEdit(b)} className="min-h-11 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">{t('Edit')}</button>
+            </div>
+            <p className="mt-2 text-[11px] leading-4 text-slate-500">{t('Admin access is separate from the paid subscription.')}</p>
+          </article>
+        ))}
       </div>
 
       {/* View modal */}

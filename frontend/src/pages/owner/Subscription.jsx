@@ -243,78 +243,61 @@ export default function Subscription() {
       {/* STEP 0 — Select plan */}
       {step === 0 && (
         <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 sm:p-6">
-          <h2 className="text-lg font-bold text-slate-900 mb-4">{t('1 · Choose Subscription Plan')}</h2>
-          <div className="subscription-plan-grid grid grid-cols-1 md:grid-cols-3 gap-4">
-            {availablePlans.map((p, index) => {
-              const selected = selectedPlan?.id === p.id
-              const color = index === 1 ? 'text-emerald-600' : index === 2 ? 'text-violet-600' : 'text-blue-600'
-              const planName = p.name || ''
-              const months = billingCycle === 'quarterly' ? 3 : billingCycle === 'annually' ? 12 : 1
+          <h2 className="text-lg font-bold text-slate-900 mb-3">{t('1 · Choose a plan')}</h2>
+          <div className="subscription-plan-grid grid grid-cols-1 md:grid-cols-3 gap-3">
+            {availablePlans.map((plan) => {
+              const selected = String(selectedPlan?.id) === String(plan.id)
               return (
-                <div key={p.id}
-                  className={`border rounded-2xl p-5 sm:p-6 sm:min-h-[320px] flex flex-col gap-4 cursor-pointer transition shadow-sm ${selected ? 'border-2 border-indigo-500 ring-4 ring-indigo-50' : 'border-slate-200 hover:shadow-md'}`}
-                  role="radio"
-                  aria-checked={selected}
-                  tabIndex={0}
-                  onClick={() => setSelectedPlan(p)}
-                  onKeyDown={(e) => e.key === 'Enter' && setSelectedPlan(p)}>
-                  <div className="flex justify-between items-center">
-                    <h3 className={`font-bold text-2xl ${color}`}>{planName}</h3><CalendarDays size={28} className={color} />
-                  </div>
-                  <div>
-                    <div className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${color}`}>
-                      {formatCurr(amountFor(p, billingCycle))}
-                    </div>
-                    <div className="text-sm text-slate-500">
-                      {months === 1
-                        ? t('per month')
-                        : `${t('for')} ${months} ${t('months')} · ≈ ${formatCurr(Math.round(amountFor(p, billingCycle) / months))}${t('/month')}`}
-                    </div>
-                  </div>
-                  <ul className="grid gap-1.5 pl-5 text-sm text-slate-500">
-                    <li>✓ {months} {t('month')}{months > 1 ? 's' : ''} {t('of access')}</li>
-                    <li>{t('✓ Auto-renewal reminders')}</li>
-                    <li>{t('✓ Full system features')}</li>
-                  </ul>
-                </div>
+                <button key={plan.id} type="button" onClick={() => setSelectedPlan(plan)} aria-pressed={selected}
+                  className={`subscription-tier-card rounded-xl border px-4 py-3 text-left transition ${selected ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-100' : 'border-slate-200 bg-white hover:border-indigo-300'}`}>
+                  <span className="block font-bold text-slate-900">{plan.name}</span>
+                  <span className="mt-1 block text-xs text-slate-500">{t('From')} {formatCurr(plan.priceMonthly)} {t('per month')}</span>
+                </button>
               )
             })}
           </div>
 
-          <h2 className="text-lg font-bold text-slate-900 mt-6 mb-4">{t('2 · Billing Cycle')}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <h2 className="mt-6 mb-1 text-lg font-bold text-slate-900">{t('2 · Choose your billing period')}</h2>
+          <p className="mb-4 text-sm text-slate-500">{t('Select a subscription that works best for your business.')}</p>
+          <div className="billing-plan-grid grid grid-cols-1 md:grid-cols-3 gap-4">
             {[
-              ['monthly', 'Monthly', 'Billed every month', 1],
-              ['quarterly', 'Quarterly', 'Billed every 3 months', 3],
-              ['annually', 'Annually', 'Billed every 12 months', 12],
-            ].map(([cycle, label, hint, months]) => {
+              { cycle: 'monthly', title: 'Monthly Plan', period: 'per month', months: 1, features: ['Full access to platform features', 'All core business tools', 'Monthly renewal'], tone: 'violet' },
+              { cycle: 'quarterly', title: 'Quarterly Plan', period: 'for 3 months', months: 3, features: ['Everything in Monthly', 'Three months of access', 'Reduced overall cost'], tone: 'green' },
+              { cycle: 'annually', title: 'Annual Plan', period: 'per year', months: 12, features: ['Everything in Quarterly', 'Twelve months of access', 'Best long-term value'], tone: 'violet' },
+            ].map(({ cycle, title, period, months, features, tone }) => {
               const plan = selectedPlan || availablePlans[0]
               const total = amountFor(plan, cycle)
               const full = Number(plan?.priceMonthly || 0) * months
               const savePercent = full > 0 ? Math.round(((full - total) / full) * 100) : 0
               const active = billingCycle === cycle
+              const popular = cycle === 'quarterly'
+              const accent = tone === 'green' ? 'text-emerald-700' : 'text-violet-700'
               return (
-                <label key={cycle} className={`relative flex items-center gap-3 border rounded-2xl p-4 cursor-pointer transition ${active ? 'border-2 border-indigo-500 bg-indigo-50 shadow-sm' : 'border-slate-200 hover:border-slate-300'}`}>
-                  <input type="radio" name="billingCycle" value={cycle} checked={active} onChange={() => setBillingCycle(cycle)} className="h-5 w-5 shrink-0 accent-indigo-600" />
-                  <span className="min-w-0 flex-1">
-                    <span className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold text-slate-900">{t(label)}</span>
-                      {savePercent > 0 && (
-                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700">{t('Save')} {savePercent}%</span>
-                      )}
-                    </span>
-                    <span className="block text-xs text-slate-500">{t(hint)}</span>
-                  </span>
-                  <span className="shrink-0 text-right">
-                    <span className="block text-base font-extrabold text-slate-900">{formatCurr(total)}</span>
-                    {months > 1 && <span className="block text-[11px] text-slate-500">≈ {formatCurr(Math.round(total / months))}{t('/month')}</span>}
+                <label key={cycle} className={`billing-plan-card relative flex cursor-pointer flex-col rounded-2xl border p-5 text-center transition ${popular ? 'border-emerald-400 bg-emerald-50/60' : 'border-violet-200 bg-white'} ${active ? 'ring-2 ring-indigo-500 ring-offset-2' : 'hover:-translate-y-0.5 hover:shadow-md'}`}>
+                  {popular && <span className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-emerald-600 px-3 py-1 text-xs font-bold text-white shadow-sm">★ {t('Most Popular')}</span>}
+                  <input type="radio" name="billingCycle" value={cycle} checked={active} onChange={() => setBillingCycle(cycle)} className="sr-only" />
+                  <CalendarDays size={38} strokeWidth={2.2} className={`mx-auto mb-2 ${accent}`} />
+                  <span className="text-lg font-bold text-slate-900">{t(title)}</span>
+                  {savePercent > 0 && <span className="mx-auto mt-2 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800">{t('Save')} {savePercent}%</span>}
+                  <span className={`mt-2 text-2xl font-extrabold tracking-tight sm:text-3xl ${accent}`}>{formatCurr(total)}</span>
+                  <span className="text-sm text-slate-600">{t(period)}</span>
+                  {months > 1 && <span className="mt-1 text-xs text-slate-500">≈ {formatCurr(Math.round(total / months))}{t('/month')}</span>}
+                  <span className="my-4 h-px w-full bg-slate-200" />
+                  <ul className="mb-5 grid flex-1 content-start gap-2 text-left text-sm text-slate-700">
+                    {features.map((feature) => <li key={feature} className="flex items-start gap-2"><CheckCircle2 size={17} className={`mt-0.5 shrink-0 ${accent}`} />{t(feature)}</li>)}
+                    <li className="flex items-start gap-2"><CheckCircle2 size={17} className={`mt-0.5 shrink-0 ${accent}`} />{t('Automatic renewal reminders')}</li>
+                  </ul>
+                  <span className={`mt-auto rounded-xl px-4 py-2.5 text-sm font-bold transition ${active ? (popular ? 'bg-emerald-600 text-white' : 'bg-violet-700 text-white') : (popular ? 'border border-emerald-600 text-emerald-700' : 'border border-violet-600 text-violet-700')}`}>
+                    {active ? t('Selected') : `${t('Choose')} ${t(cycle === 'annually' ? 'Annual' : cycle === 'quarterly' ? 'Quarterly' : 'Monthly')}`}
                   </span>
                 </label>
               )
             })}
           </div>
 
-          <h2 className="text-lg font-bold text-slate-900 mt-6 mb-4">{t('3 · Payment Method')}</h2>
+          <h2 className="mt-7 mb-4 text-lg font-bold text-slate-900">{t('3 · Payment')}</h2>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 sm:p-5">
+          <h3 className="mb-3 text-sm font-semibold text-slate-700">{t('Choose payment method')}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {PAYMENT_METHODS.map((m) => {
               const selected = paymentMethod === m.id
@@ -332,7 +315,8 @@ export default function Subscription() {
 
           <div className="mt-4 grid gap-1.5">
             <label className="font-semibold text-sm text-slate-700">{t('Mobile-money phone number')}</label>
-            <input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder={t('+250700000000')} className="px-3 py-3 border border-slate-300 rounded-xl text-base focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" />
+            <input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder={t('+250700000000')} className="px-3 py-3 border border-slate-300 rounded-xl bg-white text-base focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" />
+          </div>
           </div>
 
           <div className="sticky bottom-0 z-10 -mx-4 mt-5 flex flex-wrap items-center gap-3 border-t border-slate-200 bg-white/95 px-4 pt-3 backdrop-blur sm:static sm:mx-0 sm:mt-4 sm:justify-end sm:border-0 sm:bg-transparent sm:p-0" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
