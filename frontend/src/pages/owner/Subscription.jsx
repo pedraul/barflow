@@ -261,9 +261,9 @@ export default function Subscription() {
           <p className="mb-4 text-sm text-slate-500">{t('Select a subscription that works best for your business.')}</p>
           <div className="billing-plan-grid grid grid-cols-1 md:grid-cols-3 gap-4">
             {[
-              { cycle: 'monthly', title: 'Monthly Plan', period: 'per month', months: 1, features: ['Full access to platform features', 'All core business tools', 'Monthly renewal'], tone: 'violet' },
-              { cycle: 'quarterly', title: 'Quarterly Plan', period: 'for 3 months', months: 3, features: ['Everything in Monthly', 'Three months of access', 'Reduced overall cost'], tone: 'green' },
-              { cycle: 'annually', title: 'Annual Plan', period: 'per year', months: 12, features: ['Everything in Quarterly', 'Twelve months of access', 'Best long-term value'], tone: 'violet' },
+              { cycle: 'monthly', title: 'Monthly Plan', period: 'per month', months: 1, features: ['Full platform features', 'All core business tools', 'Monthly renewal'], tone: 'violet' },
+              { cycle: 'quarterly', title: 'Quarterly Plan', period: 'for 3 months', months: 3, features: ['Everything in Monthly', 'Three-month billing period', 'Reduced overall cost'], tone: 'green' },
+              { cycle: 'annually', title: 'Annual Plan', period: 'per year', months: 12, features: ['Everything in Quarterly', 'Twelve-month billing period', 'Best long-term value'], tone: 'violet' },
             ].map(({ cycle, title, period, months, features, tone }) => {
               const plan = selectedPlan || availablePlans[0]
               const total = amountFor(plan, cycle)
