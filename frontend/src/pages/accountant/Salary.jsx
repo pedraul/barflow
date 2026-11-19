@@ -4,6 +4,7 @@ import { useSalary } from '../../context/SalaryContext'
 import { useAuditLog } from '../../context/AuditLogContext'
 import { updateUser } from '../../api/endpoints'
 import * as api from '../../api/endpoints'
+import { usePreferences } from '../../context/PreferencesContext'
 
 const money = (value) => `${Number(value || 0).toLocaleString()} RWF`
 
@@ -33,6 +34,7 @@ function calculateTax(gross) {
 }
 
 export default function Salary() {
+  const { t } = usePreferences()
   const { users: contextUsers, updateUser: updateUserCtx, loaded, error: usersError } = useUsers()
   const { recordSalaryPayment, salaryPayments } = useSalary()
   const { log: auditLog } = useAuditLog()
@@ -126,7 +128,7 @@ export default function Salary() {
         time: new Date().toLocaleString(),
         bonus,
         promotion: paying.promotion || '',
-        payPeriodStart: new Date().toISOString().slice(0, 7),
+        payPeriodStart: `${new Date().toISOString().slice(0, 7)}-01`,
       })
 
       auditLog({
@@ -138,7 +140,7 @@ export default function Salary() {
       setDone(`Salary payment request sent to manager for approval. ${paying.name} will receive ${money(net)} once approved.`)
       setPaying(null)
     } catch (e) {
-      setError(e.message || 'Failed to send salary payment request. Please try again.')
+      setError(e.message || t('Failed to send salary payment request. Please try again.'))
     } finally {
       setSending(false)
     }
@@ -149,37 +151,37 @@ export default function Salary() {
 
       <div className="user-page-heading">
         <div>
-          <p className="eyebrow">Accountant workspace</p>
-          <h1>Salary</h1>
-          <p>Workers to be paid. Use “Pay” to send a salary request to the manager for approval. The money is sent to the worker's number only after the manager approves.</p>
+          <p className="eyebrow">{t('Accountant workspace')}</p>
+          <h1>{t('Salary')}</h1>
+          <p>{t('Workers to be paid. Use “Pay” to send a salary request to the manager for approval. The money is sent to the worker\'s number only after the manager approves.')}</p>
         </div>
       </div>
 
       {(usersError || directError) && (
         <div style={{ background: '#fee2e2', color: '#991b1b', padding: '12px 16px', borderRadius: '8px', marginBottom: '16px', fontSize: '14px' }}>
-          <strong>Error loading users:</strong> {usersError || directError}
+          <strong>{t('Error loading users:')}</strong> {usersError || directError}
           <br />
-          <span style={{ fontSize: '12px', opacity: 0.8 }}>Check browser console and backend logs for details. Make sure the backend is running and you are logged in.</span>
+          <span style={{ fontSize: '12px', opacity: 0.8 }}>{t('Check browser console and backend logs for details. Make sure the backend is running and you are logged in.')}</span>
         </div>
       )}
 
       {!usersError && !directError && users.length === 0 && !directLoading && (
         <div style={{ background: '#fef3c7', color: '#92400e', padding: '12px 16px', borderRadius: '8px', marginBottom: '16px', fontSize: '14px' }}>
-          <strong>No workers found.</strong> The API returned an empty list.
+          <strong>{t('No workers found.')}</strong> {t('The API returned an empty list.')}
           <br />
-          <span style={{ fontSize: '12px', opacity: 0.8 }}>UsersContext loaded: {loaded ? 'yes' : 'no'} | Context users: {contextUsers?.length || 0} | Direct users: {directUsers.length}</span>
+          <span style={{ fontSize: '12px', opacity: 0.8 }}>{t('UsersContext loaded:')} {loaded ? t('yes') : t('no')} {t('| Context users:')} {contextUsers?.length || 0} {t('| Direct users:')} {directUsers.length}</span>
         </div>
       )}
 
       {directLoading && users.length === 0 && (
         <div style={{ padding: '12px 16px', marginBottom: '16px', fontSize: '14px', color: '#6b7280' }}>
-          Loading workers...
+          {t('Loading workers...')}
         </div>
       )}
 
       <div className="summary-card" style={{ marginBottom: '20px' }}>
         <strong>{money(totalSalary)}</strong>
-        <span>Total monthly payroll (base + bonus)</span>
+        <span>{t('Total monthly payroll (base + bonus)')}</span>
       </div>
 
       <section className="user-section">
@@ -187,16 +189,16 @@ export default function Salary() {
           <table className="user-table">
             <thead>
                <tr>
-                 <th>Name</th>
-                 <th>Role</th>
-                 <th>Base Salary</th>
-                 <th>Bonus</th>
-                 <th>Promotion</th>
-                 <th>Status</th>
-                 <th>Last Payment</th>
-                 <th>Phone</th>
-                 <th>Total</th>
-                 <th>Action</th>
+                 <th>{t('Name')}</th>
+                 <th>{t('Role')}</th>
+                 <th>{t('Base Salary')}</th>
+                 <th>{t('Bonus')}</th>
+                 <th>{t('Promotion')}</th>
+                 <th>{t('Status')}</th>
+                 <th>{t('Last Payment')}</th>
+                 <th>{t('Phone')}</th>
+                 <th>{t('Total')}</th>
+                 <th>{t('Action')}</th>
                </tr>
             </thead>
             <tbody>
@@ -213,7 +215,7 @@ export default function Salary() {
                     <td>{user.promotion || '—'}</td>
                      <td>
                        <span className={user.status === 'Inactive' ? 'user-inactive' : 'user-active'}>
-                         {user.status || 'Active'}
+                         {user.status || t('Active')}
                        </span>
                      </td>
                      <td>
@@ -223,7 +225,7 @@ export default function Salary() {
                          const isPending = last.status === 'pending'
                          return (
                            <span style={{ fontSize: 13, color: isPending ? '#e63946' : '#059669', fontWeight: 600 }}>
-                             {last.status === 'pending' ? 'Pending approval' : 'Approved'}
+                             {last.status === 'pending' ? t('Pending approval') : t('Approved')}
                            </span>
                          )
                        })()}
@@ -237,7 +239,7 @@ export default function Salary() {
                         onClick={() => openEdit(user)}
                         style={{ padding: '0.35rem 0.7rem', margin: 0 }}
                       >
-                        Edit
+                        {t('Edit')}
                       </button>
                       <button
                         type="button"
@@ -246,7 +248,7 @@ export default function Salary() {
                         onClick={() => { setPaying(user); setMethod('mtn') }}
                         style={{ padding: '0.35rem 0.7rem', margin: 0 }}
                       >
-                        Pay
+                        {t('Pay')}
                       </button>
                     </td>
                   </tr>
@@ -261,34 +263,34 @@ export default function Salary() {
       {editingUser && (
         <div className="modal-backdrop">
           <form className="confirm-dialog edit-user-dialog" onSubmit={(e) => { e.preventDefault(); saveEdit() }}>
-            <h2>Edit {editingUser.name}</h2>
-            <label>Bonus (RWF)
+            <h2>{t('Edit')} {editingUser.name}</h2>
+            <label>{t('Bonus (RWF)')}
               <input
                 type="number"
                 value={editForm.bonus}
                 onChange={(e) => setEditForm({ ...editForm, bonus: e.target.value })}
-                placeholder="0"
+                placeholder={t('0')}
               />
             </label>
-            <label>Promotion / Note
+            <label>{t('Promotion / Note')}
               <input
                 type="text"
                 value={editForm.promotion}
                 onChange={(e) => setEditForm({ ...editForm, promotion: e.target.value })}
-                placeholder="e.g. Promoted to Senior Waiter"
+                placeholder={t('e.g. Promoted to Senior Waiter')}
               />
             </label>
-            <label>Phone Number
+            <label>{t('Phone Number')}
               <input
                 type="tel"
                 value={editForm.phone}
                 onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                placeholder="e.g. 0788123456"
+                placeholder={t('e.g. 0788123456')}
               />
             </label>
             <div className="create-user-form-actions">
-              <button type="button" className="secondary-action" onClick={() => setEditingUser(null)}>Cancel</button>
-              <button type="submit" className="pay-action">Save</button>
+              <button type="button" className="secondary-action" onClick={() => setEditingUser(null)}>{t('Cancel')}</button>
+              <button type="submit" className="pay-action">{t('Save')}</button>
             </div>
           </form>
         </div>
@@ -302,56 +304,56 @@ export default function Salary() {
         return (
           <div className="modal-backdrop">
             <form className="confirm-dialog edit-user-dialog" onSubmit={(e) => e.preventDefault()}>
-               <h2>Send salary payment</h2>
+               <h2>{t('Send salary payment')}</h2>
                <p>
-                 Request to pay <strong>{money(gross)}</strong> to <strong>{paying.name}</strong> ({paying.phone || 'no phone'}) via mobile money.
+                 {t('Request to pay')} <strong>{money(gross)}</strong> {t('to')} <strong>{paying.name}</strong> ({paying.phone || t('no phone')}{t(') via mobile money.')}
                </p>
                <p style={{ fontSize: '13px', color: 'var(--text-3)', marginTop: 8 }}>
-                 The request will be sent to the manager for approval. Money is only sent after approval.
+                 {t('The request will be sent to the manager for approval. Money is only sent after approval.')}
                </p>
               <div style={{ background: '#f9fafb', padding: 12, borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span>Gross Salary</span><strong>{money(gross)}</strong>
+                  <span>{t('Gross Salary')}</span><strong>{money(gross)}</strong>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, color: '#dc2626' }}>
-                  <span>PAYE Tax (Rwanda)</span><strong>-{money(tax)}</strong>
+                  <span>{t('PAYE Tax (Rwanda)')}</span><strong>-{money(tax)}</strong>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, color: '#dc2626' }}>
-                  <span>Insurance (RWF 2,000)</span><strong>-{money(insurance)}</strong>
+                  <span>{t('Insurance (RWF 2,000)')}</span><strong>-{money(insurance)}</strong>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 8, borderTop: '1px solid #e5e7eb', fontWeight: 700, fontSize: 15 }}>
-                  <span>Net Pay</span><strong style={{ color: '#059669' }}>{money(net)}</strong>
+                  <span>{t('Net Pay')}</span><strong style={{ color: '#059669' }}>{money(net)}</strong>
                 </div>
               </div>
               {(bonus > 0) && (
                 <p style={{ fontSize: '13px', color: 'var(--text-3)' }}>
-                  Includes bonus: {money(bonus)}
+                  {t('Includes bonus:')} {money(bonus)}
                 </p>
               )}
               <div className="payment-methods">
-                <span className="payment-method-label">Pay with</span>
+                <span className="payment-method-label">{t('Pay with')}</span>
                 <div className="payment-method-grid">
                   <button type="button" className={`pay-method mtn${method === 'mtn' ? ' active' : ''}`} onClick={() => setMethod('mtn')}>
-                    <span>MTN</span><small>Mobile Money</small>
+                    <span>{t('MTN')}</span><small>{t('Mobile Money')}</small>
                   </button>
                   <button type="button" className={`pay-method airtel${method === 'airtel' ? ' active' : ''}`} onClick={() => setMethod('airtel')}>
-                    <span>Airtel</span><small>Money</small>
+                    <span>{t('Airtel')}</span><small>{t('Money')}</small>
                   </button>
                 </div>
               </div>
                {!paying.phone && (
                  <p style={{ color: 'var(--warning-text)', fontSize: '13px', marginTop: '8px' }}>
-                   No phone number on file. Adding one will help ensure the salary reaches the right account.
-                   <button type="button" className="secondary-action" style={{ marginLeft: '8px' }} onClick={() => { setPaying(null); openEdit(paying) }}>Edit</button>
+                   {t('No phone number on file. Adding one will help ensure the salary reaches the right account.')}
+                   <button type="button" className="secondary-action" style={{ marginLeft: '8px' }} onClick={() => { setPaying(null); openEdit(paying) }}>{t('Edit')}</button>
                  </p>
                )}
                {error && (
                  <p style={{ color: 'var(--error-text)', fontSize: '13px', marginTop: '8px' }}>{error}</p>
                )}
                <div className="create-user-form-actions">
-                 <button type="button" className="secondary-action" onClick={() => { setPaying(null) }} disabled={sending}>Cancel</button>
+                 <button type="button" className="secondary-action" onClick={() => { setPaying(null) }} disabled={sending}>{t('Cancel')}</button>
                  <button type="button" className="pay-action" onClick={completePayment} disabled={sending}>
-                   {sending ? 'Sending...' : 'Request payment'}
+                   {sending ? t('Sending...') : t('Request payment')}
                  </button>
                </div>
             </form>

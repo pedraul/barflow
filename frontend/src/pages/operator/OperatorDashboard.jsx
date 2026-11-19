@@ -1,16 +1,20 @@
+import { usePreferences } from '../../context/PreferencesContext'
+import BackButton from '../../components/BackButton'
 import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useOwner } from '../../context/OwnerContext'
 import { fetchOperatorDashboard, routeOrder, updateOperatorOrderStatus, fetchQRCodes, fetchKitchenOrders, fetchBarOrders } from '../../api/endpoints'
 import QRCode from '../../components/QRCode'
-import { PUBLIC_APP_URL } from '../../config/publicAppUrl'
+import { buildTableMenuUrl } from '../../config/tableMenuUrl'
 import {
   LayoutDashboard, ShoppingBag, ChefHat, CheckCircle2, BarChart3,
   Clock, FileText, Printer, Utensils, GlassWater, Users,
   FileSpreadsheet, User, LogOut, Menu, Share2
 } from 'lucide-react'
 import { SidebarLink, StatCard, OrderListItem, StepIcon, StepLine, QuickActionButton } from '../../components/ui/SharedComponents'
+import { getOrderLocation } from '../../utils/orderDisplay'
+import { isDrinkCategory } from '../../utils/orderStation'
 
 const MONEY = (v) => `${Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
 
@@ -25,6 +29,7 @@ function generatePaymentCode(order) {
 }
 
 export default function OperatorDashboard() {
+  const { t } = usePreferences()
   const { user, logout } = useAuth()
   const { activeBranchId } = useOwner()
   const navigate = useNavigate()
@@ -92,9 +97,9 @@ export default function OperatorDashboard() {
         orderNumber: selectedOrder?.orderNumber || routedOrder?.orderNumber || orderId,
         destination: destinationName,
       })
-      alert(`Order routed to ${destination}`)
+      alert(t("Order routed to") + " " + t(destination === 'kitchen' ? 'Kitchen' : 'Bar'))
     } catch (e) {
-      alert(e.message || 'Failed to route order')
+      alert(t(e.message || 'Failed to route order'))
     } finally {
       setActionLoading(false)
     }
@@ -106,7 +111,7 @@ export default function OperatorDashboard() {
       await updateOperatorOrderStatus(orderId, status)
       await load()
     } catch (e) {
-      alert(e.message || 'Failed to update status')
+      alert(t(e.message || 'Failed to update status'))
     } finally {
       setActionLoading(false)
     }
@@ -123,32 +128,32 @@ export default function OperatorDashboard() {
     return `<div className="font-sans max-w-[320px] mx-auto p-5 text-slate-800">
       <div className="text-center mb-4">
         <h1 className="m-0 text-lg font-bold text-slate-900">${dashboard.businessName}</h1>
-        <p className="m-0 text-xs text-slate-500 font-medium">Receipt</p>
+        <p className="m-0 text-xs text-slate-500 font-medium">${t('Receipt')}</p>
       </div>
       <div className="border-t border-b border-dashed border-slate-300 py-2 mb-3 grid grid-cols-2 gap-y-1 text-[11px] text-slate-600">
-        <div>Order No : <span className="font-semibold text-slate-900">${order.orderNumber}</span></div>
-        <div className="text-right">Date : <span className="font-semibold text-slate-900">${new Date().toLocaleDateString()}</span></div>
-        <div>Table : <span className="font-semibold text-slate-900">${order.tableNumber}</span></div>
-        <div className="text-right">Time : <span className="font-semibold text-slate-900">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>
+        <div>${t('Order No')} : <span className="font-semibold text-slate-900">${order.orderNumber}</span></div>
+        <div className="text-right">${t('Date')} : <span className="font-semibold text-slate-900">${new Date().toLocaleDateString()}</span></div>
+        <div>${t('Table')} : <span className="font-semibold text-slate-900">${order.tableNumber}</span></div>
+        <div className="text-right">${t('Time')} : <span className="font-semibold text-slate-900">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>
       </div>
       <table className="w-full text-left text-[11px] text-slate-600">
-        <thead><tr className="border-b border-slate-200 font-bold text-slate-800"><th className="pb-1">Item</th><th className="pb-1 text-center">Qty</th><th className="pb-1 text-right">Price</th></tr></thead>
+        <thead><tr className="border-b border-slate-200 font-bold text-slate-800"><th className="pb-1">${t('Item')}</th><th className="pb-1 text-center">${t('Qty')}</th><th className="pb-1 text-right">${t('Price')}</th></tr></thead>
         <tbody className="divide-y divide-slate-100">${rows}</tbody>
       </table>
       <div className="border-t-2 border-slate-900 pt-2 flex justify-between text-xs font-bold text-slate-900">
-        <span>TOTAL</span><span>${MONEY(order.total)}</span>
+        <span>${t('TOTAL')}</span><span>${MONEY(order.total)}</span>
       </div>
       <div className="border-t border-dashed border-slate-300 pt-4 text-center space-y-2">
-        <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Scan QR to Pay</p>
+        <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">${t('Scan QR to Pay')}</p>
         <div className="flex items-center justify-center gap-3">
           <div id="receipt-qr-${order.id}" className="w-16 h-16 bg-white border border-slate-200 rounded p-1"></div>
-          <span className="text-xs text-slate-400 font-medium">or</span>
+          <span className="text-xs text-slate-400 font-medium">${t('or')}</span>
           <div className="text-left">
-            <p className="text-[10px] text-slate-400 uppercase font-semibold">Payment Code</p>
+            <p className="text-[10px] text-slate-400 uppercase font-semibold">${t('Payment Code')}</p>
             <p className="text-base font-black text-slate-950 tracking-wide">${paymentCode}</p>
           </div>
         </div>
-        <p className="text-[10px] text-slate-400 font-semibold pt-1">Thank you!</p>
+        <p className="text-[10px] text-slate-400 font-semibold pt-1">${t('Thank you!')}</p>
       </div>
     </div>`
   }
@@ -197,8 +202,8 @@ export default function OperatorDashboard() {
   }
 
   const getCategoryBadge = (items) => {
-    const hasFood = items.some((i) => !/drink|beer|wine|cocktail|beverage|soft|liquor|spirit/i.test(i.category || ''))
-    const hasDrink = items.some((i) => /drink|beer|wine|cocktail|beverage|soft|liquor|spirit/i.test(i.category || ''))
+    const hasFood = items.some((i) => !isDrinkCategory(i.category))
+    const hasDrink = items.some((i) => isDrinkCategory(i.category))
     if (hasFood && hasDrink) return { label: 'Mixed', color: '#6f42c1' }
     if (hasFood) return { label: 'Food (Kitchen)', color: '#fd7e14' }
     return { label: 'Drinks (Bar)', color: '#17a2b8' }
@@ -233,15 +238,16 @@ export default function OperatorDashboard() {
       )}
 
       {/* Mobile topbar */}
-      <header className="mobile-topbar">
+      <header className="mobile-topbar app-topbar">
         <button
           type="button"
           className="mobile-menu-button"
           onClick={() => setMobileMenuOpen((prev) => !prev)}
-          aria-label="Toggle navigation"
+          aria-label={t("Toggle navigation")}
         >
           {mobileMenuOpen ? '✕' : '☰'}
         </button>
+        <BackButton fallback="/operator/orders" />
         <div className="mobile-brand">BarFlow</div>
       </header>
 
@@ -257,27 +263,27 @@ export default function OperatorDashboard() {
 
           <nav className="p-4 space-y-6 text-sm">
             <div>
-              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Order Management</p>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">{t("Order Management")}</p>
               <div className="space-y-1">
-                <SidebarLink icon={<FileText size={18} />} label="New Orders" badge={currentStats.newOrders} badgeColor="bg-red-500 text-white" onClick={() => navigate('/operator/orders?tab=new')} />
-                <SidebarLink icon={<ChefHat size={18} />} label="Preparing" badge={currentStats.preparing} badgeColor="bg-amber-500 text-white" onClick={() => navigate('/operator/orders?tab=preparing')} />
-                <SidebarLink icon={<CheckCircle2 size={18} />} label="Ready" badge={currentStats.ready} badgeColor="bg-emerald-500 text-white" onClick={() => navigate('/operator/orders?tab=ready')} />
-                <SidebarLink icon={<FileText size={18} />} label="All Orders" onClick={() => navigate('/operator/orders')} />
+                <SidebarLink icon={<FileText size={18} />} label={t("New Orders")} badge={currentStats.newOrders} badgeColor="bg-red-500 text-white" onClick={() => navigate('/operator/orders?tab=new')} />
+                <SidebarLink icon={<ChefHat size={18} />} label={t("Preparing")} badge={currentStats.preparing} badgeColor="bg-amber-500 text-white" onClick={() => navigate('/operator/orders?tab=preparing')} />
+                <SidebarLink icon={<CheckCircle2 size={18} />} label={t("Ready")} badge={currentStats.ready} badgeColor="bg-emerald-500 text-white" onClick={() => navigate('/operator/orders?tab=ready')} />
+                <SidebarLink icon={<FileText size={18} />} label={t("All Orders")} onClick={() => navigate('/operator/orders')} />
               </div>
             </div>
 
             <div>
-              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Receipts</p>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">{t("Receipts")}</p>
               <div className="space-y-1">
-                <SidebarLink icon={<Printer size={18} />} label="Printed Receipts" onClick={() => navigate('/operator/receipts/printed')} />
+                <SidebarLink icon={<Printer size={18} />} label={t("Printed Receipts")} onClick={() => navigate('/operator/receipts/printed')} />
               </div>
             </div>
 
             <div>
-              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Other</p>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">{t("Other")}</p>
               <div className="space-y-1">
-                <SidebarLink icon={<FileSpreadsheet size={18} />} label="Reports" onClick={() => navigate('/operator/reports')} />
-                <SidebarLink icon={<User size={18} />} label="My Account" onClick={() => navigate('/account')} />
+                <SidebarLink icon={<FileSpreadsheet size={18} />} label={t("Reports")} onClick={() => navigate('/operator/reports')} />
+                <SidebarLink icon={<User size={18} />} label={t("My Account")} onClick={() => navigate('/account')} />
               </div>
             </div>
           </nav>
@@ -285,8 +291,7 @@ export default function OperatorDashboard() {
 
         <div className="p-4 border-t border-slate-800">
           <button onClick={handleLogout} className="flex items-center gap-3 px-3 py-2.5 text-red-400 hover:bg-red-950/30 rounded-lg font-medium transition w-full">
-            <LogOut size={18} /> Logout
-          </button>
+            <LogOut size={18} />{t("Logout")}</button>
         </div>
       </aside>
 
@@ -305,27 +310,27 @@ export default function OperatorDashboard() {
 
           <nav className="p-4 space-y-6 text-sm">
             <div>
-              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Order Management</p>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">{t("Order Management")}</p>
               <div className="space-y-1">
-                <SidebarLink icon={<FileText size={18} />} label="New Orders" badge={currentStats.newOrders} badgeColor="bg-red-500 text-white" onClick={() => navigate('/operator/orders?tab=new')} />
-                <SidebarLink icon={<ChefHat size={18} />} label="Preparing" badge={currentStats.preparing} badgeColor="bg-amber-500 text-white" onClick={() => navigate('/operator/orders?tab=preparing')} />
-                <SidebarLink icon={<CheckCircle2 size={18} />} label="Ready" badge={currentStats.ready} badgeColor="bg-emerald-500 text-white" onClick={() => navigate('/operator/orders?tab=ready')} />
-                <SidebarLink icon={<FileText size={18} />} label="All Orders" onClick={() => navigate('/operator/orders')} />
+                <SidebarLink icon={<FileText size={18} />} label={t("New Orders")} badge={currentStats.newOrders} badgeColor="bg-red-500 text-white" onClick={() => navigate('/operator/orders?tab=new')} />
+                <SidebarLink icon={<ChefHat size={18} />} label={t("Preparing")} badge={currentStats.preparing} badgeColor="bg-amber-500 text-white" onClick={() => navigate('/operator/orders?tab=preparing')} />
+                <SidebarLink icon={<CheckCircle2 size={18} />} label={t("Ready")} badge={currentStats.ready} badgeColor="bg-emerald-500 text-white" onClick={() => navigate('/operator/orders?tab=ready')} />
+                <SidebarLink icon={<FileText size={18} />} label={t("All Orders")} onClick={() => navigate('/operator/orders')} />
               </div>
             </div>
 
             <div>
-              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Receipts</p>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">{t("Receipts")}</p>
               <div className="space-y-1">
-                <SidebarLink icon={<Printer size={18} />} label="Printed Receipts" onClick={() => navigate('/operator/receipts/printed')} />
+                <SidebarLink icon={<Printer size={18} />} label={t("Printed Receipts")} onClick={() => navigate('/operator/receipts/printed')} />
               </div>
             </div>
 
             <div>
-              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Other</p>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">{t("Other")}</p>
               <div className="space-y-1">
-                <SidebarLink icon={<FileSpreadsheet size={18} />} label="Reports" onClick={() => navigate('/operator/reports')} />
-                <SidebarLink icon={<User size={18} />} label="My Account" onClick={() => navigate('/account')} />
+                <SidebarLink icon={<FileSpreadsheet size={18} />} label={t("Reports")} onClick={() => navigate('/operator/reports')} />
+                <SidebarLink icon={<User size={18} />} label={t("My Account")} onClick={() => navigate('/account')} />
               </div>
             </div>
           </nav>
@@ -333,8 +338,7 @@ export default function OperatorDashboard() {
 
         <div className="p-4 border-t border-slate-800">
           <button onClick={handleLogout} className="flex items-center gap-3 px-3 py-2.5 text-red-400 hover:bg-red-950/30 rounded-lg font-medium transition w-full">
-            <LogOut size={18} /> Logout
-          </button>
+            <LogOut size={18} />{t("Logout")}</button>
         </div>
       </aside>
 
@@ -343,17 +347,17 @@ export default function OperatorDashboard() {
         {/* TOP NAVBAR */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
           <div className="flex items-center gap-4">
-            <h1 className="text-lg font-semibold text-slate-900">Operator Dashboard</h1>
+            <h1 className="text-lg font-semibold text-slate-900">{t("Operator Dashboard")}</h1>
           </div>
 
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-3 border-l pl-6 border-slate-200">
               <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold text-sm">
-                {user?.name?.split(' ').map(n => n[0]).join('') || 'OP'}
+                {user?.name?.split(' ').map(n => n[0]).join('') || t("OP")}
               </div>
               <div className="text-left">
-                <p className="text-sm font-semibold text-slate-900 leading-tight">Operator</p>
-                <p className="text-xs text-emerald-500 flex items-center gap-1"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full inline-block"></span> Online</p>
+                <p className="text-sm font-semibold text-slate-900 leading-tight">{t("Operator")}</p>
+                <p className="text-xs text-emerald-500 flex items-center gap-1"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full inline-block"></span>{' '}{t("Online")}</p>
               </div>
             </div>
           </div>
@@ -364,77 +368,76 @@ export default function OperatorDashboard() {
           {routingNotice && (
             <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 shadow-sm" role="status">
               <div className="flex items-center gap-2 text-sm font-semibold">
-                <CheckCircle2 size={18} className="shrink-0" />
-                Order {routingNotice.orderNumber} was sent to the {routingNotice.destination}.
+                <CheckCircle2 size={18} className="shrink-0" />{t("Order")}{routingNotice.orderNumber}{' '}{t("was sent to the")}{' '}{t(routingNotice.destination)}.
               </div>
-              <button type="button" onClick={() => setRoutingNotice(null)} className="text-xs font-bold text-emerald-700 hover:text-emerald-900" aria-label="Dismiss routing confirmation">Dismiss</button>
+              <button type="button" onClick={() => setRoutingNotice(null)} className="text-xs font-bold text-emerald-700 hover:text-emerald-900" aria-label={t("Dismiss routing confirmation")}>{t("Dismiss")}</button>
             </div>
           )}
           {/* Stat Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard icon={<ShoppingBag size={24} className="text-blue-600" />} iconBg="bg-blue-50" label="Active Orders" value={String(currentStats.newOrders + currentStats.preparing + currentStats.ready)} linkText="View all" onClick={() => navigate('/operator/orders?tab=all')} />
-            <StatCard icon={<ChefHat size={24} className="text-amber-600" />} iconBg="bg-amber-50" label="Preparing" value={String(currentStats.preparing)} linkText="View all" onClick={() => navigate('/operator/orders?tab=preparing')} />
-            <StatCard icon={<CheckCircle2 size={24} className="text-emerald-600" />} iconBg="bg-emerald-50" label="Ready" value={String(currentStats.ready)} linkText="View all" onClick={() => navigate('/operator/orders?tab=ready')} />
-            <StatCard icon={<BarChart3 size={24} className="text-purple-600" />} iconBg="bg-purple-50" label="Today's Sales" value={MONEY(dashboard.todaySales)} linkText="View report" onClick={() => navigate('/operator/reports')} />
+            <StatCard icon={<ShoppingBag size={24} className="text-blue-600" />} iconBg="bg-blue-50" label={t("Active Orders")} value={String(currentStats.newOrders + currentStats.preparing + currentStats.ready)} linkText={t("View all")} onClick={() => navigate('/operator/orders?tab=all')} />
+            <StatCard icon={<ChefHat size={24} className="text-amber-600" />} iconBg="bg-amber-50" label={t("Preparing")} value={String(currentStats.preparing)} linkText={t("View all")} onClick={() => navigate('/operator/orders?tab=preparing')} />
+            <StatCard icon={<CheckCircle2 size={24} className="text-emerald-600" />} iconBg="bg-emerald-50" label={t("Ready")} value={String(currentStats.ready)} linkText={t("View all")} onClick={() => navigate('/operator/orders?tab=ready')} />
+            <StatCard icon={<BarChart3 size={24} className="text-purple-600" />} iconBg="bg-purple-50" label={t("Today's Sales")} value={MONEY(dashboard.todaySales)} linkText={t("View report")} onClick={() => navigate('/operator/reports')} />
           </div>
 
           {/* Revenue Summary */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Total Revenue (Paid)</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("Total Revenue (Paid)")}</p>
               <p className="text-2xl font-black text-slate-900 mt-1">{MONEY(dashboard.paidOrdersTotal)}</p>
-              <p className="text-xs text-slate-500 mt-1">{dashboard.paidOrdersCount || 0} paid orders</p>
+              <p className="text-xs text-slate-500 mt-1">{dashboard.paidOrdersCount || 0}{' '}{t("paid orders")}</p>
             </div>
             <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">QR Revenue</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("QR Revenue")}</p>
               <p className="text-2xl font-black text-blue-600 mt-1">{MONEY(dashboard.qrSales)}</p>
-              <p className="text-xs text-slate-500 mt-1">From QR code orders</p>
+              <p className="text-xs text-slate-500 mt-1">{t("From QR code orders")}</p>
             </div>
             <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Waiter Revenue</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("Waiter Revenue")}</p>
               <p className="text-2xl font-black text-emerald-600 mt-1">{MONEY(dashboard.waiterSales)}</p>
-              <p className="text-xs text-slate-500 mt-1">From waiter orders</p>
+              <p className="text-xs text-slate-500 mt-1">{t("From waiter orders")}</p>
             </div>
           </div>
 
           {/* Business Registration Info */}
           <section className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-bold text-slate-900 text-sm">Business Registration</h3>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Active</span>
+              <h3 className="font-bold text-slate-900 text-sm">{t("Business Registration")}</h3>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{t("Active")}</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
               <div className="border border-slate-100 rounded-lg p-3">
-                <p className="text-slate-500 font-medium">Business Name</p>
+                <p className="text-slate-500 font-medium">{t("Business Name")}</p>
                 <p className="font-bold text-slate-900 mt-1">{dashboard.businessName || '—'}</p>
               </div>
               <div className="border border-slate-100 rounded-lg p-3">
-                <p className="text-slate-500 font-medium">Address</p>
+                <p className="text-slate-500 font-medium">{t("Address")}</p>
                 <p className="font-bold text-slate-900 mt-1">{dashboard.businessAddress || '—'}</p>
               </div>
               <div className="border border-slate-100 rounded-lg p-3">
-                <p className="text-slate-500 font-medium">City / Country</p>
+                <p className="text-slate-500 font-medium">{t("City / Country")}</p>
                 <p className="font-bold text-slate-900 mt-1">{dashboard.businessCity || '—'} / {dashboard.businessCountry || '—'}</p>
               </div>
               <div className="border border-slate-100 rounded-lg p-3">
-                <p className="text-slate-500 font-medium">Phone / Email</p>
+                <p className="text-slate-500 font-medium">{t("Phone / Email")}</p>
                 <p className="font-bold text-slate-900 mt-1">{dashboard.businessPhone || '—'}</p>
                 <p className="font-medium text-slate-600 mt-0.5 truncate">{dashboard.businessEmail || '—'}</p>
               </div>
               <div className="border border-slate-100 rounded-lg p-3">
-                <p className="text-slate-500 font-medium">Registration Code</p>
+                <p className="text-slate-500 font-medium">{t("Registration Code")}</p>
                 <p className="font-bold text-slate-900 mt-1">{dashboard.businessRegistrationCode || '—'}</p>
               </div>
               <div className="border border-slate-100 rounded-lg p-3">
-                <p className="text-slate-500 font-medium">Tax ID / TIN</p>
+                <p className="text-slate-500 font-medium">{t("Tax ID / TIN")}</p>
                 <p className="font-bold text-slate-900 mt-1">{dashboard.businessTaxId || '—'}</p>
               </div>
               <div className="border border-slate-100 rounded-lg p-3">
-                <p className="text-slate-500 font-medium">Currency</p>
-                <p className="font-bold text-slate-900 mt-1">{dashboard.currencyCode || 'RWF'}</p>
+                <p className="text-slate-500 font-medium">{t("Currency")}</p>
+                <p className="font-bold text-slate-900 mt-1">{dashboard.currencyCode || t("RWF")}</p>
               </div>
               <div className="border border-slate-100 rounded-lg p-3">
-                <p className="text-slate-500 font-medium">Today's Revenue</p>
+                <p className="text-slate-500 font-medium">{t("Today's Revenue")}</p>
                 <p className="font-bold text-slate-900 mt-1">{MONEY(dashboard.todaySales)}</p>
               </div>
             </div>
@@ -443,47 +446,47 @@ export default function OperatorDashboard() {
           {/* Order Tracking by Source & Status */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <section className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-              <h3 className="font-bold text-slate-900 text-sm mb-3">Orders by Source</h3>
+              <h3 className="font-bold text-slate-900 text-sm mb-3">{t("Orders by Source")}</h3>
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-slate-600">QR Orders</span>
+                  <span className="text-xs text-slate-600">{t("QR Orders")}</span>
                   <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">{dashboard.sourceBreakdown?.qr || 0}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-slate-600">Waiter Orders</span>
+                  <span className="text-xs text-slate-600">{t("Waiter Orders")}</span>
                   <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">{dashboard.sourceBreakdown?.waiter || 0}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-slate-600">Other Orders</span>
+                  <span className="text-xs text-slate-600">{t("Other Orders")}</span>
                   <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded">{dashboard.sourceBreakdown?.other || 0}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-slate-600">Total Orders</span>
+                  <span className="text-xs text-slate-600">{t("Total Orders")}</span>
                   <span className="text-xs font-bold text-slate-900">{dashboard.totalOrders || 0}</span>
                 </div>
               </div>
             </section>
 
             <section className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-              <h3 className="font-bold text-slate-900 text-sm mb-3">Revenue by Source</h3>
+              <h3 className="font-bold text-slate-900 text-sm mb-3">{t("Revenue by Source")}</h3>
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-slate-600">QR Revenue</span>
+                  <span className="text-xs text-slate-600">{t("QR Revenue")}</span>
                   <span className="text-xs font-bold text-blue-600">{MONEY(dashboard.qrSales)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-slate-600">Waiter Revenue</span>
+                  <span className="text-xs text-slate-600">{t("Waiter Revenue")}</span>
                   <span className="text-xs font-bold text-emerald-600">{MONEY(dashboard.waiterSales)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-slate-600">Total Paid</span>
+                  <span className="text-xs text-slate-600">{t("Total Paid")}</span>
                   <span className="text-xs font-bold text-slate-900">{MONEY(dashboard.paidOrdersTotal)}</span>
                 </div>
               </div>
             </section>
 
             <section className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-              <h3 className="font-bold text-slate-900 text-sm mb-3">Order Status Breakdown</h3>
+              <h3 className="font-bold text-slate-900 text-sm mb-3">{t("Order Status Breakdown")}</h3>
               <div className="space-y-2">
                 {Object.entries(dashboard.statusBreakdown || {}).map(([status, count]) => (
                   <div key={status} className="flex justify-between items-center">
@@ -502,18 +505,17 @@ export default function OperatorDashboard() {
             <section className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-emerald-700 font-semibold">
-                  <ChefHat size={18} /> Kitchen (live)
-                </div>
-                <button onClick={() => navigate('/kitchen')} className="text-xs font-semibold text-emerald-600 hover:underline">Open screen</button>
+                  <ChefHat size={18} />{t("Kitchen (live)")}</div>
+                <button onClick={() => navigate('/kitchen')} className="text-xs font-semibold text-emerald-600 hover:underline">{t("Open screen")}</button>
               </div>
               {kitchenOrders.length === 0 ? (
-                <div className="text-sm text-slate-400 text-center py-4">No active kitchen orders</div>
+                <div className="text-sm text-slate-400 text-center py-4">{t("No active kitchen orders")}</div>
               ) : (
                 <div className="space-y-2 max-h-56 overflow-y-auto">
                   {kitchenOrders.map((o) => (
                     <div key={o.id} className="flex justify-between items-center border border-slate-100 rounded-lg px-3 py-2 text-sm">
                       <span className="font-semibold text-slate-800">{o.orderNumber}</span>
-                      <span className="text-slate-500">Table {o.tableNumber}</span>
+                      <span className="text-slate-500">{getOrderLocation(o)}</span>
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${o.status === 'Ready' ? 'bg-emerald-100 text-emerald-700' : o.status === 'Preparing' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{o.status}</span>
                     </div>
                   ))}
@@ -524,18 +526,17 @@ export default function OperatorDashboard() {
             <section className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-purple-700 font-semibold">
-                  <GlassWater size={18} /> Bar (live)
-                </div>
-                <button onClick={() => navigate('/bar')} className="text-xs font-semibold text-purple-600 hover:underline">Open screen</button>
+                  <GlassWater size={18} />{t("Bar (live)")}</div>
+                <button onClick={() => navigate('/bar')} className="text-xs font-semibold text-purple-600 hover:underline">{t("Open screen")}</button>
               </div>
               {barOrders.length === 0 ? (
-                <div className="text-sm text-slate-400 text-center py-4">No active bar orders</div>
+                <div className="text-sm text-slate-400 text-center py-4">{t("No active bar orders")}</div>
               ) : (
                 <div className="space-y-2 max-h-56 overflow-y-auto">
                   {barOrders.map((o) => (
                     <div key={o.id} className="flex justify-between items-center border border-slate-100 rounded-lg px-3 py-2 text-sm">
                       <span className="font-semibold text-slate-800">{o.orderNumber}</span>
-                      <span className="text-slate-500">Table {o.tableNumber}</span>
+                      <span className="text-slate-500">{getOrderLocation(o)}</span>
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${o.status === 'Ready' ? 'bg-emerald-100 text-emerald-700' : o.status === 'Preparing' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{o.status}</span>
                     </div>
                   ))}
@@ -548,12 +549,12 @@ export default function OperatorDashboard() {
             {/* Column A: New Orders List */}
             <section className="col-span-1 lg:col-span-4 bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-4">
               <div className="flex items-center gap-2">
-                <h2 className="font-bold text-slate-900">New Orders</h2>
+                <h2 className="font-bold text-slate-900">{t("New Orders")}</h2>
                 <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{currentStats.newOrders}</span>
               </div>
 
               <div className="space-y-4">
-                {newOrders.length === 0 && <div className="text-sm text-slate-400 text-center py-4">No new orders</div>}
+                {newOrders.length === 0 && <div className="text-sm text-slate-400 text-center py-4">{t("No new orders")}</div>}
                 {newOrders.map((order) => {
                   const badge = getCategoryBadge(order.items || [])
                   const typeColor = order.source === 'qr' ? 'bg-blue-100 text-blue-600 font-bold' : 'bg-emerald-100 text-emerald-700 font-semibold'
@@ -564,7 +565,7 @@ export default function OperatorDashboard() {
                       type={order.source === 'qr' ? 'QR' : 'WAITER'}
                       typeColor={typeColor}
                       station={order.station || null}
-                      table={'Table ' + order.tableNumber}
+                      table={getOrderLocation(order)}
                       time={order.createdAt}
                       items={(order.items || []).map((item) => ({ name: item.name, qty: item.quantity, price: MONEY(item.price) }))}
                       total={MONEY(order.total)}
@@ -574,7 +575,7 @@ export default function OperatorDashboard() {
                   )
                 })}
               </div>
-              <button onClick={() => navigate('/operator/orders')} className="block text-center text-sm font-semibold text-blue-600 hover:text-blue-700 pt-2">View all new orders</button>
+              <button onClick={() => navigate('/operator/orders')} className="block text-center text-sm font-semibold text-blue-600 hover:text-blue-700 pt-2">{t("View all new orders")}</button>
             </section>
 
             {/* Column B: Process Order Details */}
@@ -583,19 +584,18 @@ export default function OperatorDashboard() {
                 <>
                   <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-5">
                     <div className="flex items-center gap-2">
-                      <h2 className="font-bold text-slate-900 text-lg">Process Order <span className="text-blue-600">{selectedOrder.orderNumber}</span></h2>
-                      <span className="bg-blue-100 text-blue-600 text-[10px] font-bold px-1.5 py-0.5 rounded">{selectedOrder.source === 'qr' ? 'QR' : 'WAITER'}</span>
+                      <h2 className="font-bold text-slate-900 text-lg">{t("Process Order")}{' '}<span className="text-blue-600">{selectedOrder.orderNumber}</span></h2>
+                      <span className="bg-blue-100 text-blue-600 text-[10px] font-bold px-1.5 py-0.5 rounded">{selectedOrder.source === 'qr' ? t("QR") : t("WAITER")}</span>
                     </div>
 
                     {(() => {
                       const badge = getCategoryBadge(selectedOrder.items || [])
-                      const hasFood = selectedOrder.items.some((i) => !/drink|beer|wine|cocktail|beverage|soft|liquor|spirit/i.test(i.category || ''))
-                      const hasDrink = selectedOrder.items.some((i) => /drink|beer|wine|cocktail|beverage|soft|liquor|spirit/i.test(i.category || ''))
+                      const hasFood = selectedOrder.items.some((i) => !isDrinkCategory(i.category))
+                      const hasDrink = selectedOrder.items.some((i) => isDrinkCategory(i.category))
                       if (hasFood && hasDrink) {
                         return (
                           <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-lg p-3 flex items-center gap-2 font-medium">
-                            <span className="text-amber-500 font-bold text-base leading-none">⚠️</span> This order contains items from multiple categories.
-                          </div>
+                            <span className="text-amber-500 font-bold text-base leading-none">⚠️</span>{t("This order contains items from multiple categories.")}</div>
                         )
                       }
                       return null
@@ -603,27 +603,25 @@ export default function OperatorDashboard() {
 
                     {/* Kitchen sub-order */}
                     {(() => {
-                      const foodItems = (selectedOrder.items || []).filter((i) => !/drink|beer|wine|cocktail|beverage|soft|liquor|spirit/i.test(i.category || ''))
+                      const foodItems = (selectedOrder.items || []).filter((i) => !isDrinkCategory(i.category))
                       if (foodItems.length === 0) return null
                       const foodTotal = foodItems.reduce((sum, i) => sum + (i.lineTotal || i.price * i.quantity), 0)
                       return (
                         <div className="border border-slate-100 rounded-xl p-4 bg-slate-50/50 space-y-3">
                           <div className="flex items-center gap-2 text-emerald-700 font-semibold text-sm">
-                            <div className="p-1 bg-emerald-50 rounded-lg text-emerald-600"><ChefHat size={16} /></div>
-                            Food (Kitchen)
-                          </div>
+                            <div className="p-1 bg-emerald-50 rounded-lg text-emerald-600"><ChefHat size={16} /></div>{t("Food (Kitchen)")}</div>
                           {foodItems.map((item, idx) => (
                             <div key={idx} className="flex justify-between text-sm text-slate-700">
                               <span>{item.name}</span>
-                              <span className="text-slate-400">x{item.quantity}</span>
+                              <span className="text-slate-400">{t("x")}{item.quantity}</span>
                               <span className="font-medium">{MONEY(item.lineTotal || item.price * item.quantity)}</span>
                             </div>
                           ))}
                           <div className="border-t border-dashed border-slate-200 pt-2 flex justify-between text-sm font-semibold text-slate-900">
-                            <span>Total</span><span>{MONEY(foodTotal)}</span>
+                            <span>{t("Total")}</span><span>{MONEY(foodTotal)}</span>
                           </div>
                            {(selectedOrder.status === 'Open' || selectedOrder.status === 'Paid') && (
-                              <button onClick={() => { handleRoute(selectedOrder.id, 'kitchen'); setSelectedOrder(null) }} disabled={selectedOrder.station === 'kitchen' || selectedOrder.station === 'both'} title={selectedOrder.station === 'kitchen' || selectedOrder.station === 'both' ? 'Already sent to Kitchen' : undefined} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm py-2 px-4 rounded-lg flex items-center justify-center gap-2 shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed">🚀 Send to Kitchen</button>
+                              <button onClick={() => { handleRoute(selectedOrder.id, 'kitchen'); setSelectedOrder(null) }} disabled={selectedOrder.station === 'kitchen' || selectedOrder.station === 'both'} title={selectedOrder.station === 'kitchen' || selectedOrder.station === 'both' ? t("Already sent to Kitchen") : undefined} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm py-2 px-4 rounded-lg flex items-center justify-center gap-2 shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed">{t("🚀 Send to Kitchen")}</button>
                             )}
                         </div>
                       )
@@ -631,27 +629,25 @@ export default function OperatorDashboard() {
 
                     {/* Bar sub-order */}
                     {(() => {
-                      const drinkItems = (selectedOrder.items || []).filter((i) => /drink|beer|wine|cocktail|beverage|soft|liquor|spirit/i.test(i.category || ''))
+                      const drinkItems = (selectedOrder.items || []).filter((i) => isDrinkCategory(i.category))
                       if (drinkItems.length === 0) return null
                       const drinkTotal = drinkItems.reduce((sum, i) => sum + (i.lineTotal || i.price * i.quantity), 0)
                       return (
                         <div className="border border-slate-100 rounded-xl p-4 bg-slate-50/50 space-y-3">
                           <div className="flex items-center gap-2 text-purple-700 font-semibold text-sm">
-                            <div className="p-1 bg-purple-50 rounded-lg text-purple-600"><GlassWater size={16} /></div>
-                            Drinks (Bar)
-                          </div>
+                            <div className="p-1 bg-purple-50 rounded-lg text-purple-600"><GlassWater size={16} /></div>{t("Drinks (Bar)")}</div>
                           {drinkItems.map((item, idx) => (
                             <div key={idx} className="flex justify-between text-sm text-slate-700">
                               <span>{item.name}</span>
-                              <span className="text-slate-400">x{item.quantity}</span>
+                              <span className="text-slate-400">{t("x")}{item.quantity}</span>
                               <span className="font-medium">{MONEY(item.lineTotal || item.price * item.quantity)}</span>
                             </div>
                           ))}
                           <div className="border-t border-dashed border-slate-200 pt-2 flex justify-between text-sm font-semibold text-slate-900">
-                            <span>Total</span><span>{MONEY(drinkTotal)}</span>
+                            <span>{t("Total")}</span><span>{MONEY(drinkTotal)}</span>
                           </div>
                            {(selectedOrder.status === 'Open' || selectedOrder.status === 'Paid') && (
-                              <button onClick={() => { handleRoute(selectedOrder.id, 'bar'); setSelectedOrder(null) }} disabled={selectedOrder.station === 'bar' || selectedOrder.station === 'both'} title={selectedOrder.station === 'bar' || selectedOrder.station === 'both' ? 'Already sent to Bar' : undefined} className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium text-sm py-2 px-4 rounded-lg flex items-center justify-center gap-2 shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed">🚀 Send to Bar</button>
+                              <button onClick={() => { handleRoute(selectedOrder.id, 'bar'); setSelectedOrder(null) }} disabled={selectedOrder.station === 'bar' || selectedOrder.station === 'both'} title={selectedOrder.station === 'bar' || selectedOrder.station === 'both' ? t("Already sent to Bar") : undefined} className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium text-sm py-2 px-4 rounded-lg flex items-center justify-center gap-2 shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed">{t("🚀 Send to Bar")}</button>
                             )}
                         </div>
                       )
@@ -660,23 +656,21 @@ export default function OperatorDashboard() {
 
                   {/* Order Summary */}
                   <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3">
-                    <h3 className="font-bold text-slate-900 text-sm">Order Summary</h3>
+                    <h3 className="font-bold text-slate-900 text-sm">{t("Order Summary")}</h3>
                     <div className="divide-y divide-slate-100 text-sm">
-                      <div className="py-2.5 flex justify-between"><span className="text-slate-500">Order Number</span><span className="font-semibold text-slate-800">{selectedOrder.orderNumber}</span></div>
-                      <div className="py-2.5 flex justify-between"><span className="text-slate-500">Source</span><span className="font-semibold text-slate-800">{selectedOrder.source === 'qr' ? 'QR Code' : 'Waiter'}</span></div>
-                      <div className="py-2.5 flex justify-between"><span className="text-slate-500">Table</span><span className="font-semibold text-slate-800">Table {selectedOrder.tableNumber}</span></div>
-                      <div className="py-2.5 flex justify-between"><span className="text-slate-500">Time</span><span className="font-semibold text-slate-800">{selectedOrder.createdAt}</span></div>
+                      <div className="py-2.5 flex justify-between"><span className="text-slate-500">{t("Order Number")}</span><span className="font-semibold text-slate-800">{selectedOrder.orderNumber}</span></div>
+                      <div className="py-2.5 flex justify-between"><span className="text-slate-500">{t("Source")}</span><span className="font-semibold text-slate-800">{selectedOrder.source === 'qr' ? t("QR Code") : t("Waiter")}</span></div>
+                  <div className="py-2.5 flex justify-between"><span className="text-slate-500">{t("Table / waiter")}</span><span className="font-semibold text-slate-800">{getOrderLocation(selectedOrder)}</span></div>
+                      <div className="py-2.5 flex justify-between"><span className="text-slate-500">{t("Time")}</span><span className="font-semibold text-slate-800">{selectedOrder.createdAt}</span></div>
                     </div>
                     <div className="border-t border-slate-200 pt-3 flex justify-between items-center">
-                      <span className="font-bold text-slate-900">Grand Total</span>
+                      <span className="font-bold text-slate-900">{t("Grand Total")}</span>
                       <span className="font-bold text-slate-900 text-lg">{MONEY(selectedOrder.total)}</span>
                     </div>
                   </div>
                 </>
               ) : (
-                <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm text-center text-slate-400 text-sm">
-                  Select an order to view details
-                </div>
+                <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm text-center text-slate-400 text-sm">{t("Select an order to view details")}</div>
               )}
             </section>
 
@@ -685,28 +679,28 @@ export default function OperatorDashboard() {
               {selectedOrder && (
                 <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4 relative overflow-x-auto">
                   <div className="flex justify-between items-center text-xs font-semibold">
-                    <span className="text-slate-900">Receipt Preview</span>
+                    <span className="text-slate-900">{t("Receipt Preview")}</span>
                     <span className="text-blue-600">{selectedOrder.orderNumber}</span>
                   </div>
 
                   <div className="text-center pt-2">
                     <h2 className="font-black text-slate-900 tracking-wide text-base">{dashboard.businessName}</h2>
-                    <p className="text-xs text-slate-500 font-medium">Kigali Bar & Lounge</p>
+                    <p className="text-xs text-slate-500 font-medium">{t("Kigali Bar & Lounge")}</p>
                   </div>
 
                   <div className="border-t border-b border-dashed border-slate-300 py-2 grid grid-cols-1 sm:grid-cols-2 gap-y-1 text-[11px] text-slate-600">
-                    <div>Order No : <span className="font-semibold text-slate-900">{selectedOrder.orderNumber}</span></div>
-                    <div className="text-right">Date : <span className="font-semibold text-slate-900">{new Date().toLocaleDateString()}</span></div>
-                    <div>Table : <span className="font-semibold text-slate-900">{selectedOrder.tableNumber}</span></div>
-                    <div className="text-right">Time : <span className="font-semibold text-slate-900">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>
+                    <div>{t("Order No :")}{' '}<span className="font-semibold text-slate-900">{selectedOrder.orderNumber}</span></div>
+                    <div className="text-right">{t("Date :")}{' '}<span className="font-semibold text-slate-900">{new Date().toLocaleDateString()}</span></div>
+                    <div>{t("Table / waiter:")}{' '}<span className="font-semibold text-slate-900">{getOrderLocation(selectedOrder)}</span></div>
+                    <div className="text-right">{t("Time :")}{' '}<span className="font-semibold text-slate-900">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>
                   </div>
 
                   <table className="w-full text-left text-[11px] text-slate-600">
                     <thead>
                       <tr className="border-b border-slate-200 font-bold text-slate-800">
-                        <th className="pb-1">Item</th>
-                        <th className="pb-1 text-center">Qty</th>
-                        <th className="pb-1 text-right">Price</th>
+                        <th className="pb-1">{t("Item")}</th>
+                        <th className="pb-1 text-center">{t("Qty")}</th>
+                        <th className="pb-1 text-right">{t("Price")}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -721,12 +715,12 @@ export default function OperatorDashboard() {
                   </table>
 
                   <div className="border-t-2 border-slate-900 pt-2 flex justify-between text-xs font-bold text-slate-900">
-                    <span>TOTAL</span>
-                    <span>{MONEY(selectedOrder.total)} RWF</span>
+                    <span>{t("TOTAL")}</span>
+                    <span>{MONEY(selectedOrder.total)}{' '}{t("RWF")}</span>
                   </div>
 
                   <div className="border-t border-dashed border-slate-300 pt-4 text-center space-y-2">
-                    <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Scan QR to Pay</p>
+                    <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">{t("Scan QR to Pay")}</p>
                     <div className="flex items-center justify-center gap-3">
                       <div className="w-16 h-16 bg-slate-900 rounded p-1 flex items-center justify-center">
                         <div className="w-full h-full bg-white flex flex-wrap p-0.5">
@@ -736,18 +730,18 @@ export default function OperatorDashboard() {
                           <div className="w-1/2 h-1/2 border-2 border-slate-900"></div>
                         </div>
                       </div>
-                      <span className="text-xs text-slate-400 font-medium">or</span>
+                      <span className="text-xs text-slate-400 font-medium">{t("or")}</span>
                       <div className="text-left">
-                        <p className="text-[10px] text-slate-400 uppercase font-semibold">Payment Code</p>
+                        <p className="text-[10px] text-slate-400 uppercase font-semibold">{t("Payment Code")}</p>
                         <p className="text-base font-black text-slate-950 tracking-wide">{generatePaymentCode(selectedOrder)}</p>
                       </div>
                     </div>
-                    <p className="text-[10px] text-slate-400 font-semibold pt-1">Thank you!</p>
+                    <p className="text-[10px] text-slate-400 font-semibold pt-1">{t("Thank you!")}</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 pt-2">
-                    <button onClick={() => handlePrintDraft(selectedOrder)} className="flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-600 border border-slate-200 py-2 rounded-lg shadow-sm hover:bg-slate-50"><Printer size={14} /> Reprint</button>
-                    <button className="flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-600 border border-slate-200 py-2 rounded-lg shadow-sm hover:bg-slate-50"><Share2 size={14} /> Share</button>
+                    <button onClick={() => handlePrintDraft(selectedOrder)} className="flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-600 border border-slate-200 py-2 rounded-lg shadow-sm hover:bg-slate-50"><Printer size={14} />{' '}{t("Reprint")}</button>
+                    <button className="flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-600 border border-slate-200 py-2 rounded-lg shadow-sm hover:bg-slate-50"><Share2 size={14} />{' '}{t("Share")}</button>
                   </div>
                 </div>
               )}
@@ -755,26 +749,26 @@ export default function OperatorDashboard() {
               {/* Order Stepper */}
               {selectedOrder && (
                 <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3">
-                  <h3 className="font-bold text-slate-900 text-sm">Order Status</h3>
+                  <h3 className="font-bold text-slate-900 text-sm">{t("Order Status")}</h3>
                   <div className="flex items-center justify-between px-2 relative">
-                    <StepIcon active={true} icon={<CheckCircle2 size={16} />} title="Received" subtitle={selectedOrder.createdAt?.split(' ')[1] || ''} done={true} />
+                    <StepIcon active={true} icon={<CheckCircle2 size={16} />} title={t("Received")} subtitle={selectedOrder.createdAt?.split(' ')[1] || ''} done={true} />
                     <StepLine active={selectedOrder.status === 'Preparing' || selectedOrder.status === 'Ready'} />
-                    <StepIcon active={selectedOrder.status === 'Preparing' || selectedOrder.status === 'Ready'} icon={<ChefHat size={16} />} title="Kitchen" subtitle={selectedOrder.status === 'Preparing' ? 'Preparing' : 'Pending'} done={selectedOrder.status === 'Ready'} />
+                    <StepIcon active={selectedOrder.status === 'Preparing' || selectedOrder.status === 'Ready'} icon={<ChefHat size={16} />} title={t("Kitchen")} subtitle={selectedOrder.status === 'Preparing' ? 'Preparing' : 'Pending'} done={selectedOrder.status === 'Ready'} />
                     <StepLine active={selectedOrder.status === 'Ready'} />
-                    <StepIcon active={selectedOrder.status === 'Ready'} icon={<GlassWater size={16} />} title="Bar" subtitle={selectedOrder.status === 'Ready' ? 'Ready' : 'Pending'} done={false} />
+                    <StepIcon active={selectedOrder.status === 'Ready'} icon={<GlassWater size={16} />} title={t("Bar")} subtitle={selectedOrder.status === 'Ready' ? 'Ready' : 'Pending'} done={false} />
                     <StepLine active={false} />
-                    <StepIcon active={false} icon={<Clock size={16} />} title="Ready" subtitle="Pending" done={false} />
+                    <StepIcon active={false} icon={<Clock size={16} />} title={t("Ready")} subtitle="Pending" done={false} />
                   </div>
                 </div>
               )}
 
               {/* Quick Actions */}
               <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3">
-                <h3 className="font-bold text-slate-900 text-sm">Quick Actions</h3>
+                <h3 className="font-bold text-slate-900 text-sm">{t("Quick Actions")}</h3>
                 <div className="grid grid-cols-2 gap-2">
-                  <QuickActionButton icon={<ChefHat size={16} className="text-emerald-600" />} label="View Kitchen Screen" onClick={() => navigate('/kitchen')} />
-                  <QuickActionButton icon={<GlassWater size={16} className="text-purple-600" />} label="View Bar Screen" onClick={() => navigate('/bar')} />
-                  <QuickActionButton icon={<LayoutDashboard size={16} className="text-slate-600" />} label="All Tables" onClick={loadQRCodes} />
+                  <QuickActionButton icon={<ChefHat size={16} className="text-emerald-600" />} label={t("View Kitchen Screen")} onClick={() => navigate('/kitchen')} />
+                  <QuickActionButton icon={<GlassWater size={16} className="text-purple-600" />} label={t("View Bar Screen")} onClick={() => navigate('/bar')} />
+                  <QuickActionButton icon={<LayoutDashboard size={16} className="text-slate-600" />} label={t("All Tables")} onClick={loadQRCodes} />
                 </div>
               </div>
             </section>
@@ -787,16 +781,21 @@ export default function OperatorDashboard() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6" onClick={() => setQrOpen(false)}>
           <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center p-4 border-b border-slate-200">
-              <h2 className="text-lg font-bold text-slate-900">Table QR Codes</h2>
-              <button onClick={() => setQrOpen(false)} className="text-slate-400 hover:text-slate-600 text-2xl">×</button>
+              <h2 className="text-lg font-bold text-slate-900">{t("Table QR Codes")}</h2>
+              <button aria-label={t('Close')} onClick={() => setQrOpen(false)} className="text-slate-400 hover:text-slate-600 text-2xl">×</button>
             </div>
             <div className="p-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {qrCodes.map((qr) => (
                   <div key={`${qr.branchName}-${qr.tableNumber}`} className="border border-slate-200 rounded-lg p-4 flex flex-col items-center gap-3">
-                    <QRCode value={`${PUBLIC_APP_URL}${qr.url}`} size={160} level="M" />
+                    <QRCode value={buildTableMenuUrl({
+                      tableNumber: qr.tableNumber,
+                      businessId: user?.businessId,
+                      branchId: qr.branchId,
+                      businessSlug: user?.businessSlug,
+                    })} size={160} level="M" />
                     <div className="text-center">
-                      <strong className="block text-sm">Table {qr.tableNumber}</strong>
+                      <strong className="block text-sm">{t("CLIENT TABLE")}{' '}{qr.tableNumber}</strong>
                       <span className="text-xs text-slate-500">{qr.branchName}</span>
                     </div>
                   </div>
@@ -804,8 +803,7 @@ export default function OperatorDashboard() {
               </div>
               <div className="mt-6 flex justify-end">
                 <button onClick={() => window.print()} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition">
-                  <Printer size={16} /> Print All QR Codes
-                </button>
+                  <Printer size={16} />{t("Print All QR Codes")}</button>
               </div>
             </div>
           </div>

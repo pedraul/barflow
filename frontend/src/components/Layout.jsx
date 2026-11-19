@@ -1,65 +1,29 @@
-import React, { useState, useCallback } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import React, { useState, useCallback, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useSubscription } from '../context/SubscriptionContext'
+import { usePreferences } from '../context/PreferencesContext'
 import BranchBadge from './BranchBadge'
+import ShiftControl from './ShiftControl'
+import BackButton from './BackButton'
 
 export default function Layout({ children, navLinks, sidebar, logoutButton }) {
   const { status } = useSubscription()
+  const { t } = usePreferences()
   const { pathname } = useLocation()
-  const navigate = useNavigate()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const isSubscriptionRoute = pathname.startsWith('/dashboard/owner') || pathname.startsWith('/owner/subscription')
   const isLoginRoute = pathname === '/login'
   const isSystemDisabled = !isLoginRoute && !isSubscriptionRoute && status !== 'active'
 
-  const dashboardPaths = new Set([
-    '/dashboard/owner', '/dashboard/manager', '/dashboard/accountant', '/dashboard/kitchen', '/dashboard/bar', '/dashboard/operator',
-    '/manager/dashboard', '/accountant/dashboard', '/waiter/dashboard', '/dashboard',
-    '/kitchen', '/bar',
-    '/manager/orders', '/manager/staff', '/manager/users', '/manager/create-user', '/manager/password',
-    '/manager/transfer', '/manager/approve-transfers', '/manager/refunds', '/manager/approve-payrolls',
-    '/manager/approve-withdrawals', '/manager/settings', '/manager/bar-menu', '/manager/kitchen-menu',
-    '/manager/reports', '/manager/revenue', '/qr-manager',
-    '/waiter/order', '/waiter/cart', '/waiter/checkout', '/waiter/unpaid-orders', '/waiter/orders', '/waiter/order-history',
-    '/accountant/salary', '/accountant/reconciliations', '/accountant/sales-revenue', '/accountant/payments',
-    '/accountant/refunds', '/accountant/reports', '/accountant/settings', '/accountant/taxes',
-    '/accountant/transfers', '/accountant/profit', '/accountant/orders', '/accountant/qr',
-  ])
-
-  const showSidebarDesktop = Boolean(sidebar)
   const closeMobileMenu = useCallback(() => setMobileMenuOpen(false), [])
 
-  const handleBack = () => {
-    if (pathname === '/settings' || pathname.startsWith('/settings/')) {
-      navigate('/dashboard/owner')
-      return
-    }
-    navigate(-1)
-  }
+  // Navigating anywhere collapses the menu so only the chosen page is shown.
+  useEffect(() => { setMobileMenuOpen(false) }, [pathname])
 
   return (
     <div className="layout-root">
-      {/* Desktop top bar with back button (PC only) */}
-      {sidebar && (
-        <header className="desktop-topbar">
-          <button
-            type="button"
-            className="back-btn"
-            onClick={handleBack}
-            aria-label="Back"
-          >
-            <svg aria-hidden="true" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-          </button>
-          <div className="desktop-brand">BarFlow</div>
-          <BranchBadge />
-          {logoutButton && <div className="desktop-logout-wrapper">{logoutButton}</div>}
-        </header>
-      )}
-
-      {/* Mobile top bar + hamburger (visible on mobile only) */}
+      {/* One top bar for phone and computer: menu toggle + back button */}
       {sidebar && (
         <>
           {mobileMenuOpen && (
@@ -68,42 +32,40 @@ export default function Layout({ children, navLinks, sidebar, logoutButton }) {
               onClick={closeMobileMenu}
             />
           )}
-          <header className="mobile-topbar">
+          <header className="mobile-topbar app-topbar">
             <button
               type="button"
               className="mobile-menu-button"
               onClick={() => setMobileMenuOpen((prev) => !prev)}
-              aria-label="Toggle navigation"
+              aria-label={t('Toggle navigation')}
+              aria-expanded={mobileMenuOpen}
             >
               {mobileMenuOpen ? '✕' : '☰'}
             </button>
+            <BackButton />
             <div className="mobile-brand">BarFlow</div>
             <BranchBadge />
+            <div className="shift-control-slot"><ShiftControl /></div>
             {logoutButton && <div className="mobile-logout-wrapper">{logoutButton}</div>}
           </header>
         </>
       )}
 
-      <div className={`layout-body ${showSidebarDesktop ? 'has-fixed-sidebar' : ''}`}>
-        {/* Desktop sidebar */}
-        {showSidebarDesktop && (
-          <aside className="sidebar sidebar-desktop">
-            {sidebar}
-          </aside>
-        )}
-
-        {/* Mobile sidebar drawer: available on all role pages */}
+      <div className="layout-body">
+        {/* Collapsible navigation drawer (all screen sizes) */}
         {sidebar && (
           <aside
             className={`sidebar sidebar-mobile ${mobileMenuOpen ? 'sidebar-open' : ''}`}
-            onClick={closeMobileMenu}
+            onClick={(event) => {
+              if (event.target.closest('button, a')) closeMobileMenu()
+            }}
           >
             {sidebar}
           </aside>
         )}
 
-        {navLinks && !showSidebarDesktop && (
-          <nav className="page-nav-wrapper" aria-label="Page navigation">
+        {navLinks && !sidebar && (
+          <nav className="page-nav-wrapper" aria-label={t('Page navigation')}>
             {navLinks}
           </nav>
         )}
@@ -111,8 +73,8 @@ export default function Layout({ children, navLinks, sidebar, logoutButton }) {
         <main className="app-content">
           {isSystemDisabled ? (
             <div className="subscription-lock">
-              <h1>Subscription required</h1>
-              <p>This BarFlow account is disabled because there is no active subscription.</p>
+              <h1>{t('Subscription required')}</h1>
+              <p>{t('This BarFlow account is disabled because there is no active subscription.')}</p>
             </div>
           ) : children}
         </main>

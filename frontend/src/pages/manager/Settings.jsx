@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { useOwner } from '../../context/OwnerContext'
+import { usePreferences } from '../../context/PreferencesContext'
 
 export default function Settings({ workspaceLabel = 'Manager workspace', pageTitle = 'System settings', subtitle = 'Backups, recovery, and system configuration.' }) {
+  const { t } = usePreferences()
   const { fetchSystemSettings, updateSystemSettings, triggerBackup } = useOwner()
   const [settings, setSettings] = useState({ businessName: '', currency: 'RWF', timezone: '' })
   const [loading, setLoading] = useState(true)
@@ -20,9 +22,9 @@ export default function Settings({ workspaceLabel = 'Manager workspace', pageTit
     setMsg(null); setErr(null)
     try {
       await updateSystemSettings(settings)
-      setMsg('Settings saved.')
+      setMsg(t('Settings saved.'))
     } catch (e) {
-      setErr(e.message || 'Could not save settings.')
+      setErr(e.message || t('Could not save settings.'))
     }
   }
 
@@ -30,9 +32,9 @@ export default function Settings({ workspaceLabel = 'Manager workspace', pageTit
     setBacking(true); setMsg(null)
     try {
       await triggerBackup()
-      setMsg('System backup created (no data was deleted).')
+      setMsg(t('System backup created (no data was deleted).'))
     } catch (e) {
-      setErr(e.message || 'Backup failed.')
+      setErr(e.message || t('Backup failed.'))
     } finally {
       setBacking(false)
     }
@@ -49,33 +51,33 @@ export default function Settings({ workspaceLabel = 'Manager workspace', pageTit
       </div>
 
       <section className="user-section">
-        <h2>Full system backup</h2>
-        <p>Create a complete backup. This never deletes any data.</p>
+        <h2>{t('Full system backup')}</h2>
+        <p>{t('Create a complete backup. This never deletes any data.')}</p>
         <button type="button" className="pay-action" onClick={backup} disabled={backing}>
-          {backing ? 'Backing up…' : 'Create backup'}
+          {backing ? t('Backing up…') : t('Create backup')}
         </button>
       </section>
 
       <section className="user-section">
-        <h2>Recovery</h2>
-        <p>Restore the system from a previous backup.</p>
-        <button type="button" className="secondary-action" disabled>Restore from backup (choose a backup first)</button>
+        <h2>{t('Recovery')}</h2>
+        <p>{t('Restore the system from a previous backup.')}</p>
+        <button type="button" className="secondary-action" disabled>{t('Restore from backup (choose a backup first)')}</button>
       </section>
 
       <section className="user-section">
-        <h2>General settings</h2>
+        <h2>{t('General settings')}</h2>
         <div className="profile-form">
-          <label>Business name
+          <label>{t('Business name')}
             <input value={settings.businessName || ''} onChange={(e) => setSettings({ ...settings, businessName: e.target.value })} />
           </label>
-          <label>Currency
+          <label>{t('Currency')}
             <input value={settings.currency || ''} onChange={(e) => setSettings({ ...settings, currency: e.target.value })} />
           </label>
-          <label>Timezone
+          <label>{t('Timezone')}
             <input value={settings.timezone || ''} onChange={(e) => setSettings({ ...settings, timezone: e.target.value })} />
           </label>
           <div className="create-user-form-actions">
-            <button type="button" className="pay-action" onClick={save} disabled={loading}>Save settings</button>
+            <button type="button" className="pay-action" onClick={save} disabled={loading}>{t('Save settings')}</button>
           </div>
         </div>
       </section>

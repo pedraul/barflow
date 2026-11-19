@@ -2,6 +2,7 @@ import React from 'react'
 import { useMemo, useState } from 'react'
 import { useUsers } from '../../context/UsersContext'
 import { useAuditLog } from '../../context/AuditLogContext'
+import { usePreferences } from '../../context/PreferencesContext'
 
 const branches = ['Head Office', 'Kigali Heights', 'Remera Branch']
 const roles = ['Owner', 'Manager', 'Accountant', 'Cashier', 'Waiter', 'Kitchen', 'Bar']
@@ -19,6 +20,7 @@ const permissionSummary = [
 ]
 
 export default function OwnerUserManagement() {
+  const { t } = usePreferences()
   const { users, addUser, updateUser, removeUser } = useUsers()
   const { log: auditLog } = useAuditLog()
 
@@ -68,7 +70,7 @@ export default function OwnerUserManagement() {
     setSelectedIds([])
   }
   const deleteUser = (user) => {
-    if (!window.confirm(`Delete ${user.name}'s account?`)) return
+    if (!window.confirm(`${t('Delete account for')} ${user.name}?`)) return
     removeUser(user.id)
     auditLog({ actor: 'Owner', action: `Deleted ${user.name}'s account`, type: 'user' })
     setSelectedIds((current) => current.filter((id) => id !== user.id))
@@ -111,44 +113,44 @@ export default function OwnerUserManagement() {
   return (
     <div className="owner-command-deck">
       <section className="command-card">
-        <p className="eyebrow">Owner workspace</p>
-        <h1>BarFlow Command Deck</h1>
+        <p className="eyebrow">{t('Owner workspace')}</p>
+        <h1>{t('BarFlow Command Deck')}</h1>
         <p className="command-subtitle">
-          Run every part of your business from one place. Allocate permissions, provision branch staff, and audit logs.
+          {t('Run every part of your business from one place. Allocate permissions, provision branch staff, and audit logs.')}
         </p>
         <div className="command-actions">
           <button type="button" className="pay-action" onClick={() => setSubTab('registry')}>
-            User Management
+            {t('User Management')}
           </button>
           <button type="button" className="secondary-action" onClick={() => { setCreated(false); setSubTab('create') }}>
-            + Create Staff Account
+            {t('+ Create Staff Account')}
           </button>
         </div>
       </section>
 
-      <nav className="obw-subnav" aria-label="Users sections">
-        <button type="button" className={`obw-subtab ${subTab === 'registry' ? 'active' : ''}`} onClick={() => setSubTab('registry')}>Staff Registry</button>
-        <button type="button" className={`obw-subtab ${subTab === 'create' ? 'active' : ''}`} onClick={() => setSubTab('create')}>+ Create Staff Account</button>
+      <nav className="obw-subnav" aria-label={t('Users sections')}>
+        <button type="button" className={`obw-subtab ${subTab === 'registry' ? 'active' : ''}`} onClick={() => setSubTab('registry')}>{t('Staff Registry')}</button>
+        <button type="button" className={`obw-subtab ${subTab === 'create' ? 'active' : ''}`} onClick={() => setSubTab('create')}>{t('+ Create Staff Account')}</button>
       </nav>
 
       {subTab === 'create' && (
         <div className="create-user-card">
-          <p className="eyebrow">Owner workspace</p>
-          <h2>Create user</h2>
-          <p>Add a staff account and assign its role, branch, and salary.</p>
+          <p className="eyebrow">{t('Owner workspace')}</p>
+          <h2>{t('Create user')}</h2>
+          <p>{t('Add a staff account and assign its role, branch, and salary.')}</p>
           {created ? (
-            <div className="creation-success"><span>✓</span><h2>User created</h2><p>{createForm.name}'s account is ready. They can sign in with the email and temporary password you set.</p><button type="button" onClick={resetCreate}>Add another</button></div>
+            <div className="creation-success"><span>✓</span><h2>{t('User created')}</h2><p>{createForm.name}{t('\'s account is ready. They can sign in with the email and temporary password you set.')}</p><button type="button" onClick={resetCreate}>{t('Add another')}</button></div>
           ) : (
             <form className="create-user-form" onSubmit={submitCreate}>
-              <label>Full name<input value={createForm.name} onChange={(event) => setCreateForm({ ...createForm, name: event.target.value })} placeholder="e.g. Aline Uwimana" required /></label>
-              <label>Email address<input type="email" value={createForm.email} onChange={(event) => setCreateForm({ ...createForm, email: event.target.value })} placeholder="name@business.rw" required /></label>
-              <label>Phone number<input type="tel" value={createForm.phone} onChange={(event) => setCreateForm({ ...createForm, phone: event.target.value })} placeholder="+250 78…" required /></label>
-              <label>Temporary password<input type="password" value={createForm.password} onChange={(event) => setCreateForm({ ...createForm, password: event.target.value })} placeholder="Set a temporary password" required minLength="8" /></label>
-              <label>Role<select value={createForm.role} onChange={(event) => setCreateForm({ ...createForm, role: event.target.value })}>{roles.map((role) => <option key={role}>{role}</option>)}</select></label>
-              <label>Branch assignment<input value={createForm.branch} onChange={(event) => setCreateForm({ ...createForm, branch: event.target.value })} placeholder="Type branch name" required /></label>
-              <label>Salary<input type="number" min="0" step="100" value={createForm.salary} onChange={(event) => setCreateForm({ ...createForm, salary: event.target.value })} placeholder="e.g. 150000" required /></label>
-              <label>Account status<select value={createForm.status} onChange={(event) => setCreateForm({ ...createForm, status: event.target.value })}><option>Active</option><option>Inactive</option></select></label>
-              <div className="create-user-form-actions"><button type="submit">Create user</button></div>
+              <label>{t('Full name')}<input value={createForm.name} onChange={(event) => setCreateForm({ ...createForm, name: event.target.value })} placeholder={t('e.g. Aline Uwimana')} required /></label>
+              <label>{t('Email address')}<input type="email" value={createForm.email} onChange={(event) => setCreateForm({ ...createForm, email: event.target.value })} placeholder={t('name@business.rw')} required /></label>
+              <label>{t('Phone number')}<input type="tel" value={createForm.phone} onChange={(event) => setCreateForm({ ...createForm, phone: event.target.value })} placeholder={t('+250 78…')} required /></label>
+              <label>{t('Temporary password')}<input type="password" value={createForm.password} onChange={(event) => setCreateForm({ ...createForm, password: event.target.value })} placeholder={t('Set a temporary password')} required minLength="8" /></label>
+              <label>{t('Role')}<select value={createForm.role} onChange={(event) => setCreateForm({ ...createForm, role: event.target.value })}>{roles.map((role) => <option key={role} value={role}>{t(role)}</option>)}</select></label>
+              <label>{t('Branch assignment')}<input value={createForm.branch} onChange={(event) => setCreateForm({ ...createForm, branch: event.target.value })} placeholder={t('Type branch name')} required /></label>
+              <label>{t('Salary')}<input type="number" min="0" step="100" value={createForm.salary} onChange={(event) => setCreateForm({ ...createForm, salary: event.target.value })} placeholder={t('e.g. 150000')} required /></label>
+              <label>{t('Account status')}<select value={createForm.status} onChange={(event) => setCreateForm({ ...createForm, status: event.target.value })}><option value="Active">{t('Active')}</option><option value="Inactive">{t('Inactive')}</option></select></label>
+              <div className="create-user-form-actions"><button type="submit">{t('Create user')}</button></div>
             </form>
           )}
         </div>
@@ -159,15 +161,15 @@ export default function OwnerUserManagement() {
         <section className="command-card registry-card">
           <div className="registry-head">
             <div>
-              <h2>Active Staff Registry</h2>
-              <p>Filter, select, toggle, and view access credentials.</p>
+              <h2>{t('Active Staff Registry')}</h2>
+              <p>{t('Filter, select, toggle, and view access credentials.')}</p>
             </div>
             <div className="bulk-actions">
               <button type="button" className="secondary-action" onClick={() => bulkUpdate('Active')} disabled={!selectedIds.length}>
-                Activate Selected
+                {t('Activate Selected')}
               </button>
               <button type="button" className="secondary-action" onClick={() => bulkUpdate('Inactive')} disabled={!selectedIds.length}>
-                Deactivate Selected
+                {t('Deactivate Selected')}
               </button>
             </div>
           </div>
@@ -176,25 +178,25 @@ export default function OwnerUserManagement() {
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by name or email"
-              aria-label="Search users"
+              placeholder={t('Search by name or email')}
+              aria-label={t('Search users')}
             />
-            <select value={filters.role} onChange={(event) => setFilters({ ...filters, role: event.target.value })} aria-label="Filter by role">
-              <option>All Roles</option>
+            <select value={filters.role} onChange={(event) => setFilters({ ...filters, role: event.target.value })} aria-label={t('Filter by role')}>
+              <option value="All">{t('All Roles')}</option>
               {roles.map((role) => (
-                <option key={role}>{role}</option>
+                <option key={role} value={role}>{t(role)}</option>
               ))}
             </select>
-            <select value={filters.branch} onChange={(event) => setFilters({ ...filters, branch: event.target.value })} aria-label="Filter by branch">
-              <option>All Branches</option>
+            <select value={filters.branch} onChange={(event) => setFilters({ ...filters, branch: event.target.value })} aria-label={t('Filter by branch')}>
+              <option value="All">{t('All Branches')}</option>
               {branches.map((branch) => (
                 <option key={branch}>{branch}</option>
               ))}
             </select>
-            <select value={filters.status} onChange={(event) => setFilters({ ...filters, status: event.target.value })} aria-label="Filter by status">
-              <option>All</option>
-              <option>Active</option>
-              <option>Inactive</option>
+            <select value={filters.status} onChange={(event) => setFilters({ ...filters, status: event.target.value })} aria-label={t('Filter by status')}>
+              <option value="All">{t('All')}</option>
+              <option value="Active">{t('Active')}</option>
+              <option value="Inactive">{t('Inactive')}</option>
             </select>
           </div>
 
@@ -205,22 +207,22 @@ export default function OwnerUserManagement() {
                   <th className="col-check">
                     <input
                       type="checkbox"
-                      aria-label="Select all visible users"
+                      aria-label={t('Select all visible users')}
                       checked={allVisibleSelected}
                       onChange={toggleSelectAll}
                     />
                   </th>
-                  <th>Name &amp; Details</th>
-                  <th>Role</th>
-                  <th>Branch</th>
-                  <th>Status</th>
+                  <th>{t('Name & Details')}</th>
+                  <th>{t('Role')}</th>
+                  <th>{t('Branch')}</th>
+                  <th>{t('Status')}</th>
                 </tr>
               </thead>
               <tbody>
                 {visibleUsers.map((user) => (
                   <tr key={user.id}>
                     <td className="col-check">
-                      <input type="checkbox" checked={selectedIds.includes(user.id)} onChange={() => toggleSelected(user.id)} aria-label={`Select ${user.name}`} />
+                      <input type="checkbox" checked={selectedIds.includes(user.id)} onChange={() => toggleSelected(user.id)} aria-label={`${t('Select')} ${user.name}`} />
                     </td>
                     <td>
                       <div className="user-cell">
@@ -237,7 +239,7 @@ export default function OwnerUserManagement() {
                         type="button"
                         className={`status-toggle ${user.status === 'Active' ? 'is-active' : 'is-inactive'}`}
                         onClick={() => setStatus(user, user.status === 'Active' ? 'Inactive' : 'Active')}
-                        aria-label={`Toggle ${user.name} status`}
+                        aria-label={`${t('Toggle')} ${user.name} ${t('status')}`}
                       >
                         <span className="status-dot" />
                         {user.status}
@@ -248,7 +250,7 @@ export default function OwnerUserManagement() {
                 {!visibleUsers.length && (
                   <tr>
                     <td colSpan={5} className="registry-empty">
-                      No staff accounts match the current filters.
+                      {t('No staff accounts match the current filters.')}
                     </td>
                   </tr>
                 )}
@@ -258,24 +260,24 @@ export default function OwnerUserManagement() {
 
           <div className="registry-footer">
             <span>
-              {selectedIds.length} selected · {visibleUsers.length} shown of {users.length} staff
+              {selectedIds.length} {t('selected ·')} {visibleUsers.length} {t('shown of')} {users.length} {t('staff')}
             </span>
             <button type="button" className="linkish" onClick={() => setEditing(null)} disabled>
-              Bulk edit
+              {t('Bulk edit')}
             </button>
           </div>
         </section>
 
         <aside className="command-aside">
           <section className="command-card">
-            <h2>Role Permissions Summary</h2>
+            <h2>{t('Role Permissions Summary')}</h2>
             <ul className="permission-list">
               {permissionSummary.map((item) => (
                 <li key={item.role}>
                   <span className="permission-icon" aria-hidden="true">{item.icon}</span>
                   <div>
-                    <strong>{item.role}</strong>
-                    <span>{item.description}</span>
+                    <strong>{t(item.role)}</strong>
+                    <span>{t(item.description)}</span>
                   </div>
                 </li>
               ))}
@@ -283,7 +285,7 @@ export default function OwnerUserManagement() {
           </section>
 
           <section className="command-card activity-card">
-            <h2>Account Activity</h2>
+            <h2>{t('Account Activity')}</h2>
             <ul className="activity-feed">
               {activity.map((item, index) => {
                 const [time, ...rest] = item.split(' — ')
@@ -303,21 +305,21 @@ export default function OwnerUserManagement() {
       {editing && (
         <div className="modal-backdrop">
           <form className="confirm-dialog edit-user-dialog" onSubmit={saveEdit}>
-            <h2>Edit user</h2>
+            <h2>{t('Edit user')}</h2>
             <label>
-              Name
+              {t('Name')}
               <input value={editing.name} onChange={(event) => setEditing({ ...editing, name: event.target.value })} required />
             </label>
             <label>
-              Role
+              {t('Role')}
               <select value={capitalize(editing.role)} onChange={(event) => setEditing({ ...editing, role: event.target.value })}>
                 {roles.map((role) => (
-                  <option key={role}>{role}</option>
+                  <option key={role} value={role}>{t(role)}</option>
                 ))}
               </select>
             </label>
             <label>
-              Branch
+              {t('Branch')}
               <select value={editing.branch} onChange={(event) => setEditing({ ...editing, branch: event.target.value })}>
                 {branches.map((branch) => (
                   <option key={branch}>{branch}</option>
@@ -325,22 +327,22 @@ export default function OwnerUserManagement() {
               </select>
             </label>
             <label>
-              Status
+              {t('Status')}
               <select value={editing.status} onChange={(event) => setEditing({ ...editing, status: event.target.value })}>
-                <option>Active</option>
-                <option>Inactive</option>
+                <option value="Active">{t('Active')}</option>
+                <option value="Inactive">{t('Inactive')}</option>
               </select>
             </label>
             <label>
-              Reset password
-              <input type="password" placeholder="Enter new password" />
+              {t('Reset password')}
+              <input type="password" placeholder={t('Enter new password')} />
             </label>
             <div>
               <button type="button" className="secondary-action" onClick={() => setEditing(null)}>
-                Cancel
+                {t('Cancel')}
               </button>
               <button type="submit" className="pay-action">
-                Save changes
+                {t('Save changes')}
               </button>
             </div>
           </form>

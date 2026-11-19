@@ -1,7 +1,9 @@
+import { usePreferences } from '../../context/PreferencesContext'
 import React, { useEffect, useState } from 'react'
 import * as api from '../../api/endpoints'
 
 export default function OrderManagement() {
+  const { t } = usePreferences()
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -38,7 +40,7 @@ export default function OrderManagement() {
       })
       loadOrders()
     } catch (err) {
-      alert('Error routing order: ' + err.message)
+      alert(t("Error routing order:") + ' ' + t(err.message))
     }
   }
 
@@ -47,7 +49,7 @@ export default function OrderManagement() {
       await api.updateOperatorOrderStatus(orderId, status)
       loadOrders()
     } catch (err) {
-      alert('Error updating order: ' + err.message)
+      alert(t("Error updating order:") + ' ' + t(err.message))
     }
   }
 
@@ -58,14 +60,15 @@ export default function OrderManagement() {
   const displayOrders = activeTab === 'pending' ? pendingOrders
     : activeTab === 'routed' ? routedOrders
     : completedOrders
+  const emptyOrdersMessage = activeTab === 'pending'
+    ? t('No pending orders')
+    : activeTab === 'routed' ? t('No routed orders') : t('No completed orders')
 
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h1 style={styles.title}>Order Management</h1>
-        <button style={styles.refreshBtn} onClick={loadOrders}>
-          🔄 Refresh
-        </button>
+        <h1 style={styles.title}>{t("Order Management")}</h1>
+        <button style={styles.refreshBtn} onClick={loadOrders}>{t("🔄 Refresh")}</button>
       </div>
 
       {/* Tabs */}
@@ -73,37 +76,34 @@ export default function OrderManagement() {
         <button
           style={{ ...styles.tab, ...(activeTab === 'pending' ? styles.activeTab : {}) }}
           onClick={() => setActiveTab('pending')}
-        >
-          Pending ({pendingOrders.length})
+        >{t("Pending (")}{pendingOrders.length})
         </button>
         <button
           style={{ ...styles.tab, ...(activeTab === 'routed' ? styles.activeTab : {}) }}
           onClick={() => setActiveTab('routed')}
-        >
-          In Progress ({routedOrders.length})
+        >{t("In Progress (")}{routedOrders.length})
         </button>
         <button
           style={{ ...styles.tab, ...(activeTab === 'completed' ? styles.activeTab : {}) }}
           onClick={() => setActiveTab('completed')}
-        >
-          Completed ({completedOrders.length})
+        >{t("Completed (")}{completedOrders.length})
         </button>
       </div>
 
-      {error && <div style={styles.errorBox}>Error: {error}</div>}
+      {error && <div style={styles.errorBox}>{t("Error:")}{' '}{t(error)}</div>}
 
       {routingNotice && (
         <div style={styles.routingNotice} role="status">
-          <span>✓ Order {routingNotice.orderNumber} was sent to the {routingNotice.destination}.</span>
-          <button type="button" style={styles.dismissBtn} onClick={() => setRoutingNotice(null)}>Dismiss</button>
+          <span>{t("✓ Order")}{' '}{routingNotice.orderNumber}{' '}{t("was sent to the")}{' '}{t(routingNotice.destination)}.</span>
+          <button type="button" style={styles.dismissBtn} onClick={() => setRoutingNotice(null)}>{t("Dismiss")}</button>
         </div>
       )}
 
       {loading && orders.length === 0 ? (
-        <div style={styles.loadingState}>Loading orders...</div>
+        <div style={styles.loadingState}>{t("Loading orders...")}</div>
       ) : displayOrders.length === 0 ? (
         <div style={styles.emptyState}>
-          <p>No {activeTab} orders</p>
+          <p>{emptyOrdersMessage}</p>
         </div>
       ) : (
         <div style={styles.ordersList}>
@@ -112,7 +112,7 @@ export default function OrderManagement() {
               <div style={styles.orderHeader}>
                 <div>
                   <span style={styles.orderNumber}>{order.orderNumber}</span>
-                  <span style={styles.tableBadge}>Table {order.tableNumber}</span>
+                  <span style={styles.tableBadge}>{t("Table")}{' '}{order.tableNumber}</span>
                   <span style={{
                     ...styles.statusBadge,
                     backgroundColor: order.status === 'Open' ? '#ffc107' 
@@ -127,7 +127,7 @@ export default function OrderManagement() {
                       ...styles.statusBadge,
                       backgroundColor: order.station === 'bar' ? '#17a2b8' : order.station === 'kitchen' ? '#fd7e14' : '#6c757d',
                     }}>
-                      {order.station === 'both' ? 'Kitchen + Bar' : order.station === 'bar' ? 'Bar' : 'Kitchen'}
+                      {order.station === 'both' ? t("Kitchen + Bar") : order.station === 'bar' ? t("Bar") : t("Kitchen")}
                     </span>
                   )}
                 </div>
@@ -138,14 +138,14 @@ export default function OrderManagement() {
                 {order.items.map((item, idx) => (
                   <div key={idx} style={styles.itemRow}>
                     <span style={styles.itemName}>{item.name}</span>
-                    <span style={styles.itemQty}>x{item.quantity}</span>
+                    <span style={styles.itemQty}>{t("x")}{item.quantity}</span>
                     <span style={styles.itemPrice}>{formatCurrency(item.price)}</span>
                   </div>
                 ))}
               </div>
 
               <div style={styles.orderTotal}>
-                <span>Total: {formatCurrency(order.total)}</span>
+                <span>{t("Total:")}{' '}{formatCurrency(order.total)}</span>
                 <span style={styles.orderTime}>{order.createdAt}</span>
               </div>
 
@@ -155,15 +155,11 @@ export default function OrderManagement() {
                   <button
                     style={styles.kitchenBtn}
                     onClick={() => handleRoute(order.id, 'kitchen')}
-                  >
-                    🍳 Send to Kitchen
-                  </button>
+                  >{t("🍳 Send to Kitchen")}</button>
                   <button
                     style={styles.barBtn}
                     onClick={() => handleRoute(order.id, 'bar')}
-                  >
-                    🍺 Send to Bar
-                  </button>
+                  >{t("🍺 Send to Bar")}</button>
                 </div>
               )}
 
@@ -172,9 +168,7 @@ export default function OrderManagement() {
                   <button
                     style={styles.servedBtn}
                     onClick={() => handleStatusUpdate(order.id, 'Served')}
-                  >
-                    ✓ Mark as Served
-                  </button>
+                  >{t("✓ Mark as Served")}</button>
                 </div>
               )}
             </div>

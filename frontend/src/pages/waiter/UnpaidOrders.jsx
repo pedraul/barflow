@@ -1,7 +1,9 @@
+import { usePreferences } from '../../context/PreferencesContext'
 import React, { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useOrders } from '../../context/OrdersContext'
+import { getOrderLocation } from '../../utils/orderDisplay'
 
 const money = (value) =>
   'RWF ' +
@@ -40,6 +42,7 @@ const isUnpaidStatus = (status) => {
 }
 
 export default function WaiterUnpaidOrders() {
+  const { t } = usePreferences()
   const navigate = useNavigate()
   const { user } = useAuth()
   const { orders, loaded, error } = useOrders()
@@ -64,23 +67,21 @@ export default function WaiterUnpaidOrders() {
     <div className="page waiter-unpaid-orders">
       <div className="user-page-heading">
         <div>
-          <p className="eyebrow">Waiter workspace</p>
-          <h1>Unpaid orders</h1>
-          <p>All orders that are not yet paid. Tap Pay now to complete payment using the existing checkout flow.</p>
+          <p className="eyebrow">{t("Waiter workspace")}</p>
+          <h1>{t("Unpaid orders")}</h1>
+          <p>{t("All orders that are not yet paid. Tap Pay now to complete payment using the existing checkout flow.")}</p>
         </div>
       </div>
 
-      {error && <div className="subscription-lock" style={{ padding: '12px' }}>Error: {error}</div>}
+      {error && <div className="subscription-lock" style={{ padding: '12px' }}>{t("Error:")}{' '}{t(error)}</div>}
 
       {!loaded ? (
-        <div className="emptyState" style={{ padding: '60px', textAlign: 'center', color: '#6c757d' }}>
-          Loading unpaid orders...
-        </div>
+        <div className="emptyState" style={{ padding: '60px', textAlign: 'center', color: '#6c757d' }}>{t("Loading unpaid orders...")}</div>
       ) : unpaidOrders.length === 0 ? (
         <div className="emptyState" style={{ padding: '60px', textAlign: 'center', color: '#6c757d' }}>
           <div style={{ fontSize: '48px', marginBottom: '12px' }}>🧾</div>
-          <h2 style={{ margin: '0 0 8px' }}>No unpaid orders</h2>
-          <p>All of your active waiter orders are paid or there are no pending payments yet.</p>
+          <h2 style={{ margin: '0 0 8px' }}>{t("No unpaid orders")}</h2>
+          <p>{t("All of your active waiter orders are paid or there are no pending payments yet.")}</p>
         </div>
       ) : (
         <div style={{ display: 'grid', gap: '16px' }}>
@@ -92,8 +93,8 @@ export default function WaiterUnpaidOrders() {
             >
               <div className="section-title-row" style={{ marginBottom: 14 }}>
                 <div>
-                  <p className="text-sm text-slate-500">Order {formatOrderNumber(order.orderNumber)}</p>
-                  <h2 className="text-lg font-bold text-slate-900">Table {order.tableNumber || order.customer || 'Walk-in'}</h2>
+                  <p className="text-sm text-slate-500">{t("Order")}{' '}{formatOrderNumber(order.orderNumber)}</p>
+                  <h2 className="text-lg font-bold text-slate-900">{getOrderLocation(order)}</h2>
                 </div>
                 <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold ${statusStyle(order.status)}`}>
                   {order.status}
@@ -104,7 +105,7 @@ export default function WaiterUnpaidOrders() {
                 {(order.items || []).map((item, index) => (
                   <div key={index} className="flex items-center justify-between gap-3 py-2 border-b border-slate-100 text-sm">
                     <span className="text-slate-700">{item.name}</span>
-                    <span className="text-slate-500">x{item.quantity}</span>
+                    <span className="text-slate-500">{t("x")}{item.quantity}</span>
                     <strong className="text-slate-900">{money(item.price)}</strong>
                   </div>
                 ))}
@@ -112,18 +113,16 @@ export default function WaiterUnpaidOrders() {
 
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm text-slate-500">Total due</p>
+                  <p className="text-sm text-slate-500">{t("Total due")}</p>
                   <p className="text-2xl font-black text-slate-900">{money(order.total)}</p>
-                  <p className="text-xs text-slate-400 mt-1">Created {formatDate(order.createdAt)}</p>
+                  <p className="text-xs text-slate-400 mt-1">{t("Created")}{' '}{formatDate(order.createdAt)}</p>
                 </div>
                 <button
                   type="button"
                   className="pay-action"
                   onClick={() => handlePay(order)}
                   style={{ minWidth: 160 }}
-                >
-                  Pay now
-                </button>
+                >{t("Pay now")}</button>
               </div>
             </div>
           ))}

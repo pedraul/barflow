@@ -3,9 +3,11 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { login, platformLogin } from '../../api/endpoints'
 import { buildWorkspaceUrl } from '../../config/workspaceUrl'
+import { usePreferences } from '../../context/PreferencesContext'
 
 export default function Login() {
   const navigate = useNavigate()
+  const { t } = usePreferences()
   const { login: setAuth } = useAuth()
   const [mode, setMode] = useState('business') // 'business' | 'admin'
   const [form, setForm] = useState({ username: '', password: '', email: '', password2: '' })
@@ -71,9 +73,9 @@ export default function Login() {
       const status = err.response?.status
       const data = err.response?.data
       if (status === 403 && data?.code === 'SUBSCRIPTION_PENDING') {
-        setError('Your business subscription is pending activation. Please complete payment and wait for admin verification.')
+        setError(t('Your business subscription is pending activation. Please complete payment and wait for admin verification.'))
       } else {
-        setError(err.response?.data?.error || err.response?.data?.message || 'Login failed. Please try again.')
+        setError(err.response?.data?.error || err.response?.data?.message || t('Login failed. Please try again.'))
       }
     } finally {
       setLoading(false)
@@ -93,7 +95,7 @@ export default function Login() {
               <span className="text-yellow-300">BAR</span><span className="text-emerald-400">FLOW</span>
             </h1>
           </div>
-          <p className="text-slate-400 text-sm">Multi-business management platform</p>
+          <p className="text-slate-400 text-sm">{t('Multi-business management platform')}</p>
         </div>
 
         {/* Mode Toggle */}
@@ -104,7 +106,7 @@ export default function Login() {
               mode === 'business' ? 'bg-amber-400 text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-amber-50'
             }`}
           >
-            Business Login
+            {t('Business Login')}
           </button>
           <button
             onClick={() => { setMode('admin'); setError('') }}
@@ -112,7 +114,7 @@ export default function Login() {
               mode === 'admin' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-white'
             }`}
           >
-            Admin Login
+            {t('Admin Login')}
           </button>
         </div>
 
@@ -127,24 +129,24 @@ export default function Login() {
           {mode === 'business' ? (
             <>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Username / Email</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('Username / Email')}</label>
                 <input
                   type="text"
                   value={form.username}
                   onChange={(e) => setForm({ ...form, username: e.target.value })}
                   className="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                  placeholder="Enter your username"
+                  placeholder={t('Enter your username')}
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Password</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('Password')}</label>
                 <input
                   type="password"
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
                   className="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                  placeholder="Enter your password"
+                  placeholder={t('Enter your password')}
                   required
                 />
               </div>
@@ -153,24 +155,24 @@ export default function Login() {
                 disabled={loading}
                 className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-lg transition disabled:opacity-50"
               >
-                {loading ? 'Signing in...' : 'Sign In'}
+                {loading ? t('Signing in...') : t('Sign In')}
               </button>
               <p className="text-center text-sm text-slate-500">
-                Don't have an account?{' '}
+                {t("Don't have an account?")}{' '}
                 <Link to="/register" className="text-indigo-600 font-semibold hover:underline">
-                  Register your business
+                  {t('Register your business')}
                 </Link>
               </p>
               <p className="text-center text-sm text-slate-500">
                 <Link to="/forgot-password" className="text-indigo-600 font-semibold hover:underline">
-                  Forgot Password?
+                  {t('Forgot Password?')}
                 </Link>
               </p>
             </>
           ) : (
             <>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Admin Email</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('Admin Email')}</label>
                 <input
                   type="email"
                   value={form.email}
@@ -181,13 +183,13 @@ export default function Login() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Password</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('Password')}</label>
                 <input
                   type="password"
                   value={form.password2}
                   onChange={(e) => setForm({ ...form, password2: e.target.value })}
                   className="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                  placeholder="Enter admin password"
+                  placeholder={t('Enter admin password')}
                   required
                 />
               </div>
@@ -196,11 +198,11 @@ export default function Login() {
                 disabled={loading}
                 className="w-full py-2.5 bg-slate-800 hover:bg-amber-600 text-white font-semibold rounded-lg transition disabled:opacity-50"
               >
-                {loading ? 'Signing in...' : 'Admin Sign In'}
+                {loading ? t('Signing in...') : t('Admin Sign In')}
               </button>
               <p className="text-center text-sm text-slate-500">
                 <Link to="/forgot-password" className="text-indigo-600 font-semibold hover:underline">
-                  Forgot Password?
+                  {t('Forgot Password?')}
                 </Link>
               </p>
             </>

@@ -1,17 +1,40 @@
 import React, { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { fetchAccountantTaxes } from '../../api/endpoints'
+import { usePreferences } from '../../context/PreferencesContext'
 
 const money = (value) => `${Number(value || 0).toLocaleString()} RWF`
+const taxValue = (value, t) => value == null ? t('Not tracked') : money(value)
 
 export default function Taxes() {
+  const { t } = usePreferences()
+  const navigate = useNavigate()
   const [taxes, setTaxes] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  const summaryCard = (value, label, destination) => (
+    <button
+      type="button"
+      className="summary-card accountant-tax-link"
+      onClick={() => navigate(destination)}
+      aria-label={`${t('View')} ${t(label)} ${t('details')}`}
+    >
+      <strong>{value}</strong>
+      <span>{t(label)}</span>
+      <small>{t('View details')} <span aria-hidden="true">→</span></small>
+    </button>
+  )
 
   useEffect(() => {
     let active = true
     fetchAccountantTaxes()
       .then((data) => active && setTaxes(data))
-      .catch(() => active && setTaxes(null))
+      .catch((err) => {
+        if (!active) return
+        setTaxes(null)
+        setError(err.response?.data?.error || err.message || t('Unable to load tax data.'))
+      })
       .finally(() => active && setLoading(false))
     return () => { active = false }
   }, [])
@@ -20,58 +43,40 @@ export default function Taxes() {
     <div className="page accountant-taxes">
       <div className="user-page-heading">
         <div>
-          <p className="eyebrow">Accountant workspace</p>
-          <h1>Taxes</h1>
-          <p>VAT and tax summary including collected, paid, and payable amounts.</p>
+          <p className="eyebrow">{t('Accountant workspace')}</p>
+          <h1>{t('Taxes')}</h1>
+          <p>{t('Tax figures from completed orders and recorded business expenses.')}</p>
         </div>
       </div>
 
       {loading ? (
-        <p style={{ textAlign: 'center', color: 'var(--text-4)', marginTop: '2rem' }}>Loading tax summary…</p>
+        <p style={{ textAlign: 'center', color: 'var(--text-4)', marginTop: '2rem' }}>{t('Loading tax summary…')}</p>
       ) : !taxes ? (
-        <p style={{ textAlign: 'center', color: 'var(--text-4)', marginTop: '2rem' }}>No tax data available.</p>
+        <p role="alert" style={{ textAlign: 'center', color: 'var(--text-4)', marginTop: '2rem' }}>{error || t('No tax data available.')}</p>
       ) : (
         <>
           <div className="user-info-grid">
-            <div className="summary-card">
-              <strong>{money(taxes.vatCollected)}</strong>
-              <span>VAT Collected (Output)</span>
-            </div>
-            <div className="summary-card">
-              <strong>{money(taxes.vatPaid)}</strong>
-              <span>VAT Paid (Input)</span>
-            </div>
-            <div className="summary-card">
-              <strong style={{ color: '#ef4444' }}>{money(taxes.vatPayable)}</strong>
-              <span>VAT Payable</span>
-            </div>
-            <div className="summary-card">
-              <strong>{money(taxes.totalSales)}</strong>
-              <span>Total Sales</span>
-            </div>
-            <div className="summary-card">
-              <strong>{money(taxes.totalExpenses)}</strong>
-              <span>Total Expenses</span>
-            </div>
-            <div className="summary-card">
-              <strong>{taxes.reconciledOrders}</strong>
-              <span>Reconciled Orders</span>
-            </div>
+            {summaryCard(money(taxes.vatCollected), 'VAT Collected (Output)', '/accountant/sales-revenue')}
+            {summaryCard(taxValue(taxes.vatPaid, t), `${t('VAT Paid (input)')}${taxes.vatInputTracked ? '' : ` — ${t('not recorded')}`}`, '/accountant/reports?category=taxes')}
+            {summaryCard(taxValue(taxes.vatPayable, t), `${t('VAT Payable')}${taxes.vatPayable == null ? ` — ${t('needs input VAT records')}` : ''}`, '/accountant/reports?category=taxes')}
+            {summaryCard(money(taxes.totalSales), 'Net Sales (paid / served)', '/accountant/sales-revenue')}
+            {summaryCard(money(taxes.totalExpenses), 'Recorded Payroll Expenses', '/accountant/reports?category=payroll')}
+            {summaryCard(taxes.reconciledOrders, 'Completed Orders (paid / served)', '/accountant/orders')}
           </div>
 
           <section className="user-section">
-            <h2>Recent VAT Transactions</h2>
+            <h2>{t('Recent VAT Transactions')}</h2>
             {taxes.transactions && taxes.transactions.length > 0 ? (
               <div className="user-table-wrap">
                 <table className="user-table">
                   <thead>
                     <tr>
-                      <th>Order</th>
-                      <th>Table</th>
-                      <th style={{ textAlign: 'right' }}>Total</th>
-                      <th style={{ textAlign: 'right' }}>VAT</th>
-                      <th>Status</th>
-                      <th style={{ textAlign: 'right' }}>Date</th>
+                      <th>{t('Order')}</th>
+                      <th>{t('Table')}</th>
+                      <th style={{ textAlign: 'right' }}>{t('Total')}</th>
+                      <th style={{ textAlign: 'right' }}>{t('VAT')}</th>
+                      <th>{t('Status')}</th>
+                      <th style={{ textAlign: 'right' }}>{t('Date')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -93,7 +98,7 @@ export default function Taxes() {
                 </table>
               </div>
             ) : (
-              <p>No VAT transactions found.</p>
+              <p>{t('No VAT transactions found.')}</p>
             )}
           </section>
         </>

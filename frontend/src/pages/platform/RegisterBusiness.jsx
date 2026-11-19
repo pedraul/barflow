@@ -9,6 +9,7 @@ import {
   Eye, EyeOff, UserPlus, ShieldAlert
 } from 'lucide-react'
 import { PROVINCES, DISTRICTS_BY_PROVINCE } from '../../constants/locationOptions'
+import { usePreferences } from '../../context/PreferencesContext'
 
 const BILLING_CYCLES = [
   { value: 'monthly', label: 'Monthly' },
@@ -17,6 +18,7 @@ const BILLING_CYCLES = [
 ]
 
 export default function RegisterBusiness() {
+  const { t } = usePreferences()
   const { login, user } = useAuth()
   const [description, setDescription] = useState('')
 
@@ -86,11 +88,11 @@ export default function RegisterBusiness() {
     setError('')
 
     if (form.password !== form.confirmPassword) {
-      setError('Passwords do not match.')
+      setError(t('Passwords do not match.'))
       return
     }
     if (form.password.length < 8) {
-      setError('Password must be at least 8 characters.')
+      setError(t('Password must be at least 8 characters.'))
       return
     }
 
@@ -131,7 +133,7 @@ export default function RegisterBusiness() {
       }
       navigate('/owner/subscription')
     } catch (err) {
-      setError(err.response?.data?.error || err.message || 'Registration failed. Please try again.')
+      setError(err.response?.data?.error || err.message || t('Registration failed. Please try again.'))
     } finally {
       setLoading(false)
     }
@@ -146,24 +148,24 @@ export default function RegisterBusiness() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">Business Registered!</h2>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">{t('Business Registered!')}</h2>
           <p className="text-slate-600 mb-6">
-            Your business has been registered successfully. Your account will be reviewed by our team.
-            You will receive a confirmation email once verified.
+            {t('Your business has been registered successfully. Your account will be reviewed by our team.')}
+            {' '}{t('You will receive a confirmation email once verified.')}
           </p>
           {businessId && (
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-6 text-left">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Business ID</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">{t('Business ID')}</p>
               <p className="text-lg font-black text-slate-900 font-mono">{businessId}</p>
             </div>
           )}
           {ownerCredentials && (
             <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-6 text-left">
-              <p className="text-xs font-bold text-indigo-400 uppercase tracking-wide mb-2">Owner Login Credentials</p>
+              <p className="text-xs font-bold text-indigo-400 uppercase tracking-wide mb-2">{t('Owner Login Credentials')}</p>
               <div className="space-y-1 text-sm text-slate-700">
-                <p><span className="font-semibold">Username:</span> <span className="font-mono">{ownerCredentials.username}</span></p>
-                <p><span className="font-semibold">Email:</span> <span className="font-mono">{ownerCredentials.email}</span></p>
-                <p className="text-xs text-slate-500 mt-2">Use these credentials to log in after admin verification.</p>
+                <p><span className="font-semibold">{t('Username')}:</span> <span className="font-mono">{ownerCredentials.username}</span></p>
+                <p><span className="font-semibold">{t('Email')}:</span> <span className="font-mono">{ownerCredentials.email}</span></p>
+                <p className="text-xs text-slate-500 mt-2">{t('Use these credentials to log in after admin verification.')}</p>
               </div>
             </div>
           )}
@@ -171,7 +173,7 @@ export default function RegisterBusiness() {
             onClick={() => navigate('/login')}
             className="inline-block px-6 py-2.5 bg-[#4F46E5] text-white font-semibold rounded-lg hover:bg-indigo-700 transition"
           >
-            Go to Login
+            {t('Go to Login')}
           </button>
         </div>
       </div>
@@ -192,30 +194,30 @@ export default function RegisterBusiness() {
               </svg>
               <span className="text-xl font-black text-white tracking-tight">BarFlow</span>
             </div>
-            <span className="text-[10px] font-bold tracking-wider text-slate-500 uppercase mt-0.5 pl-8">Platform Admin</span>
+            <span className="text-[10px] font-bold tracking-wider text-slate-500 uppercase mt-0.5 pl-8">{t('Platform Admin')}</span>
           </div>
 
           {/* Nav Categories */}
           <nav className="p-4 space-y-6 text-xs font-semibold">
             <div>
               <a href="#" className="flex items-center gap-3 px-3 py-2.5 bg-[#4F46E5]/20 text-[#818CF8] rounded-lg transition font-bold">
-                <LayoutDashboard size={16} /> Dashboard
+                <LayoutDashboard size={16} /> {t('Dashboard')}
               </a>
             </div>
 
             <div className="space-y-1">
-              <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-2">Management</p>
-              <SidebarLink icon={<Briefcase size={16} />} label="Businesses" active={true} />
-              <SidebarLink icon={<CreditCard size={16} />} label="Subscription Plans" />
-              <SidebarLink icon={<RefreshCw size={16} />} label="Subscriptions" />
-              <SidebarLink icon={<BarChart3 size={16} />} label="Platform Statistics" />
+              <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-2">{t('Management')}</p>
+              <SidebarLink icon={<Briefcase size={16} />} label={t('Businesses')} active={true} />
+              <SidebarLink icon={<CreditCard size={16} />} label={t('Subscription Plans')} />
+              <SidebarLink icon={<RefreshCw size={16} />} label={t('Subscriptions')} />
+              <SidebarLink icon={<BarChart3 size={16} />} label={t('Platform Statistics')} />
             </div>
 
             <div className="space-y-1">
-              <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-2">System</p>
-              <SidebarLink icon={<Users size={16} />} label="Admins" />
-              <SidebarLink icon={<ClipboardList size={16} />} label="Audit Logs" />
-              <SidebarLink icon={<Settings size={16} />} label="Settings" />
+              <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-2">{t('System')}</p>
+              <SidebarLink icon={<Users size={16} />} label={t('Admins')} />
+              <SidebarLink icon={<ClipboardList size={16} />} label={t('Audit Logs')} />
+              <SidebarLink icon={<Settings size={16} />} label={t('Settings')} />
             </div>
           </nav>
         </div>
@@ -227,7 +229,7 @@ export default function RegisterBusiness() {
               SA
             </div>
             <div className="text-left">
-              <p className="text-xs font-bold text-white leading-tight">Super Admin</p>
+              <p className="text-xs font-bold text-white leading-tight">{t('Super Admin')}</p>
               <p className="text-[10px] text-slate-500 truncate max-w-[120px]">superadmin@barflow.rw</p>
             </div>
           </div>
@@ -242,11 +244,11 @@ export default function RegisterBusiness() {
           <div className="flex items-center gap-4">
             <button className="text-slate-500 hover:text-slate-800"><Menu size={20} /></button>
             <div className="flex flex-col">
-              <h1 className="text-lg font-bold text-slate-900 tracking-tight">Register New Business</h1>
+              <h1 className="text-lg font-bold text-slate-900 tracking-tight">{t('Register New Business')}</h1>
               <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
-                <span>Dashboard</span> <span className="font-normal text-slate-300">/</span>
-                <span>Businesses</span> <span className="font-normal text-slate-300">/</span>
-                <span className="text-slate-600">Register New Business</span>
+                <span>{t('Dashboard')}</span> <span className="font-normal text-slate-300">/</span>
+                <span>{t('Businesses')}</span> <span className="font-normal text-slate-300">/</span>
+                <span className="text-slate-600">{t('Register New Business')}</span>
               </div>
             </div>
           </div>
@@ -257,7 +259,7 @@ export default function RegisterBusiness() {
               <span className="absolute top-1 right-1 bg-[#4F46E5] text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">3</span>
             </div>
             <button className="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-red-600 transition border-l pl-6 border-slate-200">
-              <LogOut size={16} /> Logout
+              <LogOut size={16} /> {t('Logout')}
             </button>
           </div>
         </header>
@@ -276,7 +278,7 @@ export default function RegisterBusiness() {
             <section className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs space-y-5">
               <div className="flex items-center gap-2.5 text-[#4F46E5] border-b border-slate-100 pb-3">
                 <div className="p-1.5 bg-[#4F46E5]/10 rounded-lg"><Building2 size={18} /></div>
-                <h2 className="font-bold text-sm text-slate-900">Business Information</h2>
+                <h2 className="font-bold text-sm text-slate-900">{t('Business Information')}</h2>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -284,14 +286,14 @@ export default function RegisterBusiness() {
                 <FormInput name="registrationCode" label="Registration Code / TIN" placeholder="Enter registration number (optional)" value={form.registrationCode} onChange={handleInputChange} />
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Business Type <span className="text-red-500">*</span></label>
+                  <label className="text-xs font-bold text-slate-700">{t('Business Type')} <span className="text-red-500">*</span></label>
                   <select name="businessType" value={form.businessType} onChange={handleInputChange} className="w-full bg-white border border-slate-200 rounded-lg px-3.5 py-2 text-sm focus:outline-hidden focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] font-medium text-slate-700">
-                    <option value="">Select business type</option>
-                    <option value="bar">Bar & Lounge</option>
-                    <option value="restaurant">Restaurant</option>
-                    <option value="hotel">Hotel & Hospitality</option>
-                    <option value="lounge">Lounge</option>
-                    <option value="other">Other</option>
+                    <option value="">{t('Select business type')}</option>
+                    <option value="bar">{t('Bar & Lounge')}</option>
+                    <option value="restaurant">{t('Restaurant')}</option>
+                    <option value="hotel">{t('Hotel & Hospitality')}</option>
+                    <option value="lounge">{t('Lounge')}</option>
+                    <option value="other">{t('Other')}</option>
                   </select>
                 </div>
 
@@ -303,16 +305,16 @@ export default function RegisterBusiness() {
                   <FormInput name="address" label="Address" required placeholder="Enter business address" value={form.address} onChange={handleInputChange} />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Province <span className="text-red-500">*</span></label>
+                  <label className="text-xs font-bold text-slate-700">{t('Province')} <span className="text-red-500">*</span></label>
                   <select name="province" value={form.province} onChange={(e) => { handleInputChange(e); setForm((prev) => ({ ...prev, district: '', sector: '' })) }} className="w-full bg-white border border-slate-200 rounded-lg px-3.5 py-2 text-sm focus:outline-hidden focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] font-medium text-slate-700">
-                    <option value="">Select province</option>
+                    <option value="">{t('Select province')}</option>
                     {PROVINCES.map((p) => <option key={p} value={p}>{p}</option>)}
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">District <span className="text-red-500">*</span></label>
+                  <label className="text-xs font-bold text-slate-700">{t('District')} <span className="text-red-500">*</span></label>
                   <select name="district" value={form.district} onChange={(e) => { handleInputChange(e); setForm((prev) => ({ ...prev, sector: '' })) }} className="w-full bg-white border border-slate-200 rounded-lg px-3.5 py-2 text-sm focus:outline-hidden focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] font-medium text-slate-700" disabled={!form.province}>
-                    <option value="">Select district</option>
+                    <option value="">{t('Select district')}</option>
                     {(DISTRICTS_BY_PROVINCE[form.province] || []).map((d) => <option key={d} value={d}>{d}</option>)}
                   </select>
                 </div>
@@ -320,27 +322,27 @@ export default function RegisterBusiness() {
                 <FormInput name="city" label="City" required placeholder="Enter city" value={form.city} onChange={handleInputChange} />
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Country <span className="text-red-500">*</span></label>
+                  <label className="text-xs font-bold text-slate-700">{t('Country')} <span className="text-red-500">*</span></label>
                   <select name="country" value={form.country} onChange={handleInputChange} className="w-full bg-white border border-slate-200 rounded-lg px-3.5 py-2 text-sm focus:outline-hidden focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] font-medium text-slate-700">
-                    <option value="">Select country</option>
-                    <option value="Rwanda">Rwanda</option>
-                    <option value="Kenya">Kenya</option>
-                    <option value="Uganda">Uganda</option>
+                    <option value="">{t('Select country')}</option>
+                    <option value="Rwanda">{t('Rwanda')}</option>
+                    <option value="Kenya">{t('Kenya')}</option>
+                    <option value="Uganda">{t('Uganda')}</option>
                   </select>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Default Currency</label>
+                  <label className="text-xs font-bold text-slate-700">{t('Default Currency')}</label>
                   <select name="currencyCode" value={form.currencyCode} onChange={handleInputChange} className="w-full bg-white border border-slate-200 rounded-lg px-3.5 py-2 text-sm focus:outline-hidden focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] font-medium text-slate-700">
-                    <option value="RWF">RWF (Rwandan Franc)</option>
-                    <option value="KES">KES (Kenyan Shilling)</option>
-                    <option value="UGX">UGX (Ugandan Shilling)</option>
-                    <option value="USD">USD (US Dollar)</option>
+                    <option value="RWF">RWF ({t('Rwandan Franc')})</option>
+                    <option value="KES">KES ({t('Kenyan Shilling')})</option>
+                    <option value="UGX">UGX ({t('Ugandan Shilling')})</option>
+                    <option value="USD">USD ({t('US Dollar')})</option>
                   </select>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Time Zone</label>
+                  <label className="text-xs font-bold text-slate-700">{t('Time Zone')}</label>
                   <select name="timeZone" value={form.timeZone} onChange={handleInputChange} className="w-full bg-white border border-slate-200 rounded-lg px-3.5 py-2 text-sm focus:outline-hidden focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] font-medium text-slate-700">
                     <option value="Africa/Kigali">Africa/Kigali</option>
                     <option value="Africa/Nairobi">Africa/Nairobi</option>
@@ -353,7 +355,7 @@ export default function RegisterBusiness() {
 
               {/* Description Block */}
               <div className="space-y-1.5 relative">
-                <label className="text-xs font-bold text-slate-700">Description (Optional)</label>
+                <label className="text-xs font-bold text-slate-700">{t('Description (Optional)')}</label>
                 <textarea
                   maxLength={500}
                   value={description}
@@ -361,7 +363,7 @@ export default function RegisterBusiness() {
                     setDescription(e.target.value)
                     setForm((prev) => ({ ...prev, description: e.target.value }))
                   }}
-                  placeholder="Enter a short description about the business"
+                  placeholder={t('Enter a short description about the business')}
                   rows={3}
                   className="w-full bg-white border border-slate-200 rounded-lg p-3.5 text-sm focus:outline-hidden focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] font-medium resize-none placeholder:text-slate-400"
                 ></textarea>
@@ -372,7 +374,7 @@ export default function RegisterBusiness() {
 
               <div className="grid grid-cols-1 gap-5">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Subscription Plan <span className="text-red-500">*</span></label>
+                  <label className="text-xs font-bold text-slate-700">{t('Subscription Plan')} <span className="text-red-500">*</span></label>
                   <select
                     value={form.subscriptionPlanId ? `${form.subscriptionPlanId}|${form.billingCycle}` : ''}
                     onChange={(event) => {
@@ -382,10 +384,10 @@ export default function RegisterBusiness() {
                     className="w-full bg-white border border-slate-200 rounded-lg px-3.5 py-2 text-sm focus:outline-hidden focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] font-medium text-slate-700"
                     disabled={loadingPlans}
                   >
-                    <option value="">Select subscription plan</option>
+                    <option value="">{t('Select subscription plan')}</option>
                     {plans.flatMap((plan) => BILLING_CYCLES.map((cycle) => (
                       <option key={`${plan.id}-${cycle.value}`} value={`${plan.id}|${cycle.value}`}>
-                        {plan.name} — {cycle.label}
+                        {plan.name} — {t(cycle.label)}
                       </option>
                     )))}
                   </select>
@@ -397,7 +399,7 @@ export default function RegisterBusiness() {
             <section className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs space-y-5">
               <div className="flex items-center gap-2.5 text-[#4F46E5] border-b border-slate-100 pb-3">
                 <div className="p-1.5 bg-[#4F46E5]/10 rounded-lg"><UserPlus size={18} /></div>
-                <h2 className="font-bold text-sm text-slate-900">Initial Owner Account</h2>
+                <h2 className="font-bold text-sm text-slate-900">{t('Initial Owner Account')}</h2>
               </div>
 
               <div className="grid grid-cols-12 gap-5 items-start">
@@ -410,19 +412,21 @@ export default function RegisterBusiness() {
 
                 <div className="col-span-12 md:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div className="space-y-1.5 relative">
-                    <label className="text-xs font-bold text-slate-700">Password <span className="text-red-500">*</span></label>
+                    <label className="text-xs font-bold text-slate-700">{t('Password')} <span className="text-red-500">*</span></label>
                     <div className="relative">
                       <input
                         type={showPassword ? "text" : "password"}
                         name="password"
                         value={form.password}
                         onChange={handleInputChange}
-                        placeholder="Enter password"
+                        placeholder={t('Enter password')}
                         className="w-full bg-white border border-slate-200 rounded-lg pl-3.5 pr-10 py-2 text-sm focus:outline-hidden focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] font-medium"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
+                        aria-label={t(showPassword ? 'Hide password' : 'Show password')}
+                        title={t(showPassword ? 'Hide password' : 'Show password')}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                       >
                         {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -431,19 +435,21 @@ export default function RegisterBusiness() {
                   </div>
 
                   <div className="space-y-1.5 relative">
-                    <label className="text-xs font-bold text-slate-700">Confirm Password <span className="text-red-500">*</span></label>
+                    <label className="text-xs font-bold text-slate-700">{t('Confirm Password')} <span className="text-red-500">*</span></label>
                     <div className="relative">
                       <input
                         type={showConfirmPassword ? "text" : "password"}
                         name="confirmPassword"
                         value={form.confirmPassword}
                         onChange={handleInputChange}
-                        placeholder="Confirm password"
+                        placeholder={t('Confirm password')}
                         className="w-full bg-white border border-slate-200 rounded-lg pl-3.5 pr-10 py-2 text-sm focus:outline-hidden focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] font-medium"
                       />
                       <button
                         type="button"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        aria-label={t(showConfirmPassword ? 'Hide password' : 'Show password')}
+                        title={t(showConfirmPassword ? 'Hide password' : 'Show password')}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                       >
                         {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -455,7 +461,7 @@ export default function RegisterBusiness() {
                 <div className="col-span-12 md:col-span-4 bg-emerald-50/60 border border-emerald-100 text-emerald-800 rounded-lg p-3.5 flex items-start gap-2.5 text-xs font-medium">
                   <CheckCircle2 size={16} className="text-emerald-600 shrink-0 mt-0.5" />
                   <p className="leading-relaxed">
-                    Password must be at least 8 characters long and include letters and numbers.
+                    {t('Password must be at least 8 characters long and include letters and numbers.')}
                   </p>
                 </div>
               </div>
@@ -468,7 +474,7 @@ export default function RegisterBusiness() {
                 onClick={() => navigate(getDashboardPath())}
                 className="px-6 py-2.5 border border-slate-200 text-slate-600 font-bold text-sm bg-white rounded-lg hover:bg-slate-50 shadow-xs transition"
               >
-                Cancel
+                {t('Cancel')}
               </button>
               <button
                 type="submit"
@@ -476,7 +482,7 @@ export default function RegisterBusiness() {
                 className="flex items-center gap-2 px-6 py-2.5 bg-[#4F46E5] hover:bg-indigo-700 text-white font-bold text-sm rounded-lg shadow-sm transition disabled:opacity-50"
               >
                 <Building2 size={16} />
-                {loading ? 'Registering...' : 'Register Business'}
+                {loading ? t('Registering...') : t('Register Business')}
               </button>
             </div>
 
@@ -489,17 +495,18 @@ export default function RegisterBusiness() {
 
 /* --- REUSABLE CARD INPUT FORM SUB-ELEMENT MODULAR HELPER --- */
 function FormInput({ label, name, required = false, type = "text", placeholder, value, onChange }) {
+  const { t } = usePreferences()
   return (
     <div className="space-y-1.5 w-full">
       <label className="text-xs font-bold text-slate-700">
-        {label} {required && <span className="text-red-500">*</span>}
+        {t(label)} {required && <span className="text-red-500">*</span>}
       </label>
       <input
         type={type}
         name={name}
         value={value}
         onChange={onChange}
-        placeholder={placeholder}
+        placeholder={t(placeholder)}
         className="w-full bg-white border border-slate-200 rounded-lg px-3.5 py-2 text-sm focus:outline-hidden focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] font-medium placeholder:text-slate-400 text-slate-900 transition"
       />
     </div>
@@ -507,12 +514,13 @@ function FormInput({ label, name, required = false, type = "text", placeholder, 
 }
 
 function SidebarLink({ icon, label, active = false }) {
+  const { t } = usePreferences()
   return (
     <a href="#" className={`flex items-center gap-3 px-3 py-2 rounded-lg transition group ${
       active ? 'text-white bg-slate-800/40' : 'hover:bg-slate-800/30 hover:text-slate-200'
     }`}>
       <span className={active ? 'text-[#818CF8]' : 'text-slate-500 group-hover:text-slate-400'}>{icon}</span>
-      <span>{label}</span>
+      <span>{t(label)}</span>
     </a>
   )
 }

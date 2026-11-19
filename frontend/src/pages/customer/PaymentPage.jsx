@@ -1,3 +1,4 @@
+import { usePreferences } from '../../context/PreferencesContext'
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useCustomer } from '../../context/CustomerContext'
@@ -11,9 +12,12 @@ const PAYMENT_METHODS = [
 ]
 
 export default function PaymentPage() {
+  const { t } = usePreferences()
   const navigate = useNavigate()
   const location = useLocation()
   const { currentOrder, tableNumber, businessId, branchId, resetSession, setCurrentOrder } = useCustomer()
+  const paymentLinkOrderId = new URLSearchParams(location.search).get('orderId')
+  const paymentLinkProviders = new URLSearchParams(location.search).get('providers')?.split(',').filter(Boolean) || []
   const [selectedMethod, setSelectedMethod] = useState(null)
   const [phoneNumber, setPhoneNumber] = useState('')
   const [processing, setProcessing] = useState(false)
@@ -28,9 +32,14 @@ export default function PaymentPage() {
   const [lookupError, setLookupError] = useState(null)
   const [addItemsOrder, setAddItemsOrder] = useState(null)
   const [reloading, setReloading] = useState(false)
+  const [paymentLinkLoading, setPaymentLinkLoading] = useState(Boolean(paymentLinkOrderId))
+  const [paymentLinkError, setPaymentLinkError] = useState(null)
 
   const navOrder = location.state?.order
-  const activeOrder = navOrder || currentOrder
+  const savedOrder = navOrder || currentOrder
+  const activeOrder = paymentLinkOrderId
+    ? ((savedOrder?.orderId || savedOrder?.id) === paymentLinkOrderId ? savedOrder : null)
+    : savedOrder
   const returnTo = location.state?.returnTo || '/cart'
 
   useEffect(() => {
@@ -39,28 +48,115 @@ export default function PaymentPage() {
     }
   }, [navOrder, currentOrder, setCurrentOrder])
 
+  useEffect(() => {
+    if (!paymentLinkOrderId) {
+      setPaymentLinkLoading(false)
+      return undefined
+    }
+    if (activeOrder) {
+      setPaymentLinkLoading(false)
+      return undefined
+    }
+
+    let active = true
+    setPaymentLinkLoading(true)
+    setPaymentLinkError(null)
+    api.checkOrderStatus(paymentLinkOrderId)
+      .then((result) => {
+        if (!active) return
+        if (['paid', 'cancelled'].includes(String(result.status || '').toLowerCase())) {
+          setPaymentLinkError(`${t('This order is already')} ${String(result.status).toLowerCase()}.`)
+          return
+        }
+        setCurrentOrder({
+          id: result.orderId || result.id,
+          orderId: result.orderId || result.id,
+          orderNumber: result.order_number || result.orderNumber,
+          tableNumber: result.table_number || result.tableNumber,
+          total: Number(result.total_amount ?? result.total) || 0,
+          orderType: result.order_type || result.orderType,
+          items: [],
+          status: result.status,
+        })
+      })
+      .catch((err) => {
+        if (active) setPaymentLinkError(err.response?.data?.error || err.message || 'Unable to load this order.')
+      })
+      .finally(() => {
+        if (active) setPaymentLinkLoading(false)
+      })
+
+    return () => { active = false }
+  }, [paymentLinkOrderId, activeOrder, setCurrentOrder])
+
+  useEffect(() => {
+    const pendingOnline = step === 'ussd' && paymentResult?.status === 'pending'
+    const pendingCash = step === 'cash' && paymentResult?.status === 'pending_cash'
+    if (!pendingOnline && !pendingCash) return undefined
+
+    let active = true
+    let checking = false
+    const checkStatus = async () => {
+      if (checking) return
+      checking = true
+      try {
+        const result = await api.verifyPayment(paymentResult.paymentId)
+        if (!active) return
+        if (result.status === 'completed') {
+          setReceipt(result.receipt)
+          setSmsSent(Boolean(result.smsSent))
+          setStep('receipt')
+        } else if (result.status === 'failed') {
+          setPaymentResult((current) => ({ ...current, status: 'failed' }))
+          setError(t("The payment was declined or could not be completed. Please try again."))
+        }
+      } catch (err) {
+        if (active) setError(err.response?.data?.error || err.message || t("Unable to check payment status."))
+      } finally {
+        checking = false
+      }
+    }
+    const interval = window.setInterval(checkStatus, 3000)
+    return () => {
+      active = false
+      window.clearInterval(interval)
+    }
+  }, [step, paymentResult])
+
   // If no order, allow looking up by table number
   if (!activeOrder) {
+    if (paymentLinkOrderId) {
+      return (
+        <div style={styles.container}>
+          <div style={styles.lookupCard}>
+            <h1 style={styles.lookupTitle}>{paymentLinkLoading ? t("Loading payment details") : t("Unable to continue with payment")}</h1>
+            <p style={styles.lookupText}>
+              {paymentLinkLoading ? t("Please wait while we securely load this order.") : paymentLinkError ? t(paymentLinkError) : t('The order could not be loaded.')}
+            </p>
+            {!paymentLinkLoading && <button style={styles.primaryBtn} onClick={() => navigate('/menu')}>{t("Back to menu")}</button>}
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div style={styles.container}>
         <div style={styles.header}>
-          <button style={styles.backBtn} onClick={() => navigate('/menu')}>
-            ← Back
-          </button>
-          <h1 style={styles.title}>Payment</h1>
+          <button style={styles.backBtn} onClick={() => navigate('/menu')}>{t("← Back")}</button>
+          <h1 style={styles.title}>{t("Payment")}</h1>
           <div style={styles.headerSpacer}></div>
         </div>
 
         {lookupResults.length === 0 ? (
           <>
             <div style={styles.lookupCard}>
-              <h2 style={styles.lookupTitle}>Look up your order</h2>
-              <p style={styles.lookupText}>Enter your table number to find your unpaid order.</p>
+              <h2 style={styles.lookupTitle}>{t("Look up your order")}</h2>
+              <p style={styles.lookupText}>{t("Enter your table number to find your unpaid order.")}</p>
               <div style={styles.lookupInputRow}>
                 <input
                   type="text"
                   inputMode="numeric"
-                  placeholder="Table number"
+                  placeholder={t("Table number")}
                   value={lookupTable}
                   onChange={(e) => setLookupTable(e.target.value)}
                   style={styles.lookupInput}
@@ -81,27 +177,25 @@ export default function PaymentPage() {
                   }}
                   disabled={lookupLoading || !lookupTable}
                 >
-                  {lookupLoading ? 'Looking up...' : 'Find Order'}
+                  {lookupLoading ? t("Looking up...") : t("Find Order")}
                 </button>
               </div>
-              {lookupError && <div style={styles.errorBox}>{lookupError}</div>}
+              {lookupError && <div style={styles.errorBox}>{t(lookupError)}</div>}
               {lookupResults.length === 0 && lookupTable && !lookupLoading && !lookupError && (
-                <p style={styles.lookupNoResults}>No unpaid orders found for this table.</p>
+                <p style={styles.lookupNoResults}>{t("No unpaid orders found for this table.")}</p>
               )}
             </div>
 
             <div style={styles.orSection}>
-              <span style={styles.orText}>or</span>
+              <span style={styles.orText}>{t("or")}</span>
             </div>
 
-            <button style={styles.primaryBtn} onClick={() => navigate('/menu')}>
-              Place a New Order
-            </button>
+            <button style={styles.primaryBtn} onClick={() => navigate('/menu')}>{t("Place a New Order")}</button>
           </>
         ) : (
           <>
             <div style={styles.lookupCard}>
-              <h2 style={styles.lookupTitle}>Select your order</h2>
+              <h2 style={styles.lookupTitle}>{t("Select your order")}</h2>
               {lookupResults.map((order) => (
                 <div
                   key={order.orderId}
@@ -127,10 +221,10 @@ export default function PaymentPage() {
                   }}
                 >
                   <div style={styles.orderOptionHeader}>
-                    <span style={styles.orderOptionNumber}>Order {order.orderNumber}</span>
+                    <span style={styles.orderOptionNumber}>{t("Order")}{' '}{order.orderNumber}</span>
                     <span style={styles.orderOptionStatus}>{order.status}</span>
                   </div>
-                  <p style={styles.orderOptionDetail}>Table {order.tableNumber} • {order.items.length} item{order.items.length !== 1 ? 's' : ''}</p>
+                  <p style={styles.orderOptionDetail}>{t("Table")}{' '}{order.tableNumber} • {order.items.length}{' '}{t("item")}{order.items.length !== 1 ? t("s") : ''}</p>
                   <p style={styles.orderOptionTotal}>{formatCurrency(order.total)}</p>
                 </div>
               ))}
@@ -140,12 +234,21 @@ export default function PaymentPage() {
                   setLookupResults([])
                   setLookupError(null)
                 }}
-              >
-                ← Back
-              </button>
+              >{t("← Back")}</button>
             </div>
           </>
         )}
+      </div>
+    )
+  }
+
+  if (paymentLinkOrderId && ['paid', 'cancelled'].includes(String(activeOrder.status || '').toLowerCase())) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.lookupCard}>
+          <h1 style={styles.lookupTitle}>{t("Order")}{' '}{String(activeOrder.status).toLowerCase()}</h1>
+          <p style={styles.lookupText}>{t("This payment link can no longer be used.")}</p>
+        </div>
       </div>
     )
   }
@@ -160,7 +263,7 @@ export default function PaymentPage() {
 
   const handleInitiatePayment = async (method, phone) => {
     if (!activeOrder?.orderId) {
-      setError('No active order found. Please place an order first.')
+      setError(t("No active order found. Please place an order first."))
       return
     }
 
@@ -179,13 +282,17 @@ export default function PaymentPage() {
 
       setPaymentResult(result)
 
-      if (result.status === 'pending_ussd_confirmation') {
+      if (result.status === 'pending') {
         setStep('ussd')
+      } else if (result.status === 'pending_cash') {
+        setStep('cash')
       } else {
         const verifyResult = await api.verifyPayment(result.paymentId)
-        setReceipt(verifyResult.receipt)
-        setSmsSent(verifyResult.smsSent)
-        setStep('receipt')
+        if (verifyResult.status === 'completed') {
+          setReceipt(verifyResult.receipt)
+          setSmsSent(verifyResult.smsSent)
+          setStep('receipt')
+        }
       }
     } catch (err) {
       const message = err.response?.data?.error || err.message || 'Payment failed'
@@ -200,9 +307,16 @@ export default function PaymentPage() {
     setProcessing(true)
     try {
       const verifyResult = await api.verifyPayment(paymentResult.paymentId)
-      setReceipt(verifyResult.receipt)
-      setSmsSent(verifyResult.smsSent)
-      setStep('receipt')
+      if (verifyResult.status === 'completed') {
+        setReceipt(verifyResult.receipt)
+        setSmsSent(verifyResult.smsSent)
+        setStep('receipt')
+      } else if (verifyResult.status === 'failed') {
+        setPaymentResult((current) => ({ ...current, status: 'failed' }))
+        setError(t("The payment was declined or could not be completed. Please try again."))
+      } else {
+        setError(t("The provider has not confirmed your payment yet."))
+      }
     } catch (err) {
       const message = err.response?.data?.error || err.message || 'Payment verification failed'
       setError(message)
@@ -239,51 +353,78 @@ export default function PaymentPage() {
     }
   }
 
-  // Step: USSD Confirmation
+  if (step === 'cash' && paymentResult) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.ussdContainer}>
+          <div style={styles.ussdIcon}>💵</div>
+          <h2 style={styles.ussdTitle}>{t("Completing cash payment")}</h2>
+          <p style={styles.ussdSubtitle}>{t("Your order will be marked paid automatically. No staff approval is needed.")}</p>
+          <div style={styles.ussdDetails}>
+            <div style={styles.ussdRow}><span>{t("Amount")}</span><strong>{formatCurrency(activeOrder.total || activeOrder.total_amount)}</strong></div>
+            <div style={styles.ussdRow}><span>{t("Reference")}</span><strong>{paymentResult.reference}</strong></div>
+          </div>
+          {error && <div style={styles.errorBox}>{t(error)}</div>}
+        </div>
+      </div>
+    )
+  }
+
+  // Step: Provider confirmation
   if (step === 'ussd' && paymentResult) {
     return (
       <div style={styles.container}>
         <div style={styles.ussdContainer}>
           <div style={styles.ussdIcon}>📱</div>
-          <h2 style={styles.ussdTitle}>Confirm Payment</h2>
+          <h2 style={styles.ussdTitle}>{t("Approve payment on your phone")}</h2>
           <p style={styles.ussdSubtitle}>{paymentResult.message}</p>
 
             <div style={styles.ussdDetails}>
               <div style={styles.ussdRow}>
-                <span>Provider</span>
-                <strong>{paymentResult.ussdDetails?.provider}</strong>
+                <span>{t("Provider")}</span>
+                <strong>{selectedMethod === 'mtn_momo' ? t("MTN MoMo") : t("Airtel Money")}</strong>
               </div>
               <div style={styles.ussdRow}>
-                <span>Amount</span>
+                <span>{t("Amount")}</span>
                 <strong style={{ color: '#e63946' }}>
                   {formatCurrency(activeOrder.total || activeOrder.total_amount)}
                 </strong>
               </div>
             <div style={styles.ussdRow}>
-              <span>Reference</span>
+              <span>{t("Reference")}</span>
               <strong>{paymentResult.reference}</strong>
             </div>
           </div>
 
           <div style={styles.ussdInstructions}>
-            <h3 style={styles.instructionsTitle}>Instructions:</h3>
-            {paymentResult.ussdDetails?.instructions?.map((inst, i) => (
-              <p key={i} style={styles.instructionStep}>{inst}</p>
-            ))}
+            <h3 style={styles.instructionsTitle}>{t("Waiting for provider confirmation")}</h3>
+            <p style={styles.instructionStep}>{t("Approve the payment prompt on your phone. This page will update automatically once the provider confirms payment.")}</p>
           </div>
 
-          <button
-            style={{
-              ...styles.primaryBtn,
-              ...(processing ? { opacity: 0.7 } : {}),
-            }}
-            onClick={handleUSSDConfirm}
-            disabled={processing}
-          >
-            {processing ? 'Verifying...' : "✓ I've Confirmed Payment"}
-          </button>
+          {paymentResult.status === 'failed' ? (
+            <button
+              style={styles.primaryBtn}
+              onClick={() => {
+                setStep('select')
+                setPaymentResult(null)
+                setSelectedMethod(null)
+                setError(null)
+              }}
+            >{t("Try another payment method")}</button>
+          ) : (
+            <button
+              style={{
+                ...styles.primaryBtn,
+                ...(processing ? { opacity: 0.7 } : {}),
+              }}
+              onClick={handleUSSDConfirm}
+              disabled={processing}
+            >
+              {processing ? t("Checking...") : t("Check payment status")}
+            </button>
+          )}
 
-          {error && <div style={styles.errorBox}>{error}</div>}
+          {error && <div style={styles.errorBox}>{t(error)}</div>}
         </div>
       </div>
     )
@@ -296,69 +437,67 @@ export default function PaymentPage() {
         <div style={styles.receiptContainer}>
           <div style={styles.receiptHeader}>
             <div style={styles.successIcon}>✅</div>
-            <h1 style={styles.receiptTitle}>Payment Successful!</h1>
+            <h1 style={styles.receiptTitle}>{t("Payment Successful!")}</h1>
           </div>
 
           <div style={styles.receiptCard}>
             <div style={styles.receiptBusiness}>
               <h2 style={styles.businessName}>{receipt.businessName}</h2>
-              <p style={styles.receiptNumber}>Receipt: {receipt.receiptNumber}</p>
+              <p style={styles.receiptNumber}>{t("Receipt:")}{' '}{receipt.receiptNumber}</p>
             </div>
 
             <div style={styles.receiptInfo}>
               <div style={styles.receiptRow}>
-                <span>Order</span>
+                <span>{t("Order")}</span>
                 <span>{receipt.orderNumber}</span>
               </div>
               <div style={styles.receiptRow}>
-                <span>Table</span>
+                <span>{t("Table")}</span>
                 <span>{receipt.tableNumber}</span>
               </div>
               <div style={styles.receiptRow}>
-                <span>Payment</span>
+                <span>{t("Payment")}</span>
                 <span>{receipt.paymentMethod.replace('_', ' ').toUpperCase()}</span>
               </div>
               {receipt.waiterName && (
                 <div style={styles.receiptRow}>
-                  <span>Waiter</span>
+                  <span>{t("Waiter")}</span>
                   <span>{receipt.waiterName}</span>
                 </div>
               )}
               <div style={styles.receiptRow}>
-                <span>Date</span>
+                <span>{t("Date")}</span>
                 <span>{receipt.date}</span>
               </div>
               <div style={styles.receiptRow}>
-                <span>Reference</span>
+                <span>{t("Reference")}</span>
                 <span>{receipt.reference}</span>
               </div>
             </div>
 
             <div style={styles.receiptItems}>
-              <h3 style={styles.itemsTitle}>Items</h3>
+              <h3 style={styles.itemsTitle}>{t("Items")}</h3>
               {receipt.items.map((item, index) => (
                 <div key={index} style={styles.receiptItemRow}>
-                  <span style={styles.itemName}>{item.name} x{item.quantity}</span>
+                  <span style={styles.itemName}>{item.name}{' '}{t("x")}{item.quantity}</span>
                   <span>{formatCurrency(item.lineTotal)}</span>
                 </div>
               ))}
             </div>
 
             <div style={styles.receiptTotal}>
-              <span>Total Paid</span>
+              <span>{t("Total Paid")}</span>
               <span style={styles.totalAmount}>{formatCurrency(receipt.total)}</span>
             </div>
           </div>
 
-          <p style={styles.thankYou}>Thank you for your order! 🎉</p>
+          <p style={styles.thankYou}>{t("Thank you for your order! 🎉")}</p>
 
           {smsSent && (
-            <p style={styles.smsSentText}>📱 Receipt sent to your phone</p>
+            <p style={styles.smsSentText}>{t("📱 Receipt sent to your phone")}</p>
           )}
 
-          <Link to={newOrderPath} style={styles.primaryBtn} onClick={resetSession}>
-            Start New Order
-          </Link>
+          <Link to={newOrderPath} style={styles.primaryBtn} onClick={resetSession}>{t("Start New Order")}</Link>
         </div>
       </div>
     )
@@ -368,21 +507,20 @@ export default function PaymentPage() {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <button style={styles.backBtn} onClick={() => navigate(returnTo)}>
-          ← Back
-        </button>
-        <h1 style={styles.title}>Payment</h1>
+        <button style={styles.backBtn} onClick={() => navigate(returnTo)}>{t("← Back")}</button>
+        <h1 style={styles.title}>{t("Payment")}</h1>
         <div style={styles.headerSpacer}></div>
       </div>
 
       {/* Order Summary */}
       <div style={styles.orderCard}>
-        <p style={styles.orderLabel}>Order {activeOrder.orderNumber}</p>
+        <p style={styles.orderLabel}>{t("Order")}{' '}{activeOrder.orderNumber}</p>
         <p style={styles.orderAmount}>{formatCurrency(activeOrder.total || activeOrder.total_amount)}</p>
-        <p style={styles.orderTable}>Table {activeOrder.tableNumber}</p>
+        <p style={styles.orderTable}>{t("Table")}{' '}{activeOrder.tableNumber}</p>
       </div>
 
       <button
+        hidden={Boolean(paymentLinkOrderId)}
         style={{
           ...styles.primaryBtn,
           backgroundColor: '#0d6efd',
@@ -391,13 +529,17 @@ export default function PaymentPage() {
         onClick={() => setAddItemsOrder(activeOrder)}
         disabled={reloading}
       >
-        {reloading ? 'Loading...' : 'Add More Items'}
+        {reloading ? t("Loading...") : t("Add More Items")}
       </button>
 
       {/* Payment Methods */}
-      <h2 style={styles.sectionTitle}>Choose Payment Method</h2>
+      <h2 style={styles.sectionTitle}>{t("Choose Payment Method")}</h2>
       <div style={styles.methodsList}>
-        {PAYMENT_METHODS.map((method) => (
+        {PAYMENT_METHODS.filter((method) => {
+          if (!paymentLinkOrderId) return true
+          if (method.id === 'cash') return false
+          return paymentLinkProviders.length === 0 || paymentLinkProviders.includes(method.id)
+        }).map((method) => (
           <button
             key={method.id}
             style={{
@@ -407,7 +549,7 @@ export default function PaymentPage() {
             onClick={() => setSelectedMethod(method.id)}
           >
             <span style={styles.methodIcon}>{method.icon}</span>
-            <span style={styles.methodName}>{method.name}</span>
+            <span style={styles.methodName}>{t(method.name)}</span>
             {selectedMethod === method.id && <span style={styles.checkMark}>✓</span>}
           </button>
         ))}
@@ -416,10 +558,10 @@ export default function PaymentPage() {
       {/* Phone Number Input (for mobile money) */}
       {selectedMethod && selectedMethod !== 'cash' && (
         <div style={styles.phoneSection}>
-          <label style={styles.phoneLabel}>Mobile Money Phone Number</label>
+          <label style={styles.phoneLabel}>{t("Mobile Money Phone Number")}</label>
           <input
             type="tel"
-            placeholder="e.g. 0788123456"
+            placeholder={t("e.g. 0788123456")}
             value={phoneNumber}
             onChange={(e) => setPhoneNumber(e.target.value)}
             style={styles.phoneInput}
@@ -427,7 +569,7 @@ export default function PaymentPage() {
         </div>
       )}
 
-        {error && <div style={styles.errorBox}>{error}</div>}
+        {error && <div style={styles.errorBox}>{t(error)}</div>}
 
       {/* Pay Button */}
       <button
@@ -439,7 +581,7 @@ export default function PaymentPage() {
         disabled={!selectedMethod || processing}
       >
         {processing
-          ? 'Processing...'
+          ? t("Processing...")
           : `Pay ${formatCurrency(activeOrder.total || activeOrder.total_amount)}`}
       </button>
 

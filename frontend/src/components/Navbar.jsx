@@ -1,13 +1,14 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { Search, User, LogOut } from 'lucide-react'
+import { usePreferences } from '../context/PreferencesContext'
 
 export default function Navbar({ user, onLogout }) {
+  const { t } = usePreferences()
   return (
     <header className="amazon-header">
       <div className="amazon-header-inner">
-        <Link to="/" className="amazon-logo" aria-label="BarFlow home">
-          Bar<span className="amazon-logo-accent">Flow</span>
+        <Link to="/" className="amazon-logo" aria-label={t('BarFlow home')}>{t("Bar")}<span className="amazon-logo-accent">{t("Flow")}</span>
         </Link>
 
         <form
@@ -17,10 +18,10 @@ export default function Navbar({ user, onLogout }) {
         >
           <input
             type="search"
-            placeholder="Search products, orders, users..."
-            aria-label="Search"
+            placeholder={t('Search products, orders, users...')}
+            aria-label={t('Search')}
           />
-          <button type="submit" aria-label="Search">
+          <button type="submit" aria-label={t('Search')}>
             <Search size={18} />
           </button>
         </form>
@@ -32,16 +33,16 @@ export default function Navbar({ user, onLogout }) {
                 type="button"
                 className="amazon-action"
                 onClick={onLogout}
-                title="Logout"
+                title={t('Logout')}
               >
                 <LogOut size={20} />
-                <span className="amazon-action-text">Logout</span>
+                <span className="amazon-action-text">{t('Logout')}</span>
               </button>
             </>
           ) : (
             <Link to="/login" className="amazon-action">
               <User size={20} />
-              <span className="amazon-action-text">Sign In</span>
+              <span className="amazon-action-text">{t('Sign In')}</span>
             </Link>
           )}
 

@@ -5,6 +5,7 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import Papa from 'papaparse'
 import * as XLSX from 'xlsx'
+import { usePreferences } from '../../context/PreferencesContext'
 
 const money = (value) => `${Number(value || 0).toLocaleString()} RWF`
 
@@ -21,6 +22,7 @@ const REPORT_CATEGORIES = [
 ]
 
 export default function Reports() {
+  const { t } = usePreferences()
   const [searchParams] = useSearchParams()
   const [summary, setSummary] = useState(null)
   const [records, setRecords] = useState([])
@@ -66,7 +68,7 @@ export default function Reports() {
       setTitle('')
       await load()
     } catch (err) {
-      alert(err.message || 'Failed to generate report.')
+      alert(err.message || t('Failed to generate report.'))
     } finally {
       setGenerating(false)
     }
@@ -144,91 +146,91 @@ export default function Reports() {
 
       <div className="user-page-heading">
         <div>
-          <p className="eyebrow">Accountant workspace</p>
-          <h1>Reports</h1>
-          <p>Generate and export financial reports.</p>
+          <p className="eyebrow">{t('Accountant workspace')}</p>
+          <h1>{t('Reports')}</h1>
+          <p>{t('Generate and export financial reports.')}</p>
         </div>
       </div>
 
       {loading ? (
-        <p style={{ textAlign: 'center', color: 'var(--text-4)', marginTop: '2rem' }}>Loading reports…</p>
+        <p style={{ textAlign: 'center', color: 'var(--text-4)', marginTop: '2rem' }}>{t('Loading reports…')}</p>
       ) : !summary ? (
-        <p style={{ textAlign: 'center', color: 'var(--text-4)', marginTop: '2rem' }}>No reports available.</p>
+        <p style={{ textAlign: 'center', color: 'var(--text-4)', marginTop: '2rem' }}>{t('No reports available.')}</p>
       ) : (
         <>
           <div className="user-info-grid">
             <div className="summary-card">
               <strong>{summary.orders}</strong>
-              <span>Total Orders</span>
+              <span>{t('Total Orders')}</span>
             </div>
             <div className="summary-card">
               <strong>{money(summary.revenue)}</strong>
-              <span>Revenue</span>
+              <span>{t('Revenue')}</span>
             </div>
             <div className="summary-card">
               <strong>{money(summary.totalPayments)}</strong>
-              <span>Payments</span>
+              <span>{t('Payments')}</span>
             </div>
             <div className="summary-card">
               <strong>{money(summary.totalRefunds)}</strong>
-              <span>Refunds</span>
+              <span>{t('Refunds')}</span>
             </div>
             <div className="summary-card">
               <strong>{money(summary.totalSalaries)}</strong>
-              <span>Salaries Paid</span>
+              <span>{t('Salaries Paid')}</span>
             </div>
           </div>
 
           <section className="user-section">
-            <h2>Generate Report</h2>
+            <h2>{t('Generate Report')}</h2>
             <form onSubmit={handleGenerate} style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 24 }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 600 }}>
-                Category
+                {t('Category')}
                 <select value={category} onChange={(e) => setCategory(e.target.value)} style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, minWidth: 180 }}>
                   {REPORT_CATEGORIES.map((c) => (
-                    <option key={c.id} value={c.id}>{c.icon} {c.label}</option>
+                    <option key={c.id} value={c.id}>{c.icon} {t(c.label)}</option>
                   ))}
                 </select>
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 600 }}>
-                Report Title
-                <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. May 2026 Sales Report" style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, minWidth: 220 }} />
+                {t('Report Title')}
+                <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('e.g. May 2026 Sales Report')} style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, minWidth: 220 }} />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 600 }}>
-                Format
+                {t('Format')}
                 <select value={format} onChange={(e) => setFormat(e.target.value)} style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, minWidth: 120 }}>
-                  <option value="pdf">PDF</option>
-                  <option value="csv">CSV</option>
-                  <option value="excel">Excel</option>
+                  <option value="pdf">{t('PDF')}</option>
+                  <option value="csv">{t('CSV')}</option>
+                  <option value="excel">{t('Excel')}</option>
                 </select>
               </label>
               <button type="submit" className="pay-action" disabled={generating} style={{ padding: '10px 18px' }}>
-                {generating ? 'Generating…' : 'Generate Report'}
+                {generating ? t('Generating…') : t('Generate Report')}
               </button>
             </form>
           </section>
 
           <section className="user-section">
-            <h2>Generated Reports</h2>
+            <h2>{t('Generated Reports')}</h2>
             {records.length === 0 ? (
-              <p style={{ color: 'var(--text-4)' }}>No reports generated yet.</p>
+              <p style={{ color: 'var(--text-4)' }}>{t('No reports generated yet.')}</p>
             ) : (
               <div className="user-table-wrap">
                 <table className="user-table">
                   <thead>
                     <tr>
-                      <th>Title</th>
-                      <th>Category</th>
-                      <th>Format</th>
-                      <th>Generated By</th>
-                      <th style={{ textAlign: 'right' }}>Date</th>
-                      <th style={{ textAlign: 'center' }}>Actions</th>
+                      <th>{t('Title')}</th>
+                      <th>{t('Category')}</th>
+                      <th>{t('Format')}</th>
+                      <th>{t('Generated By')}</th>
+                      <th style={{ textAlign: 'right' }}>{t('Date')}</th>
+                      <th style={{ textAlign: 'center' }}>{t('Actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {records.map((r) => (
                       <tr key={r.id}>
-                        <td className="obw-strong">{r.title}</td>
+                        <td className="obw-strong">{t(r.title)}</td>
                         <td style={{ textTransform: 'capitalize' }}>{r.category}</td>
                         <td style={{ textTransform: 'uppercase' }}>{r.format}</td>
                         <td>{r.generatedBy}</td>
@@ -236,13 +238,13 @@ export default function Reports() {
                         <td style={{ textAlign: 'center' }}>
                           <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
                             <button type="button" className="secondary-action" onClick={() => exportPDF(r)} style={{ padding: '0.35rem 0.7rem', margin: 0, fontSize: 12 }}>
-                              PDF
+                              {t('PDF')}
                             </button>
                             <button type="button" className="secondary-action" onClick={() => exportCSV(r)} style={{ padding: '0.35rem 0.7rem', margin: 0, fontSize: 12 }}>
-                              CSV
+                              {t('CSV')}
                             </button>
                             <button type="button" className="secondary-action" onClick={() => exportExcel(r)} style={{ padding: '0.35rem 0.7rem', margin: 0, fontSize: 12 }}>
-                              Excel
+                              {t('Excel')}
                             </button>
                           </div>
                         </td>

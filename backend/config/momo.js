@@ -2,11 +2,11 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 const MOMO = {
-  baseUrl: process.env.MOMO_BASE_URL || 'https://sandbox.momopayment.example',
-  apiKey: process.env.MOMO_API_KEY || process.env.MOMO_KEY || '',
-  apiSecret: process.env.MOMO_API_SECRET || process.env.MOMO_SECRET || '',
-  partnerId: process.env.MOMO_PARTNER_ID || '',
-  callbackUrl: process.env.MOMO_CALLBACK_URL || (process.env.APP_URL ? `${process.env.APP_URL}/api/payments/momo/callback` : '/api/payments/momo/callback'),
+  baseUrl: process.env.MTN_MOMO_BASE_URL || 'https://sandbox.momodeveloper.mtn.com',
+  targetEnvironment: process.env.MTN_MOMO_TARGET_ENVIRONMENT || 'sandbox',
+  subscriptionKey: process.env.MTN_MOMO_SUBSCRIPTION_KEY || '',
+  apiUser: process.env.MTN_MOMO_API_USER || '',
+  apiKey: process.env.MTN_MOMO_API_KEY || '',
   timeout: Number(process.env.MOMO_TIMEOUT_MS || 15000),
 }
 

@@ -2,43 +2,33 @@ import React from 'react'
 import { QrCode, Smartphone } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useOwner } from '../context/OwnerContext'
-import { PUBLIC_APP_URL } from '../config/publicAppUrl'
-
-/**
- * QR Code Display Component
- * Shows a QR code that customers can scan to access the menu and place orders.
- * Uses qrserver.com API (no external library needed).
- */
-const FRONTEND_URL = PUBLIC_APP_URL
-const QR_SIZE = 132
+import QRCode from './QRCode'
+import { buildTableMenuUrl } from '../config/tableMenuUrl'
+import { usePreferences } from '../context/PreferencesContext'
 
 export default function QRCodeDisplay() {
+  const { t } = usePreferences()
   const { user } = useAuth()
   const { activeBranchId } = useOwner()
   const businessId = user?.businessId
   const branchId = String(user?.role || '').toLowerCase() === 'owner' ? activeBranchId : user?.branchId
-  const params = new URLSearchParams()
-  if (businessId) params.set('businessId', businessId)
-  if (branchId && branchId !== 'all') params.set('branchId', branchId)
-  const query = params.toString()
-  const menuUrl = `${FRONTEND_URL}/menu${query ? `?${query}` : ''}`
+  const menuUrl = buildTableMenuUrl({
+    tableNumber: 1,
+    businessId,
+    branchId,
+    businessSlug: user?.businessSlug,
+  })
 
   return (
     <aside className="w-full sm:w-auto max-w-sm rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50 via-white to-indigo-50 p-3 shadow-sm flex items-center gap-3">
       <div className="rounded-xl bg-white p-2 shadow-sm border border-slate-100 shrink-0">
-        <img
-          src={`https://api.qrserver.com/v1/create-qr-code/?size=${QR_SIZE}x${QR_SIZE}&data=${encodeURIComponent(menuUrl)}`}
-          alt="QR code for the customer menu"
-          width={QR_SIZE}
-          height={QR_SIZE}
-          className="block rounded-md"
-        />
+        <QRCode value={menuUrl} size={132} level="M" ariaLabel={t('QR code for CLIENT TABLE 1')} />
       </div>
       <div className="min-w-0">
-        <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-violet-700"><QrCode size={15} /> CUSTOMER MENU</span>
-        <h2 className="font-bold text-slate-900 mt-1">Scan to order</h2>
-        <p className="text-xs leading-5 text-slate-500 mt-1">Customers scan this code to browse the menu and submit their own order.</p>
-        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 mt-2"><Smartphone size={14} /> Ready to scan</span>
+        <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-violet-700"><QrCode size={15} /> {t('CLIENT TABLE 1')}</span>
+        <h2 className="font-bold text-slate-900 mt-1">{t('Scan to order')}</h2>
+        <p className="text-xs leading-5 text-slate-500 mt-1">{t('Customers scan this code to open the menu for Table 1.')}</p>
+        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 mt-2"><Smartphone size={14} /> {t('Ready to scan')}</span>
       </div>
     </aside>
   )

@@ -2,6 +2,7 @@ import { Router } from 'express'
 import authMiddleware from '../middleware/authMiddleware.js'
 import roleMiddleware from '../middleware/roleMiddleware.js'
 import { permissionMiddleware } from '../middleware/permissionMiddleware.js'
+import { requireGrant } from '../utils/staffPermissions.js'
 import {
   ownerLogin,
   ownerLogout,
@@ -19,7 +20,7 @@ import {
   getSubscription,
   getAvailableSubscriptionPlans,
   selectSubscriptionPlan,
-  verifySubscriptionPayment,
+  checkSubscriptionPayment,
   getReceipt,
   renewSubscription,
   getGlobalInventory,
@@ -46,12 +47,12 @@ import {
   updatePaymentSettings,
   generateQRPayment,
   generateMerchantQRPayment,
-  verifyQRPayment,
 } from '../controllers/ownerController.js'
 
 const router = Router()
 
 const ownerOnly = [authMiddleware, roleMiddleware('owner')]
+const qrPaymentUsers = [authMiddleware, roleMiddleware('owner', 'waiter')]
 const canManageUsers = [authMiddleware, permissionMiddleware('can_manage_users')]
 const canWithdraw = [authMiddleware, permissionMiddleware('can_withdraw')]
 const canTransfer = [authMiddleware, permissionMiddleware('can_transfer')]
@@ -78,7 +79,7 @@ router.get('/users', ...ownerOnly, getUsers)
 router.post('/users', ...ownerOnly, createUser)
 router.put('/users/:id', ...ownerOnly, updateUser)
 router.delete('/users/:id', ...ownerOnly, deleteUser)
-router.put('/users/:id/reset-password', ...ownerOnly, resetUserPassword)
+router.put('/users/:id/reset-password', authMiddleware, requireGrant('reset_passwords'), resetUserPassword)
 
 // ──────────────────────────────────────────────
 // 3. Corporate Payroll & Compensation
@@ -124,6 +125,7 @@ router.get('/subscription', ...ownerOnly, getSubscription)
 router.get('/subscription/plans', ...ownerOnly, getAvailableSubscriptionPlans)
 router.get('/subscription/receipt', ...ownerOnly, getReceipt)
 router.post('/subscription/select-plan', ...ownerOnly, selectSubscriptionPlan)
+router.get('/subscription/payment/:paymentId/status', ...ownerOnly, checkSubscriptionPayment)
 router.post('/subscription/renew', ...ownerOnly, renewSubscription)
 
 // ──────────────────────────────────────────────
@@ -157,7 +159,6 @@ router.post('/settings/restore-backup', ...canManageSystemSettings, restoreBacku
 router.get('/payment-settings', ...ownerOnly, getPaymentSettings)
 router.put('/payment-settings', ...ownerOnly, updatePaymentSettings)
 router.get('/qr-payment/merchant', ...ownerOnly, generateMerchantQRPayment)
-router.get('/qr-payment/:orderId', ...ownerOnly, generateQRPayment)
-router.post('/qr-payment/verify', ...ownerOnly, verifyQRPayment)
+router.get('/qr-payment/:orderId', ...qrPaymentUsers, generateQRPayment)
 
 export default router

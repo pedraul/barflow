@@ -1,3 +1,4 @@
+import { usePreferences } from '../../context/PreferencesContext'
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { fetchOperatorOrders, fetchOperatorDashboard } from '../../api/endpoints'
@@ -5,13 +6,14 @@ import { fetchOperatorOrders, fetchOperatorDashboard } from '../../api/endpoints
 const MONEY = (v) => `${Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
 
 function Receipt({ data }) {
+  const { t } = usePreferences()
   return (
-    <div className="relative w-full max-w-[380px] bg-white shadow-2xl drop-shadow-xl my-4 print:shadow-none">
+    <div className="operator-receipt-paper relative w-full max-w-[380px] bg-white shadow-2xl drop-shadow-xl my-4 print:shadow-none">
       <div
         className="absolute top-0 left-0 right-0 h-1 bg-[radial-gradient(circle,_transparent_70%,_#e5e7eb_70%)] bg-[length:10px_10px]"
       />
 
-      <div className="px-6 py-8 space-y-4">
+      <div className="operator-receipt-content px-6 py-8 space-y-4">
         <div className="flex justify-center mb-2">
           <div className="w-14 h-14 rounded-full border-2 border-black flex items-center justify-center p-2">
             <svg
@@ -32,7 +34,7 @@ function Receipt({ data }) {
           </div>
         </div>
 
-        <div className="text-center">
+        <div className="operator-receipt-business text-center">
           <h1 className="text-xl font-extrabold tracking-wide text-black uppercase">
             {data.businessName}
           </h1>
@@ -42,55 +44,51 @@ function Receipt({ data }) {
           <p className="text-xs text-gray-700 mt-1">
             {data.address}
           </p>
-          <p className="text-xs text-gray-700 font-medium">
-            Tel: {data.phone}
+          <p className="text-xs text-gray-700 font-medium">{t("Tel:")}{data.phone}
           </p>
-          <p className="text-xs text-gray-700">
-            Email: {data.email}
+          <p className="text-xs text-gray-700">{t("Email:")}{data.email}
           </p>
-          <p className="text-xs text-gray-700">TIN: {data.registrationCode}</p>
+          <p className="text-xs text-gray-700">{t("TIN:")}{' '}{data.registrationCode}</p>
         </div>
 
         <div className="border-b-2 border-dashed border-gray-400 my-2" />
 
-        <h2 className="text-center font-bold text-base text-black uppercase tracking-wider mb-2">
-          Receipt
-        </h2>
+        <h2 className="text-center font-bold text-base text-black uppercase tracking-wider mb-2">{t("Receipt")}</h2>
 
-        <div className="text-xs space-y-1 text-gray-800">
+        <div className="operator-receipt-meta text-xs space-y-1 text-gray-800">
           <div className="flex justify-between">
             <span>
-              <strong>Receipt No:</strong> {data.receiptNo}
+              <strong>{t("Receipt No:")}</strong> {data.receiptNo}
             </span>
             <span>
-              <strong>Date:</strong> <span className="underline">{data.date}</span>
+              <strong>{t("Date:")}</strong> <span className="underline">{data.date}</span>
             </span>
           </div>
 
           <div className="flex justify-between">
             <span>
-              <strong>Time:</strong> {data.time}
+              <strong>{t("Time:")}</strong> {data.time}
             </span>
             <span>
-              <strong>Waiter:</strong> {data.cashier}
-            </span>
-          </div>
-
-          <div className="flex justify-between">
-            <span>
-              <strong>Table:</strong> {data.table}
-            </span>
-            <span>
-              <strong>Order Type:</strong> {data.orderType}
+              <strong>{t("Waiter:")}</strong> {data.cashier}
             </span>
           </div>
 
           <div className="flex justify-between">
             <span>
-              <strong>Client Name:</strong> {data.clientName}
+              <strong>{t("Table:")}</strong> {data.table}
             </span>
             <span>
-              <strong>Phone:</strong> {data.clientPhone}
+              <strong>{t("Order Type:")}</strong> {data.orderType}
+            </span>
+          </div>
+
+          <div className="flex justify-between">
+            <span>
+              <strong>{t("Client Name:")}</strong> {data.clientName}
+            </span>
+            <span>
+              <strong>{t("Phone:")}</strong> {data.clientPhone}
             </span>
           </div>
         </div>
@@ -98,13 +96,13 @@ function Receipt({ data }) {
         <div className="border-b-2 border-dashed border-gray-400 my-2" />
 
         <div className="grid grid-cols-12 text-xs font-bold text-black border-b border-gray-300 pb-1 mb-2">
-          <span className="col-span-6">Item</span>
-          <span className="col-span-2 text-center">Qty</span>
-          <span className="col-span-2 text-right">Price</span>
-          <span className="col-span-2 text-right">Total</span>
+          <span className="col-span-6">{t("Item")}</span>
+          <span className="col-span-2 text-center">{t("Qty")}</span>
+          <span className="col-span-2 text-right">{t("Price")}</span>
+          <span className="col-span-2 text-right">{t("Total")}</span>
         </div>
 
-        <div className="space-y-2 text-xs text-gray-800">
+        <div className="operator-receipt-items space-y-2 text-xs text-gray-800">
           {data.items.map((item, index) => (
             <div key={index} className="grid grid-cols-12">
               <span className="col-span-6 font-medium">{item.name}</span>
@@ -121,11 +119,11 @@ function Receipt({ data }) {
 
         <div className="text-xs space-y-1">
           <div className="flex justify-between font-medium">
-            <span>Subtotal</span>
+            <span>{t("Subtotal")}</span>
             <span>{data.subtotal}</span>
           </div>
           <div className="flex justify-between text-gray-600">
-            <span>Discount</span>
+            <span>{t("Discount")}</span>
             <span>{data.discount}</span>
           </div>
         </div>
@@ -133,27 +131,27 @@ function Receipt({ data }) {
         <div className="border-b-2 border-black my-1" />
 
         <div className="flex justify-between items-center text-base font-extrabold text-black">
-          <span>TOTAL</span>
-          <span>{data.total} RWF</span>
+          <span>{t("TOTAL")}</span>
+          <span>{data.total}{' '}{t("RWF")}</span>
         </div>
 
         <div className="border-b-2 border-black my-1" />
 
         <div className="text-xs space-y-1 mt-2">
           <div className="flex justify-between">
-            <span className="font-semibold">Payment Method:</span>
+            <span className="font-semibold">{t("Payment Method:")}</span>
             <span>{data.paymentMethod}</span>
           </div>
           <div className="flex justify-between">
-            <span className="font-semibold">Amount Paid:</span>
+            <span className="font-semibold">{t("Amount Paid:")}</span>
             <span>{data.amountPaid}</span>
           </div>
           <div className="flex justify-between">
-            <span className="font-semibold">Payment Ref:</span>
+            <span className="font-semibold">{t("Payment Ref:")}</span>
             <span>{data.paymentRef}</span>
           </div>
           <div className="flex justify-between">
-            <span className="font-semibold">Status:</span>
+            <span className="font-semibold">{t("Status:")}</span>
             <span className={'font-bold ' + (data.paymentStatus === 'PAID' ? 'text-green-600' : 'text-amber-600')}>
               {data.paymentStatus}
             </span>
@@ -163,12 +161,12 @@ function Receipt({ data }) {
         <div className="border-b-2 border-dashed border-gray-400 my-2" />
 
         <p className="text-xs text-gray-800">
-          <strong>Customer Number:</strong> {data.customerNumber}
+          <strong>{t("Customer Number:")}</strong> {data.customerNumber}
         </p>
 
         <div className="text-center mt-4 space-y-1">
           <p className="text-xs italic text-gray-700">
-            {data.footerNote || 'Thank you for dining with us!'}
+            {data.footerNote || t("Thank you for dining with us!")}
           </p>
         </div>
       </div>
@@ -181,6 +179,7 @@ function Receipt({ data }) {
 }
 
 export default function OperatorReceiptDetail() {
+  const { t } = usePreferences()
   const { id } = useParams()
   const navigate = useNavigate()
   const [receipt, setReceipt] = useState(null)
@@ -234,20 +233,24 @@ export default function OperatorReceiptDetail() {
     loadBusiness()
   }, [])
 
-  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#6c757d' }}>Loading receipt...</div>
+  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#6c757d' }}>{t("Loading receipt...")}</div>
   if (!receipt) return (
-    <div style={{ padding: 40, textAlign: 'center', color: '#6c757d' }}>
-      Receipt not found.{' '}
-      <button className="secondary-action" onClick={() => navigate('/operator/receipts/printed')}>Back</button>
+    <div style={{ padding: 40, textAlign: 'center', color: '#6c757d' }}>{t("Receipt not found.")}{' '}
+      <button className="secondary-action" onClick={() => navigate('/operator/receipts/printed')}>{t("Back")}</button>
     </div>
   )
 
   const isPrinted = receipt.status === 'Served' || receipt.status === 'Paid'
   const dt = new Date(receipt.createdAt)
-  const now = new Date()
-  const today = dt.toLocaleDateString('en-GB')
-  const currentTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-  const receiptNo = `RCP-${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(receipt.orderNumber).padStart(4, '0')}`
+  const hasValidCreatedAt = Number.isFinite(dt.getTime())
+  const today = hasValidCreatedAt ? dt.toLocaleDateString('en-GB') : 'Date unavailable'
+  const currentTime = hasValidCreatedAt
+    ? dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    : 'Time unavailable'
+  const receiptPeriod = hasValidCreatedAt
+    ? `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`
+    : 'ORDER'
+  const receiptNo = `RCP-${receiptPeriod}-${String(receipt.orderNumber).padStart(4, '0')}`
   const items = (receipt.items || []).map((i) => ({
     name: i.name,
     qty: i.quantity,
@@ -268,7 +271,7 @@ export default function OperatorReceiptDetail() {
     receiptNo,
     date: today,
     time: currentTime,
-    cashier: receipt.waiterName || 'Operator',
+    cashier: receipt.waiterName || t('Operator'),
     table: 'Table ' + receipt.tableNumber,
     orderType: receipt.source === 'qr' ? 'QR Order' : 'Waiter Order',
     clientName: receipt.customerName || 'Walk-in',
@@ -286,11 +289,11 @@ export default function OperatorReceiptDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 sm:p-8 font-sans text-[#0B132B]">
+    <div className="operator-receipt-print-page min-h-screen bg-slate-100 flex items-center justify-center p-4 sm:p-8 font-sans text-[#0B132B]">
       <div className="flex flex-col items-center">
         <div className="flex items-center gap-3 mb-4 no-print">
-          <button className="secondary-action" onClick={() => navigate('/operator/receipts/' + (isPrinted ? 'printed' : 'draft'))}>← Back</button>
-          <button className="pay-action" onClick={() => window.print()}>🖨 Print Receipt</button>
+          <button className="secondary-action" onClick={() => navigate('/operator/receipts/' + (isPrinted ? 'printed' : 'draft'))}>{t("← Back")}</button>
+          <button className="pay-action" onClick={() => window.print()}>{t("🖨 Print Receipt")}</button>
         </div>
         <Receipt data={receiptData} />
       </div>

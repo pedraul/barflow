@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { usePreferences } from '../../context/PreferencesContext'
 import { resetPassword } from '../../api/endpoints'
 
 export default function ResetPassword() {
@@ -11,10 +12,11 @@ export default function ResetPassword() {
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const { t } = usePreferences()
 
   useEffect(() => {
     if (!token) {
-      setError('Invalid or missing reset token.')
+      setError(t('Invalid or missing reset token.'))
     }
   }, [token])
 
@@ -23,18 +25,18 @@ export default function ResetPassword() {
     setError('')
     setMessage('')
     if (password !== confirmPassword) {
-      return setError('Passwords do not match.')
+      return setError(t('Passwords do not match.'))
     }
     if (password.length < 8) {
-      return setError('Password must be at least 8 characters.')
+      return setError(t('Password must be at least 8 characters.'))
     }
     setLoading(true)
     try {
       const res = await resetPassword(token, password)
-      setMessage(res.message || 'Password has been reset successfully.')
+      setMessage(res.message || t('Password has been reset successfully.'))
       setTimeout(() => navigate('/'), 2000)
     } catch (err) {
-      setError(err.response?.data?.error || err.message || 'Reset failed.')
+      setError(err.response?.data?.error || err.message || t('Reset failed.'))
     } finally {
       setLoading(false)
     }
@@ -55,8 +57,8 @@ export default function ResetPassword() {
         </div>
 
         <div className="bg-white rounded-2xl p-6 shadow-xl space-y-4">
-          <h2 className="text-xl font-bold text-slate-900 text-center">Reset Password</h2>
-          <p className="text-sm text-slate-500 text-center">Enter your new password below.</p>
+          <h2 className="text-xl font-bold text-slate-900 text-center">{t('Reset Password')}</h2>
+          <p className="text-sm text-slate-500 text-center">{t('Enter your new password below.')}</p>
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3">
@@ -71,24 +73,24 @@ export default function ResetPassword() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">New Password</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('New Password')}</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter new password"
+                placeholder={t('Enter new password')}
                 required
                 minLength={8}
                 className="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Confirm Password</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('Confirm Password')}</label>
               <input
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm new password"
+                placeholder={t('Confirm new password')}
                 required
                 minLength={8}
                 className="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
@@ -99,14 +101,14 @@ export default function ResetPassword() {
               disabled={loading || !token}
               className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition disabled:opacity-50"
             >
-              {loading ? 'Updating...' : 'Reset Password'}
+              {loading ? t('Updating...') : t('Reset Password')}
             </button>
           </form>
 
           <p className="text-center text-sm text-slate-500">
-            Remember your password?{' '}
+            {t('Remember your password?')}{' '}
             <button type="button" onClick={() => navigate('/')} className="text-indigo-600 font-semibold hover:underline">
-              Sign in
+              {t('Sign in')}
             </button>
           </p>
         </div>

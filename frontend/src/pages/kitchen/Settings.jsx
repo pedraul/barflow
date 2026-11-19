@@ -1,8 +1,10 @@
+import { usePreferences } from '../../context/PreferencesContext'
 import React, { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import * as api from '../../api/endpoints'
 
 export default function Settings() {
+  const { t } = usePreferences()
   const { user } = useAuth()
   const [form, setForm] = useState({ current: '', new: '', confirm: '' })
   const [saving, setSaving] = useState(false)
@@ -15,21 +17,21 @@ export default function Settings() {
     setError(null)
 
     if (form.new !== form.confirm) {
-      setError('New password and confirmation do not match.')
+      setError(t("New password and confirmation do not match."))
       return
     }
     if (form.new.length < 8) {
-      setError('New password must be at least 8 characters.')
+      setError(t("New password must be at least 8 characters."))
       return
     }
 
     setSaving(true)
     try {
       await api.changePassword(form.current, form.new)
-      setMessage('Password updated successfully.')
+      setMessage(t("Password updated successfully."))
       setForm({ current: '', new: '', confirm: '' })
     } catch (err) {
-      setError(err.message || 'Could not update password.')
+      setError(err.message || t("Could not update password."))
     } finally {
       setSaving(false)
     }
@@ -39,29 +41,25 @@ export default function Settings() {
     <div className="page kitchen-settings">
       <div className="user-page-heading">
         <div>
-          <p className="eyebrow">Kitchen workspace</p>
-          <h1>Settings</h1>
-          <p>Security settings for your account.</p>
+          <p className="eyebrow">{t("Kitchen workspace")}</p>
+          <h1>{t("Settings")}</h1>
+          <p>{t("Security settings for your account.")}</p>
         </div>
       </div>
 
       <section className="user-section">
         <div className="section-card">
-          <h2>Change password</h2>
-          <p className="text-sm">Account: {user?.name || 'Kitchen'} · {user?.role || 'Kitchen'}</p>
+          <h2>{t("Change password")}</h2>
+          <p className="text-sm">{t("Account:")}{' '}{user?.name || t("Kitchen")} · {user?.role || t("Kitchen")}</p>
           <form onSubmit={handleSubmit} className="profile-form">
-            <label>
-              Current password
-              <input
+            <label>{t("Current password")}<input
                 type="password"
                 value={form.current}
                 onChange={(e) => setForm({ ...form, current: e.target.value })}
                 required
               />
             </label>
-            <label>
-              New password
-              <input
+            <label>{t("New password")}<input
                 type="password"
                 value={form.new}
                 onChange={(e) => setForm({ ...form, new: e.target.value })}
@@ -69,9 +67,7 @@ export default function Settings() {
                 minLength={8}
               />
             </label>
-            <label>
-              Confirm new password
-              <input
+            <label>{t("Confirm new password")}<input
                 type="password"
                 value={form.confirm}
                 onChange={(e) => setForm({ ...form, confirm: e.target.value })}
@@ -79,12 +75,12 @@ export default function Settings() {
               />
             </label>
 
-            {error && <div className="error-box" style={{ color: '#cc0000' }}>{error}</div>}
+            {error && <div className="error-box" style={{ color: '#cc0000' }}>{t(error)}</div>}
             {message && <div className="success-box" style={{ color: '#2d6a4f' }}>{message}</div>}
 
             <div className="form-actions">
               <button type="submit" className="pay-action" disabled={saving}>
-                {saving ? 'Updating...' : 'Update password'}
+                {saving ? t("Updating...") : t("Update password")}
               </button>
             </div>
           </form>

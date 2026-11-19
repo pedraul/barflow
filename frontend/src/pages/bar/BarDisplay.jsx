@@ -1,11 +1,13 @@
+import { usePreferences } from '../../context/PreferencesContext'
 import React from 'react'
 import StationDisplay from '../../components/StationDisplay'
 import * as api from '../../api/endpoints'
 
 export default function BarDisplay() {
+  const { t } = usePreferences()
   return (
     <StationDisplay
-      title="🍺 Bar Display"
+      title={t("🍺 Bar Display")}
       accent="#17a2b8"
       stationLabel="Bar"
       fetchOrders={api.fetchBarOrders}

@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { useOwner } from '../../context/OwnerContext'
 import { PackageSearch, Search } from 'lucide-react'
+import { usePreferences } from '../../context/PreferencesContext'
 
 export default function GlobalInventory() {
+  const { t } = usePreferences()
   const { fetchGlobalInventory, fetchStockMovements, loading } = useOwner()
   const [inventory, setInventory] = useState([])
   const [movements, setMovements] = useState([])
@@ -35,10 +37,10 @@ export default function GlobalInventory() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-between items-center">
-        <h2 className="m-0 text-2xl font-bold text-slate-900">Global Inventory Monitor</h2>
+        <h2 className="m-0 text-2xl font-bold text-slate-900">{t('Global Inventory Monitor')}</h2>
         <div className="flex gap-2">
-          <button onClick={() => setView('items')} className={`rounded-md px-3.5 py-1.5 cursor-pointer text-sm font-medium transition ${view === 'items' ? 'bg-blue-500 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}>Stock Table</button>
-          <button onClick={() => setView('movements')} className={`rounded-md px-3.5 py-1.5 cursor-pointer text-sm font-medium transition ${view === 'movements' ? 'bg-blue-500 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}>Stock Movements</button>
+          <button onClick={() => setView('items')} className={`rounded-md px-3.5 py-1.5 cursor-pointer text-sm font-medium transition ${view === 'items' ? 'bg-blue-500 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}>{t('Stock Table')}</button>
+          <button onClick={() => setView('movements')} className={`rounded-md px-3.5 py-1.5 cursor-pointer text-sm font-medium transition ${view === 'movements' ? 'bg-blue-500 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}>{t('Stock Movements')}</button>
         </div>
       </div>
 
@@ -47,11 +49,11 @@ export default function GlobalInventory() {
           <div className="flex gap-3 items-center">
             <div className="relative flex-1">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input type="text" placeholder="Search by name or SKU..." value={search} onChange={(e) => setSearch(e.target.value)}
+              <input type="text" placeholder={t('Search by name or SKU...')} value={search} onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:border-indigo-500" />
             </div>
             <select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} className="px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:border-indigo-500">
-              <option value="">All Branches</option>
+              <option value="">{t('All Branches')}</option>
               {branches.filter((b) => b.toLowerCase() !== 'main branch').map((b) => <option key={b} value={b}>{b}</option>)}
             </select>
           </div>
@@ -61,7 +63,7 @@ export default function GlobalInventory() {
               <thead>
                 <tr className="bg-slate-50 border-b-2 border-slate-200">
                   {['Name', 'SKU', 'Branch', 'Qty', 'Cost Price', 'Sell Price', 'Min Stock', 'Status'].map((h) => (
-                    <th key={h} className="text-left p-2 text-xs text-slate-500 uppercase font-bold">{h}</th>
+                    <th key={h} className="text-left p-2 text-xs text-slate-500 uppercase font-bold">{t(h)}</th>
                   ))}
                 </tr>
               </thead>
@@ -77,14 +79,14 @@ export default function GlobalInventory() {
                     <td className="p-2.5 text-[13px] text-slate-700">{item.minStockLevel}</td>
                     <td className="p-2.5 text-[13px]">
                       {item.lowStock ? (
-                        <span className="bg-red-100 text-red-800 px-2.5 py-0.5 rounded-full text-[10px] font-medium">⚠ Low Stock</span>
+                        <span className="bg-red-100 text-red-800 px-2.5 py-0.5 rounded-full text-[10px] font-medium">{t('⚠ Low Stock')}</span>
                       ) : (
-                        <span className="bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full text-[10px] font-medium">In Stock</span>
+                        <span className="bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full text-[10px] font-medium">{t('In Stock')}</span>
                       )}
                     </td>
                   </tr>
                 ))}
-                {!filteredItems.length && <tr><td colSpan={8} className="p-5 text-center text-slate-400">No inventory items found.</td></tr>}
+                {!filteredItems.length && <tr><td colSpan={8} className="p-5 text-center text-slate-400">{t('No inventory items found.')}</td></tr>}
               </tbody>
             </table>
           </div>
@@ -94,13 +96,13 @@ export default function GlobalInventory() {
       {view === 'movements' && (
         <div className="bg-white rounded-xl overflow-x-auto shadow-sm border border-slate-200">
           <div className="px-4 py-3 border-b border-slate-200 text-sm text-slate-500">
-            Stock Adjustment History — Last 100 entries
+            {t('Stock Adjustment History — Last 100 entries')}
           </div>
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b-2 border-slate-200">
                 {['Item', 'Type', 'Qty', 'Reason', 'Adjusted By', 'Branch', 'Date'].map((h) => (
-                  <th key={h} className="text-left p-2 text-xs text-slate-500 uppercase font-bold">{h}</th>
+                  <th key={h} className="text-left p-2 text-xs text-slate-500 uppercase font-bold">{t(h)}</th>
                 ))}
               </tr>
             </thead>
@@ -118,13 +120,13 @@ export default function GlobalInventory() {
                   <td className="p-2.5 text-[13px] text-slate-400">{new Date(m.timestamp).toLocaleDateString()}</td>
                 </tr>
               ))}
-              {!movements.length && <tr><td colSpan={7} className="p-5 text-center text-slate-400">No stock movements recorded.</td></tr>}
+              {!movements.length && <tr><td colSpan={7} className="p-5 text-center text-slate-400">{t('No stock movements recorded.')}</td></tr>}
             </tbody>
           </table>
         </div>
       )}
 
-      {loading && <div className="text-center text-slate-400 p-5">Loading...</div>}
+      {loading && <div className="text-center text-slate-400 p-5">{t('Loading...')}</div>}
     </div>
   )
 }

@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import * as api from '../../api/endpoints'
+import { usePreferences } from '../../context/PreferencesContext'
 
 export default function TwoFactorSetup() {
+  const { t } = usePreferences()
   const [settings, setSettings] = useState({ isEnabled: false, method: 'email', scope: 'platform' })
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
@@ -32,9 +34,9 @@ export default function TwoFactorSetup() {
       }
       const data = await api.updateTwoFactorSettings(payload)
       setSettings((prev) => ({ ...prev, ...data }))
-      setMessage('Two-factor authentication settings saved.')
+      setMessage(t('Two-factor authentication settings saved.'))
     } catch (err) {
-      setMessage(err.message || 'Failed to save settings.')
+      setMessage(err.message || t('Failed to save settings.'))
     } finally {
       setSaving(false)
     }
@@ -44,25 +46,25 @@ export default function TwoFactorSetup() {
     <div className="page">
       <div className="user-page-heading">
         <div>
-          <h1>Two-Factor Authentication</h1>
-          <p>Enable 2FA to add an extra layer of security.</p>
+          <h1>{t('Two-Factor Authentication')}</h1>
+          <p>{t('Enable 2FA to add an extra layer of security.')}</p>
         </div>
       </div>
       {message && <div className={settings.isEnabled ? 'success-box' : 'error-box'}>{message}</div>}
       <section className="user-section">
         <form onSubmit={handleSave}>
           <label>
-            Scope
+            {t('Scope')}
             <select
               value={settings.scope}
               onChange={(e) => setSettings({ ...settings, scope: e.target.value })}
             >
-              <option value="platform">Platform (all businesses)</option>
-              <option value="business">This Business Only</option>
+              <option value="platform">{t('Platform (all businesses)')}</option>
+              <option value="business">{t('This Business Only')}</option>
             </select>
           </label>
           <label>
-            Enable 2FA
+            {t('Enable 2FA')}
             <input
               type="checkbox"
               checked={settings.isEnabled}
@@ -71,19 +73,19 @@ export default function TwoFactorSetup() {
           </label>
           {settings.isEnabled && (
             <label>
-              Method
+              {t('Method')}
               <select
                 value={settings.method}
                 onChange={(e) => setSettings({ ...settings, method: e.target.value })}
               >
-                <option value="email">Email</option>
-                <option value="sms">SMS</option>
-                <option value="authenticator">Authenticator App</option>
+                <option value="email">{t('Email')}</option>
+                <option value="sms">{t('SMS')}</option>
+                <option value="authenticator">{t('Authenticator App')}</option>
               </select>
             </label>
           )}
           <button type="submit" className="pay-action" disabled={saving}>
-            {saving ? 'Saving...' : 'Save Settings'}
+            {saving ? t('Saving...') : t('Save Settings')}
           </button>
         </form>
       </section>

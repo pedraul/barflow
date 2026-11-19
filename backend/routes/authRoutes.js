@@ -132,7 +132,7 @@ router.post('/login', async (req, res) => {
       }
     }
 
-    if (subscriptionExpired) {
+    if (subscriptionExpired && !isOwner) {
       return res.status(403).json({
         error: 'Your business subscription is pending activation. Please complete payment and wait for admin verification.',
         code: 'SUBSCRIPTION_PENDING',

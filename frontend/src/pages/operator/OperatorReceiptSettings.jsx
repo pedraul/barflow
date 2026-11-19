@@ -1,3 +1,5 @@
+import { usePreferences } from '../../context/PreferencesContext'
+import BackButton from '../../components/BackButton'
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
@@ -86,6 +88,7 @@ function SidebarLink({ icon, label, onClick }) {
 }
 
 export default function OperatorReceiptSettings() {
+  const { t } = usePreferences()
   const navigate = useNavigate()
   const [settings, setSettings] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -125,7 +128,7 @@ export default function OperatorReceiptSettings() {
   }
 
   if (!settings) {
-    return <div style={{ padding: 40, textAlign: 'center', color: '#6c757d' }}>Loading receipt settings...</div>
+    return <div style={{ padding: 40, textAlign: 'center', color: '#6c757d' }}>{t("Loading receipt settings...")}</div>
   }
 
   return (
@@ -136,15 +139,16 @@ export default function OperatorReceiptSettings() {
       )}
 
       {/* Mobile topbar */}
-      <header className="mobile-topbar">
+      <header className="mobile-topbar app-topbar">
         <button
           type="button"
           className="mobile-menu-button"
           onClick={() => setMobileMenuOpen((prev) => !prev)}
-          aria-label="Toggle navigation"
+          aria-label={t("Toggle navigation")}
         >
           {mobileMenuOpen ? '✕' : '☰'}
         </button>
+        <BackButton fallback="/operator/orders" />
         <div className="mobile-brand">BarFlow</div>
       </header>
 
@@ -160,28 +164,28 @@ export default function OperatorReceiptSettings() {
 
           <nav className="p-4 space-y-6 text-sm">
             <div>
-              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Order Management</p>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">{t("Order Management")}</p>
               <div className="space-y-1">
-                <SidebarLink icon={<FileText size={18} />} label="New Orders" onClick={() => navigate('/operator/orders')} />
-                <SidebarLink icon={<ChefHat size={18} />} label="Preparing" onClick={() => navigate('/operator/orders')} />
-                <SidebarLink icon={<CheckCircle2 size={18} />} label="Ready" onClick={() => navigate('/operator/orders')} />
-                <SidebarLink icon={<FileText size={18} />} label="All Orders" onClick={() => navigate('/operator/orders')} />
+                <SidebarLink icon={<FileText size={18} />} label={t("New Orders")} onClick={() => navigate('/operator/orders')} />
+                <SidebarLink icon={<ChefHat size={18} />} label={t("Preparing")} onClick={() => navigate('/operator/orders')} />
+                <SidebarLink icon={<CheckCircle2 size={18} />} label={t("Ready")} onClick={() => navigate('/operator/orders')} />
+                <SidebarLink icon={<FileText size={18} />} label={t("All Orders")} onClick={() => navigate('/operator/orders')} />
               </div>
             </div>
 
             <div>
-              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Receipts</p>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">{t("Receipts")}</p>
               <div className="space-y-1">
-                <SidebarLink icon={<Printer size={18} />} label="Printed Receipts" onClick={() => navigate('/operator/receipts/printed')} />
-                <SidebarLink icon={<FileText size={18} />} label="Receipt Settings" onClick={() => navigate('/operator/receipt-settings')} />
+                <SidebarLink icon={<Printer size={18} />} label={t("Printed Receipts")} onClick={() => navigate('/operator/receipts/printed')} />
+                <SidebarLink icon={<FileText size={18} />} label={t("Receipt Settings")} onClick={() => navigate('/operator/receipt-settings')} />
               </div>
             </div>
 
             <div>
-              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Other</p>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">{t("Other")}</p>
               <div className="space-y-1">
-                <SidebarLink icon={<FileSpreadsheet size={18} />} label="Reports" onClick={() => navigate('/operator/reports')} />
-                <SidebarLink icon={<User size={18} />} label="My Account" onClick={() => navigate('/account')} />
+                <SidebarLink icon={<FileSpreadsheet size={18} />} label={t("Reports")} onClick={() => navigate('/operator/reports')} />
+                <SidebarLink icon={<User size={18} />} label={t("My Account")} onClick={() => navigate('/account')} />
               </div>
             </div>
           </nav>
@@ -189,8 +193,7 @@ export default function OperatorReceiptSettings() {
 
         <div className="p-4 border-t border-slate-800">
           <button onClick={() => { navigate('/login') }} className="flex items-center gap-3 px-3 py-2.5 text-red-400 hover:bg-red-950/30 rounded-lg font-medium transition w-full">
-            <LogOut size={18} /> Logout
-          </button>
+            <LogOut size={18} />{t("Logout")}</button>
         </div>
       </aside>
 
@@ -209,28 +212,28 @@ export default function OperatorReceiptSettings() {
 
           <nav className="p-4 space-y-6 text-sm">
             <div>
-              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Order Management</p>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">{t("Order Management")}</p>
               <div className="space-y-1">
-                <SidebarLink icon={<FileText size={18} />} label="New Orders" onClick={() => navigate('/operator/orders')} />
-                <SidebarLink icon={<ChefHat size={18} />} label="Preparing" onClick={() => navigate('/operator/orders')} />
-                <SidebarLink icon={<CheckCircle2 size={18} />} label="Ready" onClick={() => navigate('/operator/orders')} />
-                <SidebarLink icon={<FileText size={18} />} label="All Orders" onClick={() => navigate('/operator/orders')} />
+                <SidebarLink icon={<FileText size={18} />} label={t("New Orders")} onClick={() => navigate('/operator/orders')} />
+                <SidebarLink icon={<ChefHat size={18} />} label={t("Preparing")} onClick={() => navigate('/operator/orders')} />
+                <SidebarLink icon={<CheckCircle2 size={18} />} label={t("Ready")} onClick={() => navigate('/operator/orders')} />
+                <SidebarLink icon={<FileText size={18} />} label={t("All Orders")} onClick={() => navigate('/operator/orders')} />
               </div>
             </div>
 
             <div>
-              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Receipts</p>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">{t("Receipts")}</p>
               <div className="space-y-1">
-                <SidebarLink icon={<Printer size={18} />} label="Printed Receipts" onClick={() => navigate('/operator/receipts/printed')} />
-                <SidebarLink icon={<FileText size={18} />} label="Receipt Settings" onClick={() => navigate('/operator/receipt-settings')} />
+                <SidebarLink icon={<Printer size={18} />} label={t("Printed Receipts")} onClick={() => navigate('/operator/receipts/printed')} />
+                <SidebarLink icon={<FileText size={18} />} label={t("Receipt Settings")} onClick={() => navigate('/operator/receipt-settings')} />
               </div>
             </div>
 
             <div>
-              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Other</p>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">{t("Other")}</p>
               <div className="space-y-1">
-                <SidebarLink icon={<FileSpreadsheet size={18} />} label="Reports" onClick={() => navigate('/operator/reports')} />
-                <SidebarLink icon={<User size={18} />} label="My Account" onClick={() => navigate('/account')} />
+                <SidebarLink icon={<FileSpreadsheet size={18} />} label={t("Reports")} onClick={() => navigate('/operator/reports')} />
+                <SidebarLink icon={<User size={18} />} label={t("My Account")} onClick={() => navigate('/account')} />
               </div>
             </div>
           </nav>
@@ -238,8 +241,7 @@ export default function OperatorReceiptSettings() {
 
         <div className="p-4 border-t border-slate-800">
           <button onClick={() => { navigate('/login') }} className="flex items-center gap-3 px-3 py-2.5 text-red-400 hover:bg-red-950/30 rounded-lg font-medium transition w-full">
-            <LogOut size={18} /> Logout
-          </button>
+            <LogOut size={18} />{t("Logout")}</button>
         </div>
       </aside>
 
@@ -247,16 +249,14 @@ export default function OperatorReceiptSettings() {
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
           <div className="flex items-center gap-4">
-            <h1 className="text-lg font-semibold text-slate-900">Receipt Settings</h1>
+            <h1 className="text-lg font-semibold text-slate-900">{t("Receipt Settings")}</h1>
           </div>
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-3 border-l pl-6 border-slate-200">
-              <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold text-sm">
-                OP
-              </div>
+              <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold text-sm">{t("OP")}</div>
               <div className="text-left">
-                <p className="text-sm font-semibold text-slate-900 leading-tight">Operator</p>
-                <p className="text-xs text-emerald-500 flex items-center gap-1"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full inline-block"></span> Online</p>
+                <p className="text-sm font-semibold text-slate-900 leading-tight">{t("Operator")}</p>
+                <p className="text-xs text-emerald-500 flex items-center gap-1"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full inline-block"></span>{' '}{t("Online")}</p>
               </div>
             </div>
           </div>
@@ -267,16 +267,16 @@ export default function OperatorReceiptSettings() {
             <div className="mb-4 flex items-center gap-3 bg-emerald-50 border border-emerald-300 rounded-xl px-5 py-4">
               <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-lg">✓</div>
               <div>
-                <p className="font-bold text-emerald-800 text-sm">Receipt settings saved successfully!</p>
-                <p className="text-xs text-emerald-600 mt-0.5">Your changes will be applied to all printed receipts.</p>
+                <p className="font-bold text-emerald-800 text-sm">{t("Receipt settings saved successfully!")}</p>
+                <p className="text-xs text-emerald-600 mt-0.5">{t("Your changes will be applied to all printed receipts.")}</p>
               </div>
             </div>
           )}
 
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-xl font-bold text-slate-900">Receipt Layout Settings</h2>
-              <p className="text-sm text-slate-500 mt-1">Toggle fields ON/OFF and type the text you want printed on the receipt.</p>
+              <h2 className="text-xl font-bold text-slate-900">{t("Receipt Layout Settings")}</h2>
+              <p className="text-sm text-slate-500 mt-1">{t("Toggle fields ON/OFF and type the text you want printed on the receipt.")}</p>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -285,7 +285,7 @@ export default function OperatorReceiptSettings() {
                 className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-lg px-5 py-2.5 shadow-sm transition disabled:opacity-50"
               >
                 <Save size={16} />
-                {saving ? 'Saving...' : 'Save Settings'}
+                {saving ? t("Saving...") : t("Save Settings")}
               </button>
             </div>
           </div>
@@ -294,7 +294,7 @@ export default function OperatorReceiptSettings() {
             {SETTING_GROUPS.map((group) => (
               <div key={group.label} className="bg-white border border-slate-200 rounded-xl shadow-sm">
                 <div className="px-5 py-3 border-b border-slate-100">
-                  <h3 className="font-bold text-sm text-slate-900">{group.label}</h3>
+                  <h3 className="font-bold text-sm text-slate-900">{t(group.label)}</h3>
                 </div>
                 <div className="p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {group.settings.map((s) => {
@@ -305,9 +305,12 @@ export default function OperatorReceiptSettings() {
                     return (
                       <div key={s.key} className={cardClass}>
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-semibold text-slate-800">{s.label}</span>
+                          <span className="text-sm font-semibold text-slate-800">{t(s.label)}</span>
                           <button
                             type="button"
+                            role="switch"
+                            aria-checked={isOn}
+                            aria-label={`${t(isOn ? 'Disable' : 'Enable')} ${t(s.label)}`}
                             onClick={() => toggle(s.key)}
                             className={trackClass}
                           >
@@ -319,7 +322,7 @@ export default function OperatorReceiptSettings() {
                             type="text"
                             value={settings[s.textKey] || ''}
                             onChange={(e) => updateText(s.textKey, e.target.value)}
-                            placeholder={s.placeholder || ''}
+                            placeholder={s.placeholder ? t(s.placeholder) : ''}
                             disabled={!isOn}
                             className="w-full bg-white border border-slate-200 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:border-blue-400 disabled:opacity-50 disabled:bg-slate-100"
                           />
@@ -337,8 +340,7 @@ export default function OperatorReceiptSettings() {
               onClick={() => navigate('/operator/receipts/printed')}
               className="flex items-center gap-2 border border-slate-200 text-slate-600 font-bold text-sm bg-white rounded-lg px-5 py-2.5 hover:bg-slate-50 shadow-sm transition"
             >
-              <ArrowLeft size={16} /> Back to Receipts
-            </button>
+              <ArrowLeft size={16} />{t("Back to Receipts")}</button>
           </div>
         </main>
       </div>

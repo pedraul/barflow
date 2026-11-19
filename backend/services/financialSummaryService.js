@@ -12,13 +12,13 @@ export async function getFinancialSummary(businessId, branchId = null) {
       `SELECT COALESCE(SUM(total_amount), 0) AS gross_sales,
               COALESCE(SUM(COALESCE(tax_amount, total_amount * 0.18)), 0) AS gross_vat
        FROM orders
-      WHERE business_id = $1 AND status IN ('Paid', 'Served')${branchFilter}`,
+      WHERE business_id = $1 AND LOWER(BTRIM(status::text)) IN ('paid', 'served')${branchFilter}`,
           branchParams
     ),
     query(
       `SELECT COALESCE(SUM(amount), 0) AS refunds
        FROM refunds
-      WHERE business_id = $1 AND status = 'approved'${branchFilter}`,
+      WHERE business_id = $1 AND LOWER(BTRIM(status::text)) = 'approved'${branchFilter}`,
           branchParams
     ),
     query(
@@ -26,7 +26,7 @@ export async function getFinancialSummary(businessId, branchId = null) {
        FROM order_items oi
        JOIN orders o ON o.id = oi.order_id
        JOIN products p ON p.id = oi.product_id
-      WHERE o.business_id = $1 AND o.status IN ('Paid', 'Served')${branchId ? ' AND o.branch_id = $2' : ''}`,
+      WHERE o.business_id = $1 AND LOWER(BTRIM(o.status::text)) IN ('paid', 'served')${branchId ? ' AND o.branch_id = $2' : ''}`,
           branchParams
     ),
     query(

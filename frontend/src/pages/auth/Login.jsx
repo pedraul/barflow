@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useAuditLog } from '../../context/AuditLogContext'
+import { usePreferences } from '../../context/PreferencesContext'
 import { login as loginApi } from '../../api/endpoints'
 
 export default function LoginPage() {
@@ -11,13 +12,14 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const { login } = useAuth()
   const { log } = useAuditLog()
+  const { t } = usePreferences()
 
   const handleSubmit = async (event) => {
     event.preventDefault()
     setError('')
 
     if (!username.trim() || !password.trim()) {
-      setError('Please enter both username and password.')
+      setError(t('Please enter both username and password.'))
       return
     }
 
@@ -30,9 +32,9 @@ export default function LoginPage() {
       const status = err.response?.status
       const data = err.response?.data
       if (status === 403 && data?.code === 'SUBSCRIPTION_PENDING') {
-        setError('Your business subscription is pending activation. Please complete payment and wait for admin verification.')
+        setError(t('Your business subscription is pending activation. Please complete payment and wait for admin verification.'))
       } else {
-        const message = err.response?.data?.error || err.message || 'Login failed'
+        const message = err.response?.data?.error || err.message || t('Login failed')
         setError(message)
       }
     }
@@ -47,7 +49,7 @@ export default function LoginPage() {
               <span className="text-xl font-black text-white">B</span>
             </div>
             <h1 className="text-2xl font-black text-slate-900">BarFlow</h1>
-            <p className="text-sm text-slate-500 mt-1">Sign in to continue to your workspace</p>
+            <p className="text-sm text-slate-500 mt-1">{t('Sign in to continue to your workspace')}</p>
           </div>
 
           {error && (
@@ -58,24 +60,24 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Username</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('Username')}</label>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="e.g. john.doe"
+                placeholder={t('e.g. john.doe')}
                 autoFocus
                 className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Password</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('Password')}</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
+                placeholder={t('Enter your password')}
                 className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
@@ -84,14 +86,14 @@ export default function LoginPage() {
               type="submit"
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition shadow-sm"
             >
-              Sign in
+              {t('Sign in')}
             </button>
           </form>
 
           <div className="mt-4 text-center text-sm text-slate-500 space-y-2">
             <p>
               <Link to="/forgot-password" className="text-indigo-600 font-semibold hover:underline">
-                Forgot Password?
+                {t('Forgot Password?')}
               </Link>
             </p>
           </div>

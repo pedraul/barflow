@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import * as api from '../api/endpoints'
+import { trackCustomerOrder } from '../utils/customerOrderTracker'
 
 const CustomerContext = createContext(null)
 
@@ -219,6 +220,7 @@ export function CustomerProvider({ children }) {
     }
     try {
       const result = await api.placeCustomerOrder(payload)
+      trackCustomerOrder({ orderId: result.orderId || result.id, businessId, branchId, tableNumber })
       setCurrentOrder(result)
       clearCart()
       await loadMenu(tableNumber, businessId, branchId)
@@ -247,6 +249,7 @@ export function CustomerProvider({ children }) {
     }
     try {
       const result = await api.placeCustomerOrder(payload)
+      trackCustomerOrder({ orderId: result.orderId || result.id, businessId, branchId, tableNumber })
       setDeferredOrder(result)
       clearCart()
       await loadMenu(tableNumber, businessId, branchId)

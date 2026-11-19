@@ -1,4 +1,6 @@
 import { query } from '../config/database.js'
+import { randomUUID } from 'node:crypto'
+import { getMobileMoneyPaymentStatus, requestMobileMoneyPayment } from './mobileMoneyProviders.js'
 
 /**
  * Payment Service
@@ -6,94 +8,9 @@ import { query } from '../config/database.js'
  * Supports: MTN MoMo, Airtel Money, Cash
  */
 
-const PAYMENT_PROVIDERS = {
-  mtn_momo: {
-    name: 'MTN Mobile Money',
-    ussdCode: '*182#',
-    generateReference: () => 'MOMO-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase(),
-  },
-  airtel_money: {
-    name: 'Airtel Money',
-    ussdCode: '*500#',
-    generateReference: () => 'AIRTEL-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase(),
-  },
-  cash: {
-    name: 'Cash',
-    ussdCode: null,
-    generateReference: () => 'CASH-' + Date.now().toString(36).toUpperCase(),
-  },
-}
-
-/**
- * Initiate a payment request
- * For mobile money: returns USSD instructions
- * For cash: marks as pending confirmation
- */
-export async function initiatePayment({ orderId, amount, method, customerPhone, customerName }) {
-  const provider = PAYMENT_PROVIDERS[method]
-  if (!provider) {
-    throw new Error(`Unsupported payment method: ${method}`)
-  }
-
-  const { rows: orderRows } = await query(
-    `SELECT business_id, branch_id FROM orders WHERE id = $1 LIMIT 1`,
-    [orderId]
-  )
-  if (!orderRows.length) throw new Error('Order not found')
-  const orderContext = orderRows[0]
-
-  const reference = provider.generateReference()
-
-  const paymentResult = await query(
-    `INSERT INTO payments (order_id, business_id, branch_id, method, amount, reference, paid_at, provider, provider_status)
-     VALUES ($1, $2, $3, $4, $5, $6, NULL, $7, 'PENDING') RETURNING id`,
-    [orderId, orderContext.business_id, orderContext.branch_id, method, amount, reference, method === 'cash' ? null : 'momo']
-  )
-
-  const paymentId = paymentResult.rows[0].id
-
-  // If mobile money, return USSD simulation
-  if (method === 'mtn_momo' || method === 'airtel_money') {
-    return {
-      paymentId,
-      reference,
-      success: true,
-      message: `A USSD request has been sent to ${customerPhone}. Please check your phone and enter your PIN to complete payment of ${formatCurrency(amount)}.`,
-      ussdDetails: {
-        phone: customerPhone,
-        amount: amount,
-        provider: provider.name,
-        ussdCode: provider.ussdCode,
-        reference: reference,
-        instructions: [
-          `1. Dial ${provider.ussdCode} on your phone`,
-          `2. Enter your Mobile Money PIN`,
-          `3. Confirm payment of ${formatCurrency(amount)}`,
-          `4. Wait for confirmation SMS`,
-        ],
-      },
-      status: 'pending_ussd_confirmation',
-    }
-  }
-
-  // For cash payment
-  return {
-    paymentId,
-    reference,
-    success: true,
-    message: 'Cash payment recorded. Please pay at the counter.',
-    status: 'pending_cash',
-  }
-}
-
-/**
- * Verify a payment (simulate USSD confirmation callback)
- * In production, this would be a webhook from the mobile money provider
- */
-export async function verifyPayment(paymentId) {
-  // Get payment details
-  const result = await query(
-    `SELECT p.*, o.total_amount, o.table_number, o.order_number,
+async function loadPayment(paymentId) {
+  const { rows } = await query(
+    `SELECT p.*, o.total_amount, o.table_number, o.order_number, o.customer_phone,
             b.name AS business_name
      FROM payments p
      JOIN orders o ON o.id = p.order_id
@@ -101,71 +18,183 @@ export async function verifyPayment(paymentId) {
      WHERE p.id = $1`,
     [paymentId]
   )
+  if (!rows.length) throw new Error('Payment not found')
+  return rows[0]
+}
 
-  const payment = result.rows[0]
-  if (!payment) {
-    throw new Error('Payment not found')
+export async function initiatePayment({ orderId, method, customerPhone }) {
+  if (!['mtn_momo', 'airtel_money', 'cash'].includes(method)) {
+    throw new Error(`Unsupported payment method: ${method}`)
+  }
+  const { rows: orderRows } = await query(
+    `SELECT id, business_id, branch_id, total_amount, status, customer_phone
+     FROM orders WHERE id = $1 LIMIT 1`,
+    [orderId]
+  )
+  const order = orderRows[0]
+  if (!order || ['Paid', 'Cancelled'].includes(order.status)) throw new Error('Order not found or no longer payable')
+
+  const amount = Number(order.total_amount)
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error('Order has an invalid payment amount')
+  const phone = String(customerPhone || '').trim()
+  if (method !== 'cash' && !phone) throw new Error('A customer mobile number is required')
+
+  const { rows: pendingPayments } = await query(
+    `SELECT id, reference, method, provider_status
+     FROM payments
+     WHERE order_id = $1 AND paid_at IS NULL
+       AND COALESCE(provider_status, 'PENDING') NOT IN ('FAILED', 'TF', 'CANCELLED')
+     LIMIT 1`,
+    [order.id]
+  )
+  if (pendingPayments.length) {
+    const pending = pendingPayments[0]
+    if (pending.method !== method) {
+      throw new Error('A payment is already in progress for this order. Check its status before choosing another method.')
+    }
+    return {
+      paymentId: pending.id,
+      reference: pending.reference,
+      success: true,
+      ...(method === 'cash'
+        ? await verifyPayment(pending.id)
+        : { status: 'pending' }),
+      message: method === 'cash'
+        ? 'Cash payment completed automatically.'
+        : 'A payment request is already in progress. Approve it on your phone or wait for provider confirmation.',
+    }
   }
 
-  if (!payment.paid_at) {
+  const reference = randomUUID()
+  const { rows: paymentRows } = await query(
+    `INSERT INTO payments
+       (order_id, business_id, branch_id, method, amount, reference, paid_at, provider, provider_status)
+     VALUES ($1, $2, $3, $4, $5, $6, NULL, $7, 'PENDING')
+     RETURNING id`,
+    [order.id, order.business_id, order.branch_id, method, amount, reference, method === 'cash' ? null : method]
+  )
+  const paymentId = paymentRows[0].id
+
+  if (method === 'cash') {
+    if (phone) await query('UPDATE orders SET customer_phone = $1 WHERE id = $2', [phone, order.id])
+    const completed = await verifyPayment(paymentId)
+    return {
+      paymentId,
+      reference,
+      success: true,
+      message: 'Cash payment completed automatically.',
+      ...completed,
+    }
+  }
+
+  try {
+    const providerPayment = await requestMobileMoneyPayment({ method, reference, amount, phone })
     await query(
-      `UPDATE payments SET paid_at = NOW(), provider_status = 'SUCCESS' WHERE id = $1`,
-      [paymentId]
+      `UPDATE payments SET provider = $2, provider_txn_id = $3, provider_status = $4
+       WHERE id = $1`,
+      [paymentId, providerPayment.provider, providerPayment.providerTxnId, providerPayment.providerStatus]
     )
+    await query('UPDATE orders SET customer_phone = $1 WHERE id = $2', [phone, order.id])
+  } catch (error) {
+    await query(
+      `UPDATE payments SET provider_status = 'FAILED', provider_payload = $2
+       WHERE id = $1`,
+      [paymentId, JSON.stringify({ error: error.message })]
+    )
+    throw error
   }
 
+  return {
+    paymentId,
+    reference,
+    success: true,
+    message: `A payment request for ${formatCurrency(amount)} was sent to ${phone}. Approve it on your phone; this page will update when the provider confirms it.`,
+    status: 'pending',
+  }
+}
+
+async function completePayment(payment, providerStatus, providerPayload) {
   const existingReceipt = await query(
     `SELECT receipt_data FROM receipts WHERE order_id = $1 ORDER BY created_at DESC LIMIT 1`,
     [payment.order_id]
   )
-  if (existingReceipt.rows[0]?.receipt_data) {
-    return {
-      verified: true,
-      receipt: existingReceipt.rows[0].receipt_data,
-      smsSent: false,
-    }
+  const storedReceipt = existingReceipt.rows[0]?.receipt_data
+  if (storedReceipt && storedReceipt.reference !== payment.reference) {
+    throw new Error('This order already has a receipt for another payment. Contact the business to reconcile this transaction.')
   }
-
-  // Generate receipt
-  const receipt = await generateReceipt({
-    orderId: payment.order_id,
-    paymentMethod: payment.method,
-    amount: payment.amount,
-    reference: payment.reference,
-    businessName: payment.business_name,
-    tableNumber: payment.table_number,
-    orderNumber: payment.order_number,
-    customerPhone: payment.customer_phone,
-  })
-
-  // Update order status to Paid
+  const receipt = storedReceipt || await generateReceipt({
+      orderId: payment.order_id,
+      paymentMethod: payment.method,
+      amount: payment.amount,
+      reference: payment.reference,
+      businessName: payment.business_name,
+      tableNumber: payment.table_number,
+      orderNumber: payment.order_number,
+      customerPhone: payment.customer_phone,
+    })
   await query(
     `UPDATE orders
      SET status = 'Paid', payment_method = $2, completed_at = NOW()
-     WHERE id = $1`,
+     WHERE id = $1 AND status != 'Paid'`,
     [payment.order_id, payment.method]
   )
-
-  // Record status history
   await query(
     `INSERT INTO order_status_history (order_id, status, changed_by, note)
-     VALUES ($1, 'Paid', 'system', 'Payment completed via ' || $2)`,
+     SELECT $1, 'Paid', 'system', 'Payment completed via ' || $2
+     WHERE NOT EXISTS (
+       SELECT 1 FROM order_status_history WHERE order_id = $1 AND status = 'Paid'
+     )`,
     [payment.order_id, payment.method]
   )
+  await query(
+     `UPDATE payments
+      SET paid_at = COALESCE(paid_at, NOW()), provider_status = $2, provider_payload = $3
+      WHERE id = $1`,
+     [payment.id, providerStatus, JSON.stringify(providerPayload || {})]
+  )
+  return { verified: true, status: 'completed', receipt, smsSent: false }
+}
 
-  // Simulate sending receipt via SMS/USSD
-  let smsSent = false
-  if (payment.customer_phone && payment.customer_phone !== 'N/A') {
-    // In production, integrate with SMS provider (e.g., Twilio, Africa's Talking)
-    // await sendSMS(payment.customer_phone, `Receipt ${receipt.receiptNumber} for order ${receipt.orderNumber}. Total: ${formatCurrency(amount)}. Thank you!`)
-    smsSent = true
+export async function verifyPayment(paymentId) {
+  const payment = await loadPayment(paymentId)
+  if (payment.paid_at) {
+    const receiptResult = await query(
+      `SELECT receipt_data FROM receipts WHERE order_id = $1 ORDER BY created_at DESC LIMIT 1`,
+      [payment.order_id]
+    )
+    if (!receiptResult.rows[0]?.receipt_data) throw new Error('Payment is marked paid but its receipt is missing')
+    return {
+      verified: true,
+      status: 'completed',
+      receipt: receiptResult.rows[0]?.receipt_data || null,
+      smsSent: false,
+    }
+  }
+  if (payment.method === 'cash') {
+    return completePayment(payment, 'CASH_AUTO_COMPLETED', { automatic: true })
   }
 
-  return {
-    verified: true,
-    receipt,
-    smsSent,
+  const providerResult = await getMobileMoneyPaymentStatus(payment)
+  await query(
+    `UPDATE payments SET provider_status = $2, provider_payload = $3 WHERE id = $1`,
+    [paymentId, providerResult.providerStatus, JSON.stringify(providerResult.payload || {})]
+  )
+  if (providerResult.status === 'completed') {
+    return completePayment(payment, providerResult.providerStatus, providerResult.payload)
   }
+  if (providerResult.status === 'failed') {
+    return { verified: false, status: 'failed', providerStatus: providerResult.providerStatus, receipt: null, smsSent: false }
+  }
+  return { verified: false, status: 'pending', providerStatus: providerResult.providerStatus, receipt: null, smsSent: false }
+}
+
+export async function confirmCashPayment(paymentId, { businessId, branchId }) {
+  const payment = await loadPayment(paymentId)
+  if (payment.method !== 'cash' || payment.business_id !== businessId || payment.branch_id !== branchId) {
+    throw new Error('Cash payment not found for this branch')
+  }
+  if (payment.paid_at) return verifyPayment(paymentId)
+  return completePayment(payment, 'CASH_RECEIVED', { confirmedBy: 'staff' })
 }
 
 /**
@@ -242,5 +271,5 @@ function formatCurrency(amount) {
 export default {
   initiatePayment,
   verifyPayment,
-  PAYMENT_PROVIDERS,
+  confirmCashPayment,
 }

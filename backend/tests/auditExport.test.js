@@ -1,6 +1,20 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { serializeAuditLogs } from '../utils/audit.js'
+import { buildAuditVisibilityClause, serializeAuditLogs } from '../utils/audit.js'
+
+test('audit visibility filters by the audit table actor_id column', () => {
+  const visibility = buildAuditVisibilityClause({
+    role: 'waiter',
+    businessId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+    userId: '11111111-2222-4333-8444-555555555555',
+  })
+
+  assert.match(visibility.where, /al\.actor_id = \$2/)
+  assert.deepEqual(visibility.params, [
+    'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+    '11111111-2222-4333-8444-555555555555',
+  ])
+})
 
 test('serializeAuditLogs returns JSON payloads for json exports', () => {
   const rows = [

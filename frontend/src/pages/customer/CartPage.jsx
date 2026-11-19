@@ -1,3 +1,4 @@
+import { usePreferences } from '../../context/PreferencesContext'
 import React, { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useCustomer } from '../../context/CustomerContext'
@@ -5,6 +6,7 @@ import { fetchOrdersByTable, addItemsToCustomerOrder } from '../../api/endpoints
 import CustomerAddItemsModal from '../../components/CustomerAddItemsModal'
 
 export default function CartPage() {
+  const { t } = usePreferences()
   const navigate = useNavigate()
   const location = useLocation()
   const {
@@ -18,6 +20,10 @@ export default function CartPage() {
   const [reloading, setReloading] = useState(false)
 
   const navOrder = location.state?.order
+  const menuQuery = new URLSearchParams({ table: String(tableNumber || '1') })
+  if (businessId) menuQuery.set('businessId', businessId)
+  if (branchId) menuQuery.set('branchId', branchId)
+  const menuPath = `/menu?${menuQuery.toString()}`
 
   const reloadOrder = async (orderId) => {
     setReloading(true)
@@ -55,23 +61,25 @@ export default function CartPage() {
     const destinationLabel = order.orderType === 'drinks' ? 'Bar' : 'Kitchen'
     const destinationEmoji = order.orderType === 'drinks' ? '🍺' : '🍳'
     return (
-      <div style={styles.container}>
-        <div style={styles.successContainer}>
-          <div style={styles.successIcon}>{destinationEmoji}</div>
-          <h1 style={styles.successTitle}>
-            {currentOrder ? 'Order Placed!' : 'Order Sent to ' + destinationLabel + '!'}
+      <div className="customer-cart-page" style={styles.container}>
+        <div className="customer-order-confirmation" style={styles.successContainer}>
+          <div className="customer-order-confirmation-icon" style={styles.successIcon}>{destinationEmoji}</div>
+          <span className="customer-order-number">{t("ORDER")}{' '}{order.orderNumber}</span>
+          <h1 className="customer-order-confirmation-title" style={styles.successTitle}>
+            {currentOrder ? t("Order Placed!") : 'Order Sent to ' + destinationLabel + '!'}
           </h1>
-          <p style={styles.successSubtitle}>
-            Your order <strong>{order.orderNumber}</strong> has been sent to the {destinationLabel.toLowerCase()}.
+          <p className="customer-order-confirmation-subtitle" style={styles.successSubtitle}>{t("Your order has been sent to the")}{destinationLabel.toLowerCase()}.
           </p>
-          <div style={styles.orderSummary}>
-            <p><strong>Table:</strong> {order.tableNumber}</p>
-            <p><strong>Total:</strong> {formatCurrency(order.total)}</p>
-            <p><strong>Type:</strong> {order.orderType}</p>
+          <div className="customer-order-receipt" style={styles.orderSummary}>
+            <div className="customer-order-receipt-meta">
+              <p><span>{t("Table")}</span><strong>{order.tableNumber}</strong></p>
+              <p><span>{t("Order type")}</span><strong>{order.orderType}</strong></p>
+              <p><span>{t("Total")}</span><strong>{formatCurrency(order.total)}</strong></p>
+            </div>
             {order.items && order.items.length > 0 && (
-              <div style={{ marginTop: 12, borderTop: '1px solid #dee2e6', paddingTop: 8 }}>
+              <div className="customer-order-receipt-items" style={{ marginTop: 12, borderTop: '1px solid #dee2e6', paddingTop: 8 }}>
                 {order.items.map((item, idx) => (
-                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14 }}>
+                  <div key={idx} className="customer-order-receipt-item" style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14 }}>
                     <span>{item.name} × {item.quantity}</span>
                     <span>{formatCurrency((item.lineTotal ?? item.price * item.quantity))}</span>
                   </div>
@@ -81,49 +89,44 @@ export default function CartPage() {
           </div>
           {currentOrder ? (
             <>
-              <p style={styles.helpText}>
-                When your order is ready, scan the QR code again to proceed to payment.
-              </p>
+              <p className="customer-order-help" style={styles.helpText}>{t("When your order is ready, scan the QR code again to proceed to payment.")}</p>
               <button
+                className="customer-order-action customer-order-add-more"
                 style={{ ...styles.primaryBtn, backgroundColor: '#0d6efd' }}
                 onClick={() => setAddItemsOrder(order)}
                 disabled={reloading}
               >
-                {reloading ? 'Loading...' : 'Add More Items'}
+                {reloading ? t("Loading...") : t("Add More Items")}
               </button>
               <button
+                className="customer-order-action customer-order-pay"
                 style={styles.primaryBtn}
                 onClick={() => navigate('/payment', { state: { order } })}
-              >
-                Proceed to Payment
-              </button>
+              >{t("Proceed to Payment")}</button>
             </>
           ) : (
             <>
-              <p style={styles.helpText}>
-                Enjoy your meal! You can pay later by scanning the QR code or asking your waiter.
-              </p>
+              <p className="customer-order-help" style={styles.helpText}>{t("Enjoy your meal! You can pay later by scanning the QR code or asking your waiter.")}</p>
               <button
+                className="customer-order-action customer-order-add-more"
                 style={{ ...styles.primaryBtn, backgroundColor: '#0d6efd' }}
                 onClick={() => setAddItemsOrder(order)}
                 disabled={reloading}
               >
-                {reloading ? 'Loading...' : 'Add More Items'}
+                {reloading ? t("Loading...") : t("Add More Items")}
               </button>
               <button
+                className="customer-order-action customer-order-pay"
                 style={styles.primaryBtn}
                 onClick={() => navigate('/payment', { state: { order } })}
-              >
-                Proceed to Payment
-              </button>
+              >{t("Proceed to Payment")}</button>
             </>
           )}
           <button
+            className="customer-order-action customer-order-back"
             style={styles.secondaryBtn}
-            onClick={() => { resetSession(); navigate('/menu') }}
-          >
-            Back to Menu
-          </button>
+            onClick={() => { resetSession(); navigate(menuPath) }}
+          >{t("Back to Menu")}</button>
         </div>
 
         {addItemsOrder && (
@@ -165,46 +168,42 @@ export default function CartPage() {
 
   if (cart.length === 0) {
     return (
-      <div style={styles.container}>
+      <div className="customer-cart-page" style={styles.container}>
         <div style={styles.emptyContainer}>
           <div style={styles.emptyIcon}>🛒</div>
-          <h2 style={styles.emptyTitle}>Your Cart is Empty</h2>
-          <p style={styles.emptyText}>Browse the menu and add some items!</p>
+          <h2 style={styles.emptyTitle}>{t("Your Cart is Empty")}</h2>
+          <p style={styles.emptyText}>{t("Browse the menu and add some items!")}</p>
           <button
             style={styles.primaryBtn}
-            onClick={() => navigate('/menu')}
-          >
-            Browse Menu
-          </button>
+            onClick={() => navigate(menuPath)}
+          >{t("Browse Menu")}</button>
         </div>
       </div>
     )
   }
 
   return (
-    <div style={styles.container}>
+    <div className="customer-cart-page" style={styles.container}>
       {/* Header */}
-      <div style={styles.header}>
-        <button style={styles.backBtn} onClick={() => navigate('/menu')}>
-          ← Back
-        </button>
-        <h1 style={styles.title}>My Cart</h1>
+      <div className="customer-cart-header" style={styles.header}>
+        <button style={styles.backBtn} onClick={() => navigate(menuPath)}>{t("← Back")}</button>
+        <h1 style={styles.title}>{t("My Cart")}</h1>
         <div style={styles.headerSpacer}></div>
       </div>
 
-      <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
-        <div style={{ flex: 1 }}>
-          <div style={styles.tableHeader}>
-            <div style={{ flex: 4 }}>Item</div>
-            <div style={{ flex: 2 }}>Unit Price</div>
-            <div style={{ width: 120, textAlign: 'center' }}>Qty</div>
-            <div style={{ width: 120, textAlign: 'right' }}>Total</div>
+      <div className="customer-cart-layout" style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
+        <div className="customer-cart-items" style={{ flex: 1 }}>
+          <div className="customer-cart-table-header" style={styles.tableHeader}>
+            <div className="cart-col-item" style={{ flex: 4 }}>{t("Item")}</div>
+            <div className="cart-col-price" style={{ flex: 2 }}>{t("Unit Price")}</div>
+            <div className="cart-col-qty" style={{ width: 120, textAlign: 'center' }}>{t("Qty")}</div>
+            <div className="cart-col-total" style={{ width: 120, textAlign: 'right' }}>{t("Total")}</div>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {cart.map((item) => (
-              <div key={item.productId} style={styles.cartRow}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 4, minWidth: 0 }}>
+              <div key={item.productId} className="customer-cart-row" style={styles.cartRow}>
+                <div className="customer-cart-item-info" style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 4, minWidth: 0 }}>
                   <div style={styles.itemImage}>
                     {item.imageUrl ? (
                       <img src={item.imageUrl} alt={item.name} style={styles.thumbImg} />
@@ -215,14 +214,16 @@ export default function CartPage() {
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontWeight: 700 }}>{item.name}</div>
                     <div style={{ color: '#6c757d', fontSize: 13 }}>{item.category || ''}</div>
-                    {item.notes && <div style={{ marginTop: 6, color: '#495057', fontSize: 13 }}>Special: {item.notes}</div>}
+                    {item.notes && <div style={{ marginTop: 6, color: '#495057', fontSize: 13 }}>{t("Special:")}{' '}{item.notes}</div>}
                   </div>
                 </div>
 
-                <div style={{ flex: 2, alignSelf: 'center' }}>{formatCurrency(item.price)}</div>
+                <div className="customer-cart-unit-price" style={{ flex: 2, alignSelf: 'center' }}>{formatCurrency(item.price)}</div>
 
-                <div style={{ width: 120, textAlign: 'center' }}>
+                <div className="customer-cart-quantity" style={{ width: 120, textAlign: 'center' }}>
                   <button
+                    className="customer-cart-qty-btn"
+                    aria-label={t('Decrease quantity')}
                     style={styles.qtyBtn}
                     onClick={() => updateQuantity(item.productId, item.quantity - 1)}
                   >
@@ -230,6 +231,8 @@ export default function CartPage() {
                   </button>
                   <span style={{ margin: '0 8px', fontWeight: 700 }}>{item.quantity}</span>
                   <button
+                    className="customer-cart-qty-btn"
+                    aria-label={t('Increase quantity')}
                     style={styles.qtyBtn}
                     onClick={() => updateQuantity(item.productId, item.quantity + 1)}
                   >
@@ -237,30 +240,30 @@ export default function CartPage() {
                   </button>
                 </div>
 
-                <div style={{ width: 120, textAlign: 'right' }}>
-                  <div style={styles.totalText}>{formatCurrency(item.price * item.quantity)}</div>
-                  <button style={styles.removeBtn} onClick={() => removeFromCart(item.productId)}>✕</button>
+                <div className="customer-cart-line-total" style={{ width: 120, textAlign: 'right' }}>
+                  <div className="customer-cart-item-total" style={styles.totalText}>{formatCurrency(item.price * item.quantity)}</div>
+                  <button style={styles.removeBtn} aria-label={t('Remove item')} onClick={() => removeFromCart(item.productId)}>✕</button>
                 </div>
               </div>
             ))}
           </div>
 
           <div style={{ marginTop: 16 }}>
-            <div style={{ fontWeight: 600, marginBottom: 6 }}>Special Instructions</div>
-            <textarea placeholder="No special instructions" style={{ width: '100%', minHeight: 56, padding: 10, borderRadius: 8, border: '1px solid #dee2e6' }} />
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>{t("Special Instructions")}</div>
+            <textarea placeholder={t("No special instructions")} className="customer-cart-instructions" style={{ width: '100%', minHeight: 56, padding: 10, borderRadius: 8, border: '1px solid #dee2e6' }} />
             <div style={{ marginTop: 8 }}>
-              <button style={{ ...styles.primaryBtn, padding: '8px 12px' }} onClick={() => navigate('/menu')}>Add Items</button>
+              <button style={{ ...styles.primaryBtn, padding: '8px 12px' }} onClick={() => navigate(menuPath)}>{t("Add Items")}</button>
             </div>
           </div>
         </div>
 
-        <aside style={styles.sideSummary}>
-          <div style={{ fontWeight: 700, marginBottom: 12 }}>Order Summary</div>
-          <div style={styles.summaryRow}><span>Subtotal</span><span>{formatCurrency(getCartTotal())}</span></div>
-          <div style={styles.summaryRow}><span>Discount</span><span>{formatCurrency(0)}</span></div>
+        <aside className="customer-cart-summary" style={styles.sideSummary}>
+          <div style={{ fontWeight: 700, marginBottom: 12 }}>{t("Order Summary")}</div>
+          <div style={styles.summaryRow}><span>{t("Subtotal")}</span><span>{formatCurrency(getCartTotal())}</span></div>
+          <div style={styles.summaryRow}><span>{t("Discount")}</span><span>{formatCurrency(0)}</span></div>
           <div style={{ height: 1, background: '#e9ecef', margin: '12px 0' }} />
-          <div style={{ ...styles.summaryRow, fontWeight: 800, fontSize: 18 }}><span>Total</span><span>{formatCurrency(getCartTotal())}</span></div>
-          <div style={{ color: '#6c757d', marginTop: 8 }}>Items: {getCartCount()}</div>
+          <div style={{ ...styles.summaryRow, fontWeight: 800, fontSize: 18 }}><span>{t("Total")}</span><span>{formatCurrency(getCartTotal())}</span></div>
+          <div style={{ color: '#6c757d', marginTop: 8 }}>{t("Items:")}{' '}{getCartCount()}</div>
 
           <div style={{ marginTop: 18 }}>
             <button
@@ -268,14 +271,14 @@ export default function CartPage() {
               onClick={handlePlaceOrder}
               disabled={ordering}
             >
-              {ordering ? 'Placing Order...' : 'Place Order'}
+              {ordering ? t("Placing Order...") : t("Place Order")}
             </button>
             <button
               style={{ ...styles.payAfterBtn, width: '100%' }}
               onClick={handlePlaceDeferredOrder}
               disabled={ordering}
             >
-              {ordering ? 'Processing...' : 'Pay After Service'}
+              {ordering ? t("Processing...") : t("Pay After Service")}
             </button>
           </div>
         </aside>
@@ -285,32 +288,10 @@ export default function CartPage() {
 
       {error && (
         <div style={styles.errorBox}>
-          {error}
+          {t(error)}
         </div>
       )}
 
-      {/* Place Order Button */}
-      <button
-        style={{
-          ...styles.placeOrderBtn,
-          ...(ordering ? styles.placeOrderBtnDisabled : {}),
-        }}
-        onClick={handlePlaceOrder}
-        disabled={ordering}
-      >
-        {ordering ? 'Placing Order...' : 'Place Order'}
-      </button>
-
-      <button
-        style={{
-          ...styles.payAfterBtn,
-          ...(ordering ? styles.placeOrderBtnDisabled : {}),
-        }}
-        onClick={handlePlaceDeferredOrder}
-        disabled={ordering}
-      >
-        {ordering ? 'Processing...' : 'Pay After Service'}
-      </button>
     </div>
   )
 }

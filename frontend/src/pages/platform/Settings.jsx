@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { fetchPlatformSettings, updatePlatformSettings } from '../../api/endpoints'
 import { useToast } from '../../context/ToastContext'
+import { usePreferences } from '../../context/PreferencesContext'
 
 const SETTINGS_GROUPS = [
   {
@@ -55,6 +56,7 @@ function getTabFromHash() {
 
 export default function Settings() {
   const { showSuccess } = useToast()
+  const { t } = usePreferences()
   const [settings, setSettings] = useState({})
   const [activeTab, setActiveTab] = useState(getTabFromHash)
   const [loading, setLoading] = useState(true)
@@ -94,9 +96,9 @@ export default function Settings() {
     setSaving(true)
     try {
       await updatePlatformSettings(settings)
-      showSuccess('Changes saved successfully.')
+      showSuccess(t('Changes saved successfully.'))
     } catch (e) {
-      alert(e.response?.data?.error || 'Save failed.')
+      alert(e.response?.data?.error || t('Save failed.'))
     } finally {
       setSaving(false)
     }
@@ -113,11 +115,11 @@ export default function Settings() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
-          <p className="text-sm text-slate-500 mt-1">Configure the BarFlow platform</p>
+          <h1 className="text-2xl font-bold text-slate-900">{t('Settings')}</h1>
+          <p className="text-sm text-slate-500 mt-1">{t('Configure the BarFlow platform')}</p>
         </div>
         <button onClick={save} disabled={saving} className="px-5 py-2.5 text-sm bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition inline-flex items-center gap-2">
-          <Save size={16} /> {saving ? 'Saving...' : 'Save Changes'}
+          <Save size={16} /> {saving ? t('Saving...') : t('Save Changes')}
         </button>
       </div>
 
@@ -130,16 +132,16 @@ export default function Settings() {
               return (
                 <div key={group.id} className="mb-1 flex-shrink-0 md:flex-shrink">
                   <div className={`hidden md:block px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider ${isGroupActive ? 'text-indigo-700 bg-indigo-50' : 'text-slate-500'}`}>
-                    {group.label}
+                    {t(group.label)}
                   </div>
-                  <div className="md:hidden text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2 py-1">{group.label}</div>
+                  <div className="md:hidden text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2 py-1">{t(group.label)}</div>
                   <div className="flex md:flex-col gap-1">
-                    {group.items.map((t) => {
-                      const Icon = t.icon
+                    {group.items.map((tab) => {
+                      const Icon = tab.icon
                       return (
-                        <button key={t.id} onClick={() => switchTab(t.id)}
-                          className={`whitespace-nowrap flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition ${activeTab === t.id ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}>
-                          <Icon size={16} /> {t.label}
+                        <button key={tab.id} onClick={() => switchTab(tab.id)}
+                          className={`whitespace-nowrap flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition ${activeTab === tab.id ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}>
+                          <Icon size={16} /> {t(tab.label)}
                         </button>
                       )
                     })}
@@ -258,19 +260,21 @@ export default function Settings() {
 }
 
 function TabBody({ title, desc, children }) {
+  const { t } = usePreferences()
   return (
     <div>
-      <h2 className="text-lg font-bold text-slate-900">{title}</h2>
-      <p className="text-sm text-slate-500 mt-0.5 mb-5">{desc}</p>
+      <h2 className="text-lg font-bold text-slate-900">{t(title)}</h2>
+      <p className="text-sm text-slate-500 mt-0.5 mb-5">{t(desc)}</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">{children}</div>
     </div>
   )
 }
 
 function Field({ label, v, settings, set, type = 'text' }) {
+  const { t } = usePreferences()
   return (
     <div className="space-y-1.5">
-      <label className="block text-sm font-semibold text-slate-700">{label}</label>
+      <label className="block text-sm font-semibold text-slate-700">{t(label)}</label>
       <input type={type} value={settings[v] ?? ''} onChange={(e) => set(v, e.target.value)}
         className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
     </div>
@@ -278,9 +282,10 @@ function Field({ label, v, settings, set, type = 'text' }) {
 }
 
 function TextArea({ label, v, settings, set, span }) {
+  const { t } = usePreferences()
   return (
     <div className={`space-y-1.5 ${span ? 'sm:col-span-2' : ''}`}>
-      <label className="block text-sm font-semibold text-slate-700">{label}</label>
+      <label className="block text-sm font-semibold text-slate-700">{t(label)}</label>
       <textarea rows={3} value={settings[v] ?? ''} onChange={(e) => set(v, e.target.value)}
         className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none" />
     </div>
@@ -288,22 +293,24 @@ function TextArea({ label, v, settings, set, span }) {
 }
 
 function Select({ label, v, settings, set, options }) {
+  const { t } = usePreferences()
   return (
     <div className="space-y-1.5">
-      <label className="block text-sm font-semibold text-slate-700">{label}</label>
+      <label className="block text-sm font-semibold text-slate-700">{t(label)}</label>
       <select value={settings[v] ?? ''} onChange={(e) => set(v, e.target.value)}
         className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
-        {options.map(([val, text]) => <option key={val} value={val}>{text}</option>)}
+        {options.map(([val, text]) => <option key={val} value={val}>{t(text)}</option>)}
       </select>
     </div>
   )
 }
 
 function Toggle({ label, v, settings, set }) {
+  const { t } = usePreferences()
   const on = String(settings[v]) === 'true'
   return (
     <div className="space-y-1.5">
-      <label className="block text-sm font-semibold text-slate-700">{label}</label>
+      <label className="block text-sm font-semibold text-slate-700">{t(label)}</label>
       <button type="button" onClick={() => set(v, on ? 'false' : 'true')}
         className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${on ? 'bg-indigo-600' : 'bg-slate-300'}`}>
         <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${on ? 'translate-x-6' : 'translate-x-1'}`} />

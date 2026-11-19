@@ -1,5 +1,6 @@
 import { query, pool } from '../config/database.js'
 import { logAudit, getClientIp } from '../utils/audit.js'
+import { isDrinkCategory, resolveOrderStation } from '../utils/orderStation.js'
 
 export async function createOrderCore({
   businessId,
@@ -61,65 +62,8 @@ export async function createOrderCore({
     })
   }
 
-  // Exact category lists for automatic kitchen/bar routing of orders placed
-  // by waiters or via QR code scan.
-  const KITCHEN_CATEGORIES = [
-    'Appetizers',
-    'Snacks',
-    'BBQ & Grills',
-    'Chicken Dishes',
-    'Beef Dishes',
-    'Pork Dishes',
-    'Fish & Seafood',
-    'Burgers',
-    'Pizza',
-    'Sandwiches',
-    'Fries & Chips',
-    'Main Meals',
-    'Local Dishes',
-    'Salads',
-    'Desserts',
-  ]
-
-  const BAR_CATEGORIES = [
-    'Beer',
-    'Wine',
-    'Spirits',
-    'Cocktails',
-    'Mocktails',
-    'Soft Drinks',
-    'Juices',
-    'Water',
-    'Energy Drinks',
-    'Tea and Coffee',
-  ]
-
-  const isKitchenCategory = (cat) => {
-    const c = (cat || '').trim().toLowerCase()
-    return KITCHEN_CATEGORIES.some((k) => k.toLowerCase() === c)
-  }
-
-  const isBarCategory = (cat) => {
-    const c = (cat || '').trim().toLowerCase()
-    return BAR_CATEGORIES.some((b) => b.toLowerCase() === c)
-  }
-
-  const isDrinkCategory = (cat) => {
-    const c = (cat || '').toLowerCase()
-    return (
-      c.includes('drink') ||
-      c.includes('beer') ||
-      c.includes('wine') ||
-      c.includes('cocktail') ||
-      c.includes('beverage') ||
-      c.includes('soft') ||
-      c.includes('liquor') ||
-      c.includes('spirit')
-    )
-  }
-
   const hasDrinks = resolved.some((r) => isDrinkCategory(r.product.category))
-  const hasFood = resolved.some((r) => !isDrinkCategory(r.product.category))
+  const hasFood = resolved.some((r) => Boolean(r.product.category) && !isDrinkCategory(r.product.category))
   const finalOrderType = orderType || (hasDrinks && !hasFood ? 'drinks' : 'food')
 
   // Automatic kitchen/bar routing for all orders placed by waiters or via QR
@@ -130,9 +74,7 @@ export async function createOrderCore({
   // to the bar when their items belong to bar categories (Beer, Wine, Spirits,
   // Cocktails, Mocktails, Soft Drinks, Juices, Water, Energy Drinks, Hot
   // Beverages (Coffee & Tea)). Orders with both go to 'both'.
-  const hasKitchenItems = resolved.some((r) => isKitchenCategory(r.product.category))
-  const hasBarItems = resolved.some((r) => isBarCategory(r.product.category) || isDrinkCategory(r.product.category))
-  const station = hasKitchenItems && hasBarItems ? 'both' : hasBarItems ? 'bar' : 'kitchen'
+  const station = resolveOrderStation(resolved.map((r) => r.product.category), finalOrderType)
 
   let subtotal = 0
   for (const r of resolved) subtotal += r.unitPrice * r.quantity
@@ -160,9 +102,13 @@ export async function createOrderCore({
     : 'System'
 
   const orderResult = await query(
-    `INSERT INTO orders (business_id, branch_id, user_id, table_name, order_number, order_type,
+    `INSERT INTO orders (business_id, branch_id, user_id, table_name, table_number, order_number, order_type,
       source, status, subtotal, tax_amount, total_amount, payment_method, station, customer_name, created_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW()) RETURNING id`,
+     VALUES (
+       $1, $2, $3, $4,
+       CASE WHEN $4 ~ '^[0-9]+$' AND $4::numeric <= 2147483647 THEN $4::integer ELSE NULL END,
+       $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW()
+     ) RETURNING id`,
     [
       businessId,
       branchId,
@@ -235,6 +181,7 @@ export async function createOrderCore({
     source,
     tableNumber: tableName,
     customerName: customerName || null,
+    waiterName: source === 'waiter' ? req?.user?.full_name || req?.user?.email || '' : '',
     subtotal,
     tax: taxAmount,
     total: totalAmount,
@@ -381,10 +328,18 @@ const productsResult = await query(
     const taxRate = 0.18
     const newTax = newSubtotal * (taxRate / (1 + taxRate))
     const newTotal = newSubtotal
+    const { rows: orderCategories } = await client.query(
+      `SELECT p.category
+       FROM order_items oi
+       JOIN products p ON p.id = oi.product_id
+       WHERE oi.order_id = $1`,
+      [orderId]
+    )
+    const station = resolveOrderStation(orderCategories.map((item) => item.category), order.order_type)
 
     await client.query(
-      'UPDATE orders SET subtotal = $1, tax_amount = $2, total_amount = $3 WHERE id = $4',
-      [newSubtotal, newTax, newTotal, orderId]
+      'UPDATE orders SET subtotal = $1, tax_amount = $2, total_amount = $3, station = $4 WHERE id = $5',
+      [newSubtotal, newTax, newTotal, station, orderId]
     )
 
     await client.query(

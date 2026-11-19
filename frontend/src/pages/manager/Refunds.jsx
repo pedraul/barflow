@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import * as api from '../../api/endpoints'
+import { usePreferences } from '../../context/PreferencesContext'
 
 const money = (value) => `${Number(value || 0).toLocaleString()} RWF`
 
 export default function Refunds() {
+  const { t } = usePreferences()
   const [orders, setOrders] = useState([])
   const [refunds, setRefunds] = useState([])
   const [form, setForm] = useState({ orderId: '', amount: '', reason: '' })
@@ -43,12 +45,12 @@ export default function Refunds() {
     setError(null)
 
     if (!form.orderId || !form.amount || !form.reason.trim()) {
-      setError('Order, amount, and reason are required.')
+      setError(t('Order, amount, and reason are required.'))
       return
     }
     const amount = Number(form.amount)
     if (!(amount > 0)) {
-      setError('Amount must be greater than zero.')
+      setError(t('Amount must be greater than zero.'))
       return
     }
 
@@ -59,11 +61,11 @@ export default function Refunds() {
         amount,
         reason: form.reason.trim(),
       })
-      setMsg(`Refund of ${money(amount)} issued successfully.`)
+      setMsg(`${t('Refund of')} ${money(amount)} ${t('issued successfully.')}`)
       setForm({ orderId: '', amount: '', reason: '' })
       load()
     } catch (err) {
-      setError(err.message || 'Refund failed.')
+      setError(err.message || t('Refund failed.'))
     } finally {
       setSending(false)
     }
@@ -73,26 +75,26 @@ export default function Refunds() {
     <div className="page manager-refunds">
       <div className="user-page-heading">
         <div>
-          <p className="eyebrow">Manager workspace</p>
-          <h1>Refunds</h1>
-          <p>Issue a refund for an order and track refund history.</p>
+          <p className="eyebrow">{t('Manager workspace')}</p>
+          <h1>{t('Refunds')}</h1>
+          <p>{t('Issue a refund for an order and track refund history.')}</p>
         </div>
       </div>
 
       <section className="user-section">
-        <h2>New refund</h2>
+        <h2>{t('New refund')}</h2>
         <form onSubmit={handleSubmit} className="profile-form">
           <label>
-            Search order
+            {t('Search order')}
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by order #, table, or customer phone…"
+              placeholder={t('Search by order #, table, or customer phone…')}
             />
           </label>
           <label>
-            Order
+            {t('Order')}
             <select
               value={form.orderId}
               onChange={(e) => {
@@ -101,7 +103,7 @@ export default function Refunds() {
               }}
               required
             >
-              <option value="">Select an order…</option>
+              <option value="">{t('Select an order…')}</option>
               {refundableOrders.map((o) => (
                 <option key={o.id} value={o.id}>
                   {o.orderNumber} — {o.customer} — {money(o.total)} ({o.status})
@@ -111,28 +113,28 @@ export default function Refunds() {
           </label>
           {selectedOrder && (
             <p style={{ fontSize: 13, color: 'var(--text-4)', marginTop: -8 }}>
-              Order total: <strong>{money(selectedOrder.total)}</strong> — you may refund any amount up to this total.
+              {t('Order total:')} <strong>{money(selectedOrder.total)}</strong> {t('— you may refund any amount up to this total.')}
             </p>
           )}
           <label>
-            Amount to refund
+            {t('Amount to refund')}
             <input
               type="number"
               min="1"
               max={selectedOrder ? Number(selectedOrder.total) : undefined}
               value={form.amount}
               onChange={(e) => setForm({ ...form, amount: e.target.value })}
-              placeholder="0"
+              placeholder={t('0')}
               required
             />
           </label>
           <label>
-            Reason for refund
+            {t('Reason for refund')}
             <input
               type="text"
               value={form.reason}
               onChange={(e) => setForm({ ...form, reason: e.target.value })}
-              placeholder="e.g. Customer returned an item"
+              placeholder={t('e.g. Customer returned an item')}
               required
             />
           </label>
@@ -142,26 +144,26 @@ export default function Refunds() {
 
           <div className="form-actions">
             <button type="submit" className="pay-action" disabled={sending}>
-              {sending ? 'Processing…' : 'Issue refund'}
+              {sending ? t('Processing…') : t('Issue refund')}
             </button>
           </div>
         </form>
       </section>
 
       <section className="user-section">
-        <h2>Refund history</h2>
+        <h2>{t('Refund history')}</h2>
         {loading ? (
-          <p>Loading…</p>
+          <p>{t('Loading…')}</p>
         ) : refunds.length ? (
           <div className="user-table-wrap">
             <table className="user-table">
               <thead>
                 <tr>
-                  <th>Order</th>
-                  <th>Amount</th>
-                  <th>Reason</th>
-                  <th>Status</th>
-                  <th>Date</th>
+                  <th>{t('Order')}</th>
+                  <th>{t('Amount')}</th>
+                  <th>{t('Reason')}</th>
+                  <th>{t('Status')}</th>
+                  <th>{t('Date')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -182,7 +184,7 @@ export default function Refunds() {
             </table>
           </div>
         ) : (
-          <p>No refunds found.</p>
+          <p>{t('No refunds found.')}</p>
         )}
       </section>
     </div>

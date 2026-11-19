@@ -4,6 +4,7 @@ import { generateQRCodeData } from '../services/qrService.js'
 import { logAudit, getClientIp } from '../utils/audit.js'
 import authMiddleware from '../middleware/authMiddleware.js'
 import { getBranchContext } from '../middleware/branchContext.js'
+import { resolveOrderStation } from '../utils/orderStation.js'
 
 const router = Router()
 
@@ -106,14 +107,25 @@ router.patch('/orders/:id/route', authMiddleware, async (req, res) => {
   }
 
    try {
-    const before = await query('SELECT id, status, station, source FROM orders WHERE id = $1', [id])
+    const before = await query('SELECT id, status, station, source, order_type FROM orders WHERE id = $1 AND business_id = $2', [id, currentBusinessId])
     console.log('[ROUTE] order before:', before.rows[0])
+    if (!before.rows.length || !['qr', 'waiter'].includes(before.rows[0].source)) {
+      return res.status(404).json({ error: 'Order not found in your business' })
+    }
+
+    const { rows: itemCategories } = await query(
+      `SELECT p.category FROM order_items oi
+       JOIN products p ON p.id = oi.product_id
+       WHERE oi.order_id = $1`,
+      [id]
+    )
+    const routedStation = resolveOrderStation(itemCategories.map((item) => item.category), before.rows[0].order_type)
 
     const result = await query(
       `UPDATE orders SET station = $2 WHERE id = $1 AND source IN ('qr', 'waiter') AND business_id = $3 RETURNING id`,
-      [id, destination, currentBusinessId]
+      [id, routedStation, currentBusinessId]
     )
-    console.log('[ROUTE] update result rows:', result.rows.length, 'destination:', destination)
+    console.log('[ROUTE] update result rows:', result.rows.length, 'destination:', routedStation)
 
     if (!result.rows.length) {
       return res.status(404).json({ error: 'Order not found in your business' })
@@ -123,13 +135,13 @@ router.patch('/orders/:id/route', authMiddleware, async (req, res) => {
     await query(
       `INSERT INTO order_status_history (order_id, status, changed_by, note)
        VALUES ($1, $2, 'operator', 'Routed to ' || $3 || ' (station updated)')`,
-       [id, currentStatusRow.rows[0].status, destination]
+       [id, currentStatusRow.rows[0].status, routedStation]
     )
 
 await logAudit({
        userId: req.user?.id,
        actorName: req.user?.full_name || req.user?.email || 'Operator',
-       action: `Routed order ${id} to ${destination}`,
+       action: `Routed order ${id} to ${routedStation}`,
        targetModule: 'Orders',
        ipAddress: getClientIp(req),
        businessId: req.user?.businessId,
@@ -137,7 +149,7 @@ await logAudit({
 
     const updated = await query('SELECT status, station FROM orders WHERE id = $1', [id])
     console.log('[ROUTE] order after:', updated.rows[0])
-    res.json({ id, status: updated.rows[0]?.status, destination, station: updated.rows[0]?.station })
+    res.json({ id, status: updated.rows[0]?.status, destination: routedStation, station: updated.rows[0]?.station })
   } catch (error) {
     console.error('[ROUTE] error:', error)
     res.status(500).json({ error: error.message })
@@ -292,28 +304,33 @@ router.get('/qr-codes', authMiddleware, async (req, res) => {
       requestedBranchId: req.query.branchId,
       allowOwnerAll: true,
     })
-    const { rows: branches } = await query(
-      `SELECT id, name FROM branches
-       WHERE is_active = true AND business_id = $1
-         AND ($2::uuid IS NULL OR id = $2)
-       ORDER BY is_main DESC, created_at ASC`,
+    const { rows } = await query(
+      `SELECT t.table_number, t.branch_id, b.name AS branch_name, bu.slug AS business_slug
+       FROM dining_tables t
+       JOIN branches b ON b.id = t.branch_id
+       JOIN businesses bu ON bu.id = t.business_id
+       WHERE t.business_id = $1 AND b.is_active = TRUE
+         AND ($2::uuid IS NULL OR t.branch_id = $2)
+       ORDER BY b.is_main DESC, b.created_at, t.table_number`,
       [scope.businessId, scope.branchId]
     )
 
-    const qrCodes = []
-    for (const branch of branches) {
-      for (let table = 1; table <= 10; table++) {
-        qrCodes.push({
-          tableNumber: table,
-          branchId: branch.id,
-          branchName: branch.name,
-          qrData: generateQRCodeData(table, branch.name, scope.businessId),
-          url: `/menu?table=${table}&businessId=${encodeURIComponent(scope.businessId)}&branchId=${encodeURIComponent(branch.id)}`,
-        })
+    res.json(rows.map((table) => {
+      const qrData = generateQRCodeData(
+        table.table_number,
+        table.branch_name,
+        scope.businessId,
+        table.branch_id,
+        table.business_slug
+      )
+      return {
+        tableNumber: table.table_number,
+        branchId: table.branch_id,
+        branchName: table.branch_name,
+        qrData,
+        url: qrData.url,
       }
-    }
-
-    res.json(qrCodes)
+    }))
   } catch (error) {
     res.status(error.statusCode || 500).json({ error: error.message })
   }
@@ -359,8 +376,14 @@ router.get('/routed-report', authMiddleware, async (req, res) => {
     }))
 
     const totalAmount = events.reduce((s, e) => s + Number(e.lineTotal || 0), 0)
+    const summary = {
+      count: events.length,
+      totalAmount: Number(totalAmount.toFixed(2)),
+      kitchenCount: events.filter((event) => String(event.destination || '').toLowerCase() === 'kitchen').length,
+      barCount: events.filter((event) => String(event.destination || '').toLowerCase() === 'bar').length,
+    }
 
-    res.json({ count: events.length, totalAmount: Number(totalAmount.toFixed(2)), events })
+    res.json({ summary, count: summary.count, totalAmount: summary.totalAmount, events })
   } catch (error) {
     res.status(error.statusCode || 500).json({ error: error.message })
   }
@@ -471,6 +494,7 @@ router.get('/dashboard', authMiddleware, async (req, res) => {
 })
 
 function mapOperatorOrder(o) {
+  const createdAt = o.created_at ? new Date(o.created_at) : null
   return {
     id: o.id,
     orderNumber: o.order_number,
@@ -482,6 +506,7 @@ function mapOperatorOrder(o) {
     tax: Number(o.tax_amount || 0),
     station: o.station || null,
     waiterId: o.user_id || null,
+    waiterName: o.waiter_name || '',
     businessName: o.business_name || '',
     businessPhone: o.business_phone || '',
     businessEmail: o.business_email || '',
@@ -499,7 +524,7 @@ function mapOperatorOrder(o) {
       imageUrl: item.imageUrl || '',
       category: item.category || '',
     })),
-    createdAt: new Date(o.created_at).toLocaleString(),
+    createdAt: createdAt && Number.isFinite(createdAt.getTime()) ? createdAt.toISOString() : null,
   }
 }
 

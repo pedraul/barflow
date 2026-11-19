@@ -1,8 +1,11 @@
+import { usePreferences } from '../../context/PreferencesContext'
 import React, { useEffect, useState } from 'react'
 import * as api from '../../api/endpoints'
 import { useAuth } from '../../context/AuthContext'
+import { getOrderLocation } from '../../utils/orderDisplay'
 
 export default function WaiterOrderHistory() {
+  const { t } = usePreferences()
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -74,13 +77,13 @@ export default function WaiterOrderHistory() {
     <div className="page waiter-order-history">
       <div className="user-page-heading">
         <div>
-          <p className="eyebrow">Waiter workspace</p>
-          <h1>My Order History</h1>
-          <p>All orders you have created, saved permanently.</p>
+          <p className="eyebrow">{t("Waiter workspace")}</p>
+          <h1>{t("My Order History")}</h1>
+          <p>{t("All orders you have created, saved permanently.")}</p>
         </div>
       </div>
 
-      {error && <div className="subscription-lock" style={{ padding: '12px' }}>Error: {error}</div>}
+      {error && <div className="subscription-lock" style={{ padding: '12px' }}>{t("Error:")}{' '}{t(error)}</div>}
 
       <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
         {periodButtons.map((btn) => (
@@ -89,7 +92,7 @@ export default function WaiterOrderHistory() {
             onClick={() => setPeriod(btn.key)}
             className={`px-4 py-2 rounded-lg text-sm font-semibold ${period === btn.key ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}
           >
-            {btn.label}
+            {t(btn.label)}
           </button>
         ))}
         <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
@@ -98,43 +101,41 @@ export default function WaiterOrderHistory() {
             value={from}
             onChange={(e) => setFrom(e.target.value)}
             style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e0' }}
-            placeholder="From"
+            placeholder={t("From")}
           />
           <input
             type="date"
             value={to}
             onChange={(e) => setTo(e.target.value)}
             style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e0' }}
-            placeholder="To"
+            placeholder={t("To")}
           />
-          <button onClick={loadHistory} className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-semibold">Apply</button>
+          <button onClick={loadHistory} className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-semibold">{t("Apply")}</button>
         </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
         <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-          <div style={{ fontSize: '14px', color: '#6c757d', marginBottom: '4px' }}>Total Orders</div>
+          <div style={{ fontSize: '14px', color: '#6c757d', marginBottom: '4px' }}>{t("Total Orders")}</div>
           <div style={{ fontSize: '32px', fontWeight: '800', color: '#1a1a2e' }}>{totalOrders}</div>
         </div>
         <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-          <div style={{ fontSize: '14px', color: '#6c757d', marginBottom: '4px' }}>Total Revenue</div>
+          <div style={{ fontSize: '14px', color: '#6c757d', marginBottom: '4px' }}>{t("Total Revenue")}</div>
           <div style={{ fontSize: '32px', fontWeight: '800', color: '#d97706' }}>{formatCurrency(totalRevenue)}</div>
         </div>
         <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-          <div style={{ fontSize: '14px', color: '#6c757d', marginBottom: '4px' }}>Waiter</div>
-          <div style={{ fontSize: '32px', fontWeight: '800', color: '#1a1a2e' }}>{user?.name || 'Me'}</div>
+          <div style={{ fontSize: '14px', color: '#6c757d', marginBottom: '4px' }}>{t("Waiter")}</div>
+          <div style={{ fontSize: '32px', fontWeight: '800', color: '#1a1a2e' }}>{user?.name || t("Me")}</div>
         </div>
       </div>
 
       {loading && orders.length === 0 ? (
-        <div className="emptyState" style={{ padding: '60px', textAlign: 'center', color: '#6c757d' }}>
-          Loading history...
-        </div>
+        <div className="emptyState" style={{ padding: '60px', textAlign: 'center', color: '#6c757d' }}>{t("Loading history...")}</div>
       ) : orders.length === 0 ? (
         <div className="emptyState" style={{ padding: '60px', textAlign: 'center', color: '#6c757d' }}>
           <div style={{ fontSize: '48px', marginBottom: '12px' }}>📋</div>
-          <h2 style={{ margin: '0 0 8px' }}>No orders found</h2>
-          <p>Orders you create will appear here permanently.</p>
+          <h2 style={{ margin: '0 0 8px' }}>{t("No orders found")}</h2>
+          <p>{t("Orders you create will appear here permanently.")}</p>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
@@ -152,7 +153,7 @@ export default function WaiterOrderHistory() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                 <span style={{ fontSize: '24px', fontWeight: '700', color: '#1a1a2e' }}>{formatOrderNumber(order.orderNumber)}</span>
                 <span style={{ backgroundColor: '#e9ecef', padding: '6px 12px', borderRadius: '6px', fontSize: '14px', fontWeight: '600' }}>
-                  Table {order.tableNumber}
+                  {getOrderLocation(order)}
                 </span>
               </div>
 
@@ -167,7 +168,7 @@ export default function WaiterOrderHistory() {
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '14px', fontWeight: 600 }}>
-                <span>Total: {formatCurrency(order.total)}</span>
+                <span>{t("Total:")}{' '}{formatCurrency(order.total)}</span>
                 <span style={{ color: statusColor(order.status) }}>{order.status}</span>
               </div>
 

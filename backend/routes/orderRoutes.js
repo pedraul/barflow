@@ -12,7 +12,7 @@ const router = Router()
 function ordersSelect(where = '', params = []) {
   return {
     text: `
-      SELECT o.*, (
+      SELECT o.*, order_waiter.full_name AS waiter_name, (
         SELECT COALESCE(json_agg(json_build_object(
           'productId', oi.product_id,
           'name', p.name,
@@ -24,6 +24,7 @@ function ordersSelect(where = '', params = []) {
         WHERE oi.order_id = o.id
       ) AS items
       FROM orders o
+      LEFT JOIN users order_waiter ON order_waiter.id = o.user_id
       ${where}
       ORDER BY o.created_at DESC
     `,
@@ -103,7 +104,7 @@ router.get('/:id', authMiddleware, async (req, res) => {
   try {
     const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
     const { rows } = await query(
-      `SELECT o.*, (
+      `SELECT o.*, order_waiter.full_name AS waiter_name, (
          SELECT COALESCE(json_agg(json_build_object(
            'productId', oi.product_id,
            'name', p.name,
@@ -115,6 +116,7 @@ router.get('/:id', authMiddleware, async (req, res) => {
          WHERE oi.order_id = o.id
        ) AS items
        FROM orders o
+       LEFT JOIN users order_waiter ON order_waiter.id = o.user_id
        WHERE o.id = $1 AND o.business_id = $2
          AND ($3::uuid IS NULL OR o.branch_id = $3)`,
       [req.params.id, scope.businessId, scope.branchId]
@@ -382,7 +384,8 @@ router.get('/waiter/history', authMiddleware, async (req, res) => {
     const dateFilter = dateClauses.length ? `AND ${dateClauses.join(' AND ')}` : ''
 
     const { rows } = await query(
-      `SELECT o.id, o.order_number, o.table_number, o.status, o.total_amount, o.created_at, o.source,
+      `SELECT o.id, o.order_number, o.table_number, o.table_name, o.status, o.total_amount, o.created_at, o.source,
+              u.full_name AS waiter_name,
               (
                 SELECT COALESCE(json_agg(json_build_object(
                   'productId', p.id,
@@ -396,6 +399,7 @@ router.get('/waiter/history', authMiddleware, async (req, res) => {
                 WHERE oi.order_id = o.id
               ) AS items
        FROM orders o
+       LEFT JOIN users u ON u.id = o.user_id
        WHERE o.user_id = $1 AND o.source = 'waiter' AND o.business_id = $2
          AND ($3::uuid IS NULL OR o.branch_id = $3)
          ${dateFilter}
@@ -407,6 +411,7 @@ router.get('/waiter/history', authMiddleware, async (req, res) => {
       id: o.id,
       orderNumber: o.order_number,
       tableNumber: o.table_number,
+      waiterName: o.waiter_name || '',
       status: o.status,
       source: o.source,
       total: Number(o.total_amount) || 0,

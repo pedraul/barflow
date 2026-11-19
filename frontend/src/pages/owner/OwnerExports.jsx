@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { usePreferences } from '../../context/PreferencesContext'
 
 const EXPORTS = [
   { key: 'everything', title: 'Full business data', desc: 'Every branch, user, product, order, and setting in one archive.', message: 'Full business data exported.' },
@@ -8,25 +9,26 @@ const EXPORTS = [
 ]
 
 export default function OwnerExports({ onExport }) {
+  const { t } = usePreferences()
   const [exported, setExported] = useState('')
 
   const runExport = (item) => {
-    setExported(item.message)
+    setExported(t(item.message))
     if (onExport) onExport(item.message)
   }
 
   return (
     <div className="od-section">
       <section className="user-section">
-        <h2>Export</h2>
-        <p>Download full business exports for backup and audit.</p>
+        <h2>{t('Export')}</h2>
+        <p>{t('Download full business exports for backup and audit.')}</p>
 
         <div className="export-grid">
           {EXPORTS.map((item) => (
             <div key={item.key} className="export-card">
-              <h3>{item.title}</h3>
-              <p>{item.desc}</p>
-              <button type="button" className="pay-action" onClick={() => runExport(item)}>Export</button>
+              <h3>{t(item.title)}</h3>
+              <p>{t(item.desc)}</p>
+              <button type="button" className="pay-action" onClick={() => runExport(item)}>{t('Export')}</button>
             </div>
           ))}
         </div>

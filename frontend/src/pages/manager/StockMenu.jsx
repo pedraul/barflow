@@ -6,6 +6,7 @@ import {
   deleteProduct,
 } from '../../api/endpoints'
 import compressImage from '../../utils/compressImage'
+import { usePreferences } from '../../context/PreferencesContext'
 
 const emptyForm = {
   name: '',
@@ -19,6 +20,7 @@ const emptyForm = {
 }
 
 export default function ManagerStockMenu() {
+  const { t } = usePreferences()
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -61,7 +63,7 @@ export default function ManagerStockMenu() {
     e.preventDefault()
     const category = form.category.trim().replace(/\s+/g, ' ')
     if (!category) {
-      setError('Select an existing category or create a new one.')
+      setError(t('Select an existing category or create a new one.'))
       return
     }
     setSaving(true); setError(null)
@@ -154,26 +156,26 @@ export default function ManagerStockMenu() {
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Manager workspace</p>
-          <h1 className="text-2xl font-black text-slate-900">Stock menu</h1>
-          <p className="text-sm text-slate-500">Add, update, and manage menu items. Quantities update automatically when customers place orders.</p>
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{t('Manager workspace')}</p>
+          <h1 className="text-2xl font-black text-slate-900">{t('Stock menu')}</h1>
+          <p className="text-sm text-slate-500">{t('Add, update, and manage menu items. Quantities update automatically when customers place orders.')}</p>
         </div>
         <button type="button" onClick={loadProducts} className="secondary-action" disabled={loading}>
-          {loading ? 'Refreshing...' : 'Refresh'}
+          {loading ? t('Refreshing...') : t('Refresh')}
         </button>
       </div>
 
       {error && <div style={{ color: 'var(--danger-text)', background: 'var(--danger-bg)', padding: '0.75rem 1rem', borderRadius: 'var(--radius)' }}>{error}</div>}
 
       <section className="user-section">
-        <h2>{editingId ? 'Edit menu item' : 'Add menu item'}</h2>
+        <h2>{editingId ? t('Edit menu item') : t('Add menu item')}</h2>
         <form onSubmit={handleSubmit} className="create-user-form">
           <label>
-            Product name
-            <input type="text" name="name" value={form.name} onChange={handleChange} required placeholder="e.g. Primus Beer 500ml" />
+            {t('Product name')}
+            <input type="text" name="name" value={form.name} onChange={handleChange} required placeholder={t('e.g. Primus Beer 500ml')} />
           </label>
           <label>
-            Category
+            {t('Category')}
             {!creatingCategory ? (
               <select
                 value={form.category}
@@ -187,42 +189,42 @@ export default function ManagerStockMenu() {
                 }}
                 required
               >
-                <option value="">Select a category</option>
+                <option value="">{t('Select a category')}</option>
                 {categories.map((category) => <option key={category.toLocaleLowerCase()} value={category}>{category}</option>)}
-                <option value="__new_category__">+ Create a new category</option>
+                <option value="__new_category__">{t('+ Create a new category')}</option>
               </select>
             ) : (
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <input type="text" name="category" value={form.category} onChange={handleChange} required autoFocus placeholder="New category name" />
+                <input type="text" name="category" value={form.category} onChange={handleChange} required autoFocus placeholder={t('New category name')} />
                 <button type="button" className="secondary-action" onClick={() => { setCreatingCategory(false); setForm((prev) => ({ ...prev, category: '' })) }} style={{ margin: 0 }}>
-                  Choose existing
+                  {t('Choose existing')}
                 </button>
               </div>
             )}
-            <small style={{ color: 'var(--text-3)' }}>Choose where this item belongs, or create a category for it.</small>
+            <small style={{ color: 'var(--text-3)' }}>{t('Choose where this item belongs, or create a category for it.')}</small>
           </label>
           <label>
-            Price (RWF)
+            {t('Price (RWF)')}
             <input type="number" name="price" value={form.price} onChange={handleChange} required min="0" step="1" />
           </label>
           <label>
-            Cost price (RWF)
+            {t('Cost price (RWF)')}
             <input type="number" name="costPrice" value={form.costPrice} onChange={handleChange} min="0" step="1" />
           </label>
           <label>
-            Unit
-            <input type="text" name="unit" value={form.unit} onChange={handleChange} placeholder="e.g. unit, kg, litre" />
+            {t('Unit')}
+            <input type="text" name="unit" value={form.unit} onChange={handleChange} placeholder={t('e.g. unit, kg, litre')} />
           </label>
           <label>
-            Quantity in stock
+            {t('Quantity in stock')}
             <input type="number" name="quantity" value={form.quantity} onChange={handleChange} min="0" step="1" />
           </label>
           <label>
-            Min stock level
+            {t('Min stock level')}
             <input type="number" name="minStockLevel" value={form.minStockLevel} onChange={handleChange} min="0" step="1" />
           </label>
           <label>
-            Image
+            {t('Image')}
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
               <input
                 ref={fileInputRef}
@@ -232,18 +234,18 @@ export default function ManagerStockMenu() {
                 style={{ display: 'none' }}
               />
               <button type="button" className="secondary-action" onClick={triggerImageUpload} style={{ margin: 0 }}>
-                Choose image
+                {t('Choose image')}
               </button>
               {form.imageUrl && (
                 <button type="button" className="danger-action" onClick={() => { setForm((prev) => ({ ...prev, imageUrl: '' })); setImagePreview(''); if (fileInputRef.current) fileInputRef.current.value = '' }} style={{ margin: 0 }}>
-                  Remove
+                  {t('Remove')}
                 </button>
               )}
             </div>
             {imagePreview && (
               <img
                 src={imagePreview}
-                alt="Preview"
+                alt={t('Preview')}
                 style={{ marginTop: '0.5rem', width: '80px', height: '80px', objectFit: 'cover', borderRadius: 'var(--radius-sm)' }}
               />
             )}
@@ -252,16 +254,16 @@ export default function ManagerStockMenu() {
               name="imageUrl"
               value={form.imageUrl}
               onChange={handleChange}
-              placeholder="Or paste image URL here..."
+              placeholder={t('Or paste image URL here...')}
               style={{ marginTop: '0.5rem' }}
             />
           </label>
           <div className="create-user-form-actions">
             {editingId && (
-              <button type="button" className="secondary-action" onClick={cancelEdit} disabled={saving}>Cancel</button>
+              <button type="button" className="secondary-action" onClick={cancelEdit} disabled={saving}>{t('Cancel')}</button>
             )}
             <button type="submit" className="pay-action" disabled={saving}>
-              {saving ? 'Saving...' : editingId ? 'Update item' : 'Add item'}
+              {saving ? t('Saving...') : editingId ? t('Update item') : t('Add item')}
             </button>
           </div>
         </form>
@@ -269,14 +271,14 @@ export default function ManagerStockMenu() {
 
       <section className="user-section">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <h2 style={{ margin: 0, border: 'none', padding: 0 }}>Menu items</h2>
+          <h2 style={{ margin: 0, border: 'none', padding: 0 }}>{t('Menu items')}</h2>
           <button type="button" className="secondary-action" onClick={loadProducts} disabled={loading}>
-            {loading ? 'Refreshing...' : 'Refresh'}
+            {loading ? t('Refreshing...') : t('Refresh')}
           </button>
         </div>
 
         {!products.length && !loading && (
-          <p style={{ color: 'var(--text-3)' }}>No menu items yet. Add your first item above.</p>
+          <p style={{ color: 'var(--text-3)' }}>{t('No menu items yet. Add your first item above.')}</p>
         )}
 
         <div className="stock-grid">
@@ -289,17 +291,17 @@ export default function ManagerStockMenu() {
               )}
               <div className="stock-info">
                 <strong>{product.name}</strong>
-                <span>{Number(product.price).toLocaleString()} RWF {product.unit ? `/ ${product.unit}` : ''}</span>
+                <span>{Number(product.price).toLocaleString()} {t('RWF')} {product.unit ? `/ ${product.unit}` : ''}</span>
                 <span style={{ fontWeight: 700, color: Number(product.quantity) <= Number(product.minStockLevel) ? 'var(--danger-text)' : 'var(--text)' }}>
-                  Qty: {Number(product.quantity).toLocaleString()}
+                  {t('Qty:')} {Number(product.quantity).toLocaleString()}
                 </span>
                 {Number(product.quantity) <= Number(product.minStockLevel) && (
-                  <span style={{ fontSize: '0.75rem', color: 'var(--danger-text)', fontWeight: 700 }}>Low stock</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--danger-text)', fontWeight: 700 }}>{t('Low stock')}</span>
                 )}
               </div>
               <div style={{ display: 'flex', gap: '0.4rem' }}>
-                <button type="button" className="secondary-action" style={{ flex: 1, margin: 0, padding: '0.4rem', fontSize: '0.8rem' }} onClick={() => handleEdit(product)}>Edit</button>
-                <button type="button" className="danger-action" style={{ flex: 1, margin: 0, padding: '0.4rem', fontSize: '0.8rem' }} onClick={() => setDeletingId(product.id)}>Delete</button>
+                <button type="button" className="secondary-action" style={{ flex: 1, margin: 0, padding: '0.4rem', fontSize: '0.8rem' }} onClick={() => handleEdit(product)}>{t('Edit')}</button>
+                <button type="button" className="danger-action" style={{ flex: 1, margin: 0, padding: '0.4rem', fontSize: '0.8rem' }} onClick={() => setDeletingId(product.id)}>{t('Delete')}</button>
               </div>
             </div>
           ))}
@@ -309,12 +311,12 @@ export default function ManagerStockMenu() {
       {deletingId && (
         <div className="modal-backdrop" onClick={() => setDeletingId(null)}>
           <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
-            <h2>Delete menu item</h2>
-            <p>Are you sure you want to remove this item from the menu? This action cannot be undone.</p>
+            <h2>{t('Delete menu item')}</h2>
+            <p>{t('Are you sure you want to remove this item from the menu? This action cannot be undone.')}</p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.25rem' }}>
-              <button type="button" className="secondary-action" onClick={() => setDeletingId(null)} disabled={saving}>Cancel</button>
+              <button type="button" className="secondary-action" onClick={() => setDeletingId(null)} disabled={saving}>{t('Cancel')}</button>
               <button type="button" className="danger-action" onClick={handleDelete} disabled={saving} style={{ color: 'var(--danger-text)', background: 'var(--danger-bg)', border: '1px solid var(--danger)' }}>
-                {saving ? 'Deleting...' : 'Delete'}
+                {saving ? t('Deleting...') : t('Delete')}
               </button>
             </div>
           </div>

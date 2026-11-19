@@ -4,6 +4,7 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import Papa from 'papaparse'
 import * as XLSX from 'xlsx'
+import { usePreferences } from '../../context/PreferencesContext'
 
 const money = (value) => `${Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} RWF`
 
@@ -16,6 +17,7 @@ const TABS = [
 ]
 
 export default function ManagerReports() {
+  const { t } = usePreferences()
   const [activeTab, setActiveTab] = useState('stock')
   const [loading, setLoading] = useState(false)
   const [from, setFrom] = useState('')
@@ -25,6 +27,7 @@ export default function ManagerReports() {
   const [error, setError] = useState(null)
   const [payrollMonth, setPayrollMonth] = useState('')
   const [payrollMonths, setPayrollMonths] = useState([])
+  const [summaryFilter, setSummaryFilter] = useState('')
 
   const load = async () => {
     console.log('[Reports] load tab:', activeTab, 'month:', payrollMonth)
@@ -38,7 +41,7 @@ export default function ManagerReports() {
           result = await api.fetchManagerStockReport()
           console.log('[Reports] stock result:', result)
           setData(result || [])
-          setSummary({ totalProducts: (result || []).length, lowStock: (result || []).filter(p => Number(p.quantity) < 5).length })
+          setSummary({ totalProducts: (result || []).length, lowStock: (result || []).filter(p => Number(p.quantity) <= Number(p.minStockLevel || 0)).length })
           break
         case 'transfers':
           console.log('[Reports] fetching transfers report...')
@@ -78,7 +81,7 @@ export default function ManagerReports() {
           break
       }
     } catch (e) {
-      const msg = e?.response?.data?.error || e.message || 'Unknown error'
+      const msg = e?.response?.data?.error || e.message || t('Unknown error')
       console.error('[Reports] load error:', msg, e)
       setError(msg)
     } finally {
@@ -88,6 +91,22 @@ export default function ManagerReports() {
 
   useEffect(() => { load() }, [activeTab])
   useEffect(() => { if (activeTab === 'payrolls') load() }, [payrollMonth])
+
+  const filteredData = data.filter((item) => {
+    if (!summaryFilter) return true
+    if (summaryFilter === 'lowStock') return activeTab === 'stock' && Number(item.quantity) <= Number(item.minStockLevel || 0)
+    if (summaryFilter === 'approved') return ['transfers', 'refunds'].includes(activeTab) && String(item.status || '').toLowerCase() === 'approved'
+    if (summaryFilter === 'rejected') return ['transfers', 'refunds'].includes(activeTab) && String(item.status || '').toLowerCase() === 'rejected'
+    if (summaryFilter === 'paid') return activeTab === 'payrolls' && item.status === 'Paid'
+    if (summaryFilter === 'notPaid') return activeTab === 'payrolls' && item.status === 'Not Paid'
+    if (summaryFilter.startsWith('source:')) return activeTab === 'revenue' && String(item.source || 'other').toLowerCase() === summaryFilter.slice(7).toLowerCase()
+    return true
+  })
+
+  const selectSummary = (filter) => {
+    setSummaryFilter((current) => current === filter ? '' : filter)
+    window.requestAnimationFrame(() => document.getElementById('manager-report-details')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+  }
 
   const exportPDF = () => {
     const doc = new jsPDF()
@@ -135,7 +154,7 @@ export default function ManagerReports() {
 
   const getHeaders = (tab) => {
     switch (tab) {
-      case 'stock': return ['ID', 'Name', 'Category', 'Price', 'Quantity']
+      case 'stock': return ['ID', 'Name', 'Category', 'Price', 'Quantity in Stock', 'Unit']
       case 'transfers': return ['ID', 'From', 'To', 'Amount', 'Description', 'Status', 'Approval', 'Created']
       case 'payrolls': return ['Employee', 'Role', 'Salary', 'Status', 'Paid In', 'Not Paid In']
       case 'refunds': return ['ID', 'Order', 'Amount', 'Reason', 'Status', 'Created']
@@ -146,7 +165,7 @@ export default function ManagerReports() {
 
   const getRow = (item, index) => {
     switch (activeTab) {
-      case 'stock': return [index + 1, item.name, item.category, item.price, item.quantity]
+      case 'stock': return [index + 1, item.name, item.category, item.price, item.quantity, item.unit || 'unit']
       case 'transfers': return [index + 1, item.from, item.to, item.amount, item.description, item.status, item.managerApproval, item.createdAt]
       case 'payrolls': return [
         item.employee,
@@ -166,9 +185,9 @@ export default function ManagerReports() {
     <div className="page manager-reports">
       <div className="user-page-heading">
         <div>
-          <p className="eyebrow">Manager workspace</p>
-          <h1>Reports</h1>
-          <p>Stock, transfers, payrolls, refunds, and revenue reports.</p>
+          <p className="eyebrow">{t('Manager workspace')}</p>
+          <h1>{t('Reports')}</h1>
+          <p>{t('Stock, transfers, payrolls, refunds, and revenue reports.')}</p>
         </div>
       </div>
 
@@ -176,24 +195,24 @@ export default function ManagerReports() {
         {TABS.map((tab) => (
           <button
             key={tab.key}
-            onClick={() => { setActiveTab(tab.key); setData([]); setSummary(null) }}
+          onClick={() => { setActiveTab(tab.key); setSummaryFilter(''); setData([]); setSummary(null) }}
             className={`px-3 py-1.5 rounded-md text-xs font-semibold ${activeTab === tab.key ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}
             style={{ fontSize: '12px', padding: '6px 10px' }}
           >
-            {tab.label}
+            {t(tab.label)}
           </button>
         ))}
 
         <div style={{ width: '100%', display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', marginTop: '8px' }}>
           {activeTab === 'payrolls' && (
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <label style={{ fontSize: '12px', color: '#475569', fontWeight: 600, whiteSpace: 'nowrap' }}>Month</label>
+              <label style={{ fontSize: '12px', color: '#475569', fontWeight: 600, whiteSpace: 'nowrap' }}>{t('Month')}</label>
               <select
                 value={payrollMonth}
                 onChange={(e) => setPayrollMonth(e.target.value)}
                 style={{ padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e0', fontSize: '12px', height: '32px' }}
               >
-                <option value="">All months</option>
+                <option value="">{t('All months')}</option>
                 {Array.from({ length: 12 }, (_, i) => {
                   const m = String(i + 1).padStart(2, '0')
                   const year = new Date().getFullYear()
@@ -206,28 +225,28 @@ export default function ManagerReports() {
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
               <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e0', fontSize: '12px', height: '32px' }} />
               <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e0', fontSize: '12px', height: '32px' }} />
-              <button onClick={load} style={{ padding: '6px 12px', fontSize: '12px', height: '32px' }} className="bg-slate-900 text-white rounded-md text-xs font-semibold">Apply</button>
+              <button onClick={load} style={{ padding: '6px 12px', fontSize: '12px', height: '32px' }} className="bg-slate-900 text-white rounded-md text-xs font-semibold">{t('Apply')}</button>
             </div>
           )}
           <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-            <button onClick={exportPDF} style={{ padding: '6px 10px', fontSize: '11px', height: '32px' }} className="bg-red-600 text-white rounded-md text-xs font-semibold">PDF</button>
-            <button onClick={exportCSV} style={{ padding: '6px 10px', fontSize: '11px', height: '32px' }} className="bg-emerald-600 text-white rounded-md text-xs font-semibold">CSV</button>
-            <button onClick={exportExcel} style={{ padding: '6px 10px', fontSize: '11px', height: '32px' }} className="bg-blue-600 text-white rounded-md text-xs font-semibold">Excel</button>
+            <button onClick={exportPDF} style={{ padding: '6px 10px', fontSize: '11px', height: '32px' }} className="bg-red-600 text-white rounded-md text-xs font-semibold">{t('PDF')}</button>
+            <button onClick={exportCSV} style={{ padding: '6px 10px', fontSize: '11px', height: '32px' }} className="bg-emerald-600 text-white rounded-md text-xs font-semibold">{t('CSV')}</button>
+            <button onClick={exportExcel} style={{ padding: '6px 10px', fontSize: '11px', height: '32px' }} className="bg-blue-600 text-white rounded-md text-xs font-semibold">{t('Excel')}</button>
           </div>
         </div>
       </div>
 
-      {error && <div className="subscription-lock" style={{ padding: '12px' }}>Error: {error}</div>}
+      {error && <div className="subscription-lock" style={{ padding: '12px' }}>{t('Error:')} {error}</div>}
 
-      {loading && <p style={{ padding: '20px', textAlign: 'center' }}>Loading…</p>}
+      {loading && <p style={{ padding: '20px', textAlign: 'center' }}>{t('Loading…')}</p>}
 
       {!loading && summary && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
           {Object.entries(summary).map(([key, value]) => {
             if (key === 'bySource' && typeof value === 'object' && value !== null) {
               return (
-                <div key={key} style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-                  <div style={{ fontSize: '14px', color: '#6c757d', marginBottom: '4px', textTransform: 'capitalize' }}>Revenue by Source</div>
+                <div key={key} role="button" tabIndex={0} aria-pressed={summaryFilter === key} onClick={() => selectSummary(key)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectSummary(key) } }} style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', boxShadow: summaryFilter === key ? '0 0 0 2px #2563eb, 0 4px 12px rgba(0,0,0,0.12)' : '0 2px 8px rgba(0,0,0,0.08)', cursor: 'pointer' }}>
+                  <div style={{ fontSize: '14px', color: '#6c757d', marginBottom: '4px', textTransform: 'capitalize' }}>{t('Revenue by Source')}</div>
                   {Object.entries(value).map(([src, amt]) => (
                     <div key={src} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', padding: '4px 0' }}>
                       <span style={{ textTransform: 'capitalize' }}>{src}</span>
@@ -238,7 +257,7 @@ export default function ManagerReports() {
               )
             }
             return (
-              <div key={key} style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+              <div key={key} role="button" tabIndex={0} aria-pressed={summaryFilter === key} onClick={() => selectSummary(key)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectSummary(key) } }} style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', boxShadow: summaryFilter === key ? '0 0 0 2px #2563eb, 0 4px 12px rgba(0,0,0,0.12)' : '0 2px 8px rgba(0,0,0,0.08)', cursor: 'pointer' }}>
                 <div style={{ fontSize: '14px', color: '#6c757d', marginBottom: '4px', textTransform: 'capitalize' }}>{key.replace(/([A-Z])/g, ' $1').trim()}</div>
                 <div style={{ fontSize: '28px', fontWeight: '800', color: '#1a1a2e' }}>{typeof value === 'number' && (key.toLowerCase().includes('amount') || key.toLowerCase().includes('revenue')) ? money(value) : value}</div>
               </div>
@@ -247,12 +266,13 @@ export default function ManagerReports() {
         </div>
       )}
 
-      {!loading && data.length === 0 && <p style={{ padding: '40px', textAlign: 'center', color: '#6c757d' }}>No data found.</p>}
+      {!loading && data.length > 0 && summaryFilter && <p className="mb-3 text-sm text-slate-500">{t('Showing')} {filteredData.length} {t('matching records. Click the selected summary card again to clear the filter.')}</p>}
+      {!loading && filteredData.length === 0 && <p style={{ padding: '40px', textAlign: 'center', color: '#6c757d' }}>{t('No data found.')}</p>}
 
       {/* Phone view: payroll shows as clear cards */}
-      {!loading && activeTab === 'payrolls' && data.length > 0 && (
+      {!loading && activeTab === 'payrolls' && filteredData.length > 0 && (
         <div className="payroll-mobile-cards">
-          {data.map((item) => (
+          {filteredData.map((item) => (
             <div className="payroll-card" key={item.id}>
               <div className="payroll-card-head">
                 <div>
@@ -262,15 +282,15 @@ export default function ManagerReports() {
                 <span className={`payroll-pill ${item.status === 'Paid' ? 'paid' : 'unpaid'}`}>{item.status}</span>
               </div>
               <div className="payroll-card-row">
-                <span className="payroll-card-label">Salary</span>
+                <span className="payroll-card-label">{t('Salary')}</span>
                 <strong>{money(item.salary)}</strong>
               </div>
               <div className="payroll-card-row">
-                <span className="payroll-card-label">Paid In</span>
+                <span className="payroll-card-label">{t('Paid In')}</span>
                 <span className="payroll-card-value">{(item.paidMonths || []).map(formatMonthLabel).join(', ') || '—'}</span>
               </div>
               <div className="payroll-card-row">
-                <span className="payroll-card-label">Not Paid In</span>
+                <span className="payroll-card-label">{t('Not Paid In')}</span>
                 <span className="payroll-card-value">{(item.unpaidMonths || []).map(formatMonthLabel).join(', ') || '—'}</span>
               </div>
             </div>
@@ -278,22 +298,22 @@ export default function ManagerReports() {
         </div>
       )}
 
-      {!loading && data.length > 0 && (
+      {!loading && filteredData.length > 0 && (
         <div className={activeTab === 'payrolls' ? 'payroll-desktop-table' : ''}>
-          <div className="user-table-wrap">
+          <div id="manager-report-details" className="user-table-wrap">
             <table className="user-table">
               <thead>
                 <tr>
                   {getHeaders(activeTab).map((h, i) => (
-                    <th key={i}>{h}</th>
+                    <th key={i}>{t(h)}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {data.map((item, idx) => (
+                {filteredData.map((item, idx) => (
                   <tr key={item.id || idx}>
               {getRow(item, idx).map((cell, i) => (
-                <td key={i}>{activeTab === 'stock' && i === 3 ? money(cell) : activeTab === 'revenue' && i === 4 ? money(cell) : activeTab === 'transfers' && i === 3 ? money(cell) : activeTab === 'payrolls' && i === 2 ? money(cell) : activeTab === 'refunds' && i === 2 ? money(cell) : String(cell ?? '—')}</td>
+                <td key={i}>{activeTab === 'stock' && i === 3 ? money(cell) : activeTab === 'stock' && i === 4 ? Number(cell || 0).toLocaleString() : activeTab === 'revenue' && i === 4 ? money(cell) : activeTab === 'transfers' && i === 3 ? money(cell) : activeTab === 'payrolls' && i === 2 ? money(cell) : activeTab === 'refunds' && i === 2 ? money(cell) : String(cell ?? '—')}</td>
               ))}
                   </tr>
                 ))}

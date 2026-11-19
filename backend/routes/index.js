@@ -22,6 +22,8 @@ import managerRoutes from './managerRoutes.js'
 import platformRoutes from './platformRoutes.js'
 import accountantRoutes from './accountantRoutes.js'
 import branchRoutes from './branchRoutes.js'
+import shiftRoutes from './shiftRoutes.js'
+import staffPermissionRoutes from './staffPermissionRoutes.js'
 import { seed } from '../seeders/seed.js'
 
 const router = Router()
@@ -184,6 +186,8 @@ router.use('/inventory', inventoryRoutes)
 router.use('/products', productRoutes)
 router.use('/reports', reportRoutes)
 router.use('/backup', backupRoutes)
+router.use('/shifts', shiftRoutes)
+router.use('/staff-permissions', staffPermissionRoutes)
 
 // Mount Owner-specific routes under /api/v1/owner
 router.use('/v1/owner', ownerRoutes)

@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import { fetchAccountantPayments } from '../../api/endpoints'
+import { usePreferences } from '../../context/PreferencesContext'
 
 const money = (value) => `${Number(value || 0).toLocaleString()} RWF`
 
 export default function Payments() {
+  const { t } = usePreferences()
   const [payments, setPayments] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -23,38 +25,38 @@ export default function Payments() {
 
       <div className="user-page-heading">
         <div>
-          <p className="eyebrow">Accountant workspace</p>
-          <h1>Payments</h1>
-          <p>All payment transactions recorded in the system.</p>
+          <p className="eyebrow">{t('Accountant workspace')}</p>
+          <h1>{t('Payments')}</h1>
+          <p>{t('All payment transactions recorded in the system.')}</p>
         </div>
       </div>
 
       <div className="user-info-grid">
         <div className="summary-card">
           <strong>{payments.length}</strong>
-          <span>Payments</span>
+          <span>{t('Payments')}</span>
         </div>
         <div className="summary-card">
           <strong>{money(total)}</strong>
-          <span>Total Payments</span>
+          <span>{t('Total Payments')}</span>
         </div>
       </div>
 
       <section className="user-section">
         {loading ? (
-          <p style={{ textAlign: 'center', color: 'var(--text-4)', marginTop: '2rem' }}>Loading payments…</p>
+          <p style={{ textAlign: 'center', color: 'var(--text-4)', marginTop: '2rem' }}>{t('Loading payments…')}</p>
         ) : payments.length === 0 ? (
-          <p style={{ textAlign: 'center', color: 'var(--text-4)', marginTop: '2rem' }}>No payments found.</p>
+          <p style={{ textAlign: 'center', color: 'var(--text-4)', marginTop: '2rem' }}>{t('No payments found.')}</p>
         ) : (
           <div className="user-table-wrap">
             <table className="user-table">
               <thead>
                 <tr>
-                  <th>Order</th>
-                  <th>Method</th>
-                  <th style={{ textAlign: 'right' }}>Amount</th>
-                  <th>Reference</th>
-                  <th style={{ textAlign: 'right' }}>Date</th>
+                  <th>{t('Order')}</th>
+                  <th>{t('Method')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('Amount')}</th>
+                  <th>{t('Reference')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('Date')}</th>
                 </tr>
               </thead>
               <tbody>

@@ -4,6 +4,7 @@ import { mapUser } from './helpers.js'
 import { logAudit, getClientIp } from '../utils/audit.js'
 import authMiddleware from '../middleware/authMiddleware.js'
 import { getBranchContext } from '../middleware/branchContext.js'
+import { isOwner, hasGrant, checkCanManageUser, DELEGABLE_ROLES } from '../utils/staffPermissions.js'
 
 const router = Router()
 
@@ -117,10 +118,20 @@ router.get('/', authMiddleware, async (req, res) => {
 })
 
 router.post('/', authMiddleware, async (req, res) => {
-  const { name, email, phone, role, branch, status = 'Active', salary = 0, password = 'password123' } = req.body
+  const { name, email, phone, role, status = 'Active', salary = 0, password = 'password123' } = req.body
+  let { branch } = req.body
   const allowedRoles = new Set(['manager', 'accountant', 'waiter', 'kitchen', 'bar', 'operator'])
-  if (String(req.user?.role || '').toLowerCase() !== 'owner') {
-    return res.status(403).json({ error: 'Only the business owner can create branch users.' })
+  const actorIsOwner = isOwner(req)
+  if (!actorIsOwner) {
+    // Workers can create staff only when the owner granted it, only in their
+    // own branch, and never Manager accounts.
+    if (!(await hasGrant(req, 'create_employees'))) {
+      return res.status(403).json({ error: 'Only the business owner, or staff granted access, can create branch users.' })
+    }
+    if (!DELEGABLE_ROLES.has(String(role || '').toLowerCase())) {
+      return res.status(403).json({ error: 'Only the owner can create this type of account.' })
+    }
+    branch = req.user.branchId
   }
   if (!allowedRoles.has(String(role || '').toLowerCase())) {
     return res.status(400).json({ error: 'Only non-owner business roles can be assigned to a branch.' })
@@ -141,12 +152,12 @@ router.post('/', authMiddleware, async (req, res) => {
     const { rows } = await query(
       `INSERT INTO users (business_id, branch_id, full_name, email, phone, password_hash, role, is_active, salary)
        VALUES (
+        $8,
         $9,
-        $10,
-        $2, $3, $4, crypt($5, gen_salt('bf')), $6, $7, $8
+        $1, $2, $3, crypt($4, gen_salt('bf')), $5, $6, $7
       )
       RETURNING id`,
-      [branch, name, email, phone, password, role, status === 'Active', salary, req.user.businessId, branchRows[0].id]
+      [name, email, phone, password, role, status === 'Active', salary, req.user.businessId, branchRows[0].id]
     )
 
     await logAudit({
@@ -165,9 +176,18 @@ router.post('/', authMiddleware, async (req, res) => {
 })
 
 router.patch('/:id', authMiddleware, async (req, res) => {
-  const { name, email, phone, role, branch, status, salary } = req.body
-  if (String(req.user?.role || '').toLowerCase() !== 'owner') {
-    return res.status(403).json({ error: 'Only the business owner can update branch users.' })
+  const { name, email, phone, role, status, salary } = req.body
+  let { branch } = req.body
+  if (!isOwner(req)) {
+    if (!(await hasGrant(req, 'edit_employees'))) {
+      return res.status(403).json({ error: 'Only the business owner, or staff granted access, can update branch users.' })
+    }
+    const denied = await checkCanManageUser(req, req.params.id)
+    if (denied) return res.status(denied.status).json({ error: denied.error })
+    if (role !== undefined && !DELEGABLE_ROLES.has(String(role).toLowerCase())) {
+      return res.status(403).json({ error: 'Only the owner can assign this role.' })
+    }
+    branch = undefined // non-owners cannot move staff between branches
   }
   const allowedRoles = new Set(['manager', 'accountant', 'waiter', 'kitchen', 'bar', 'operator'])
   if (role !== undefined && !allowedRoles.has(String(role).toLowerCase())) {
@@ -215,6 +235,13 @@ router.patch('/:id', authMiddleware, async (req, res) => {
 
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
+    if (!isOwner(req)) {
+      if (!(await hasGrant(req, 'edit_employees'))) {
+        return res.status(403).json({ error: 'Only the business owner, or staff granted access, can deactivate users.' })
+      }
+      const denied = await checkCanManageUser(req, req.params.id)
+      if (denied) return res.status(denied.status).json({ error: denied.error })
+    }
     const targetId = req.params.id
     const businessId = req.user.businessId
     const { rows } = await query(

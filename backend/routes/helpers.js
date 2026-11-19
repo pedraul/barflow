@@ -20,20 +20,36 @@ export const mapUser = (u) => ({
   lastLogin: u.last_login ? new Date(u.last_login).toLocaleString() : 'Never',
 })
 
-export const mapOrder = (o) => ({
-  id: o.id,
-  orderNumber: o.order_number,
-  customer: o.table_name || 'Walk-in',
-  customerPhone: o.customer_phone || '',
-  items: (o.items || []).map((item) => ({
-    productId: item.productId,
-    name: item.name,
-    quantity: Number(item.quantity),
-    price: Number(item.price),
-  })),
-  total: Number(o.total_amount) || 0,
-  status: o.status,
-  createdAt: new Date(o.created_at).toLocaleString(),
-  source: o.source || 'waiter',
-  waiterId: o.waiter_id || o.user_id || null,
-})
+export const mapOrder = (o) => {
+  const legacyTableNumber = /^\d+$/.test(String(o.table_name || ''))
+    ? Number(o.table_name)
+    : null
+  const tableNumber = o.table_number ?? legacyTableNumber
+  const waiterName = o.waiter_name || o.waiterName || ''
+  const walkInName = /^(walk[ -]?in)( customer)?$/i.test(String(o.table_name || '').trim())
+  const displayName = o.source === 'waiter' && walkInName && waiterName
+    ? `Waiter: ${waiterName}`
+    : o.table_name || 'Walk-in'
+
+  return {
+    id: o.id,
+    orderNumber: o.order_number,
+    tableNumber,
+    tableName: tableNumber != null ? `Table ${tableNumber}` : displayName,
+    customer: displayName,
+    customerPhone: o.customer_phone || '',
+    items: (o.items || []).map((item) => ({
+      productId: item.productId,
+      name: item.name,
+      quantity: Number(item.quantity),
+      price: Number(item.price),
+    })),
+    total: Number(o.total_amount) || 0,
+    status: o.status,
+    createdAt: new Date(o.created_at).toLocaleString(),
+    source: o.source || 'waiter',
+    station: o.station || null,
+    waiterId: o.waiter_id || o.user_id || null,
+    waiterName,
+  }
+}

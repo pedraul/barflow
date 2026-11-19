@@ -1,7 +1,17 @@
 import React from 'react'
 import { generateMatrix } from '../lib/qrcodegen'
+import { usePreferences } from '../context/PreferencesContext'
 
-export default function QRCode({ value, size = 200, fg = '#000000', bg = '#ffffff', level = 'M' }) {
+export default function QRCode({
+  value,
+  size = 200,
+  fg = '#000000',
+  bg = '#ffffff',
+  level = 'M',
+  id,
+  ariaLabel,
+}) {
+  const { t } = usePreferences()
   if (!value) return null
 
   const qr = generateMatrix(value, level)
@@ -23,12 +33,13 @@ export default function QRCode({ value, size = 200, fg = '#000000', bg = '#fffff
     <svg
       width={size}
       height={size}
+      id={id}
       viewBox={`0 0 ${size} ${size}`}
       xmlns="http://www.w3.org/2000/svg"
       shapeRendering="crispEdges"
       style={{ background: bg, display: 'block' }}
       role="img"
-      aria-label="QR code"
+      aria-label={t(ariaLabel || 'QR code')}
     >
       <rect width={size} height={size} fill={bg} />
       {rects}

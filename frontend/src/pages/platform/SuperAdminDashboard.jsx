@@ -10,9 +10,19 @@ import {
 } from 'lucide-react'
 import { fetchPlatformStats, fetchBusinesses, fetchPlatformReports, fetchAdmins, createAdmin } from '../../api/endpoints'
 import { useToast } from '../../context/ToastContext'
+import { usePreferences } from '../../context/PreferencesContext'
 
 const CURRENCY = 'RWF'
 const formatCurr = (v) => new Intl.NumberFormat('en-RW', { style: 'currency', currency: CURRENCY, minimumFractionDigits: 0 }).format(v || 0)
+const PERMISSION_LABELS = {
+  businesses: 'Businesses',
+  subscriptions: 'Subscriptions',
+  payments: 'Payments',
+  users: 'Users',
+  reports: 'Reports',
+  settings: 'Settings',
+  backup: 'Backup',
+}
 import BusinessList from './BusinessList'
 import SubscriptionPlans from './SubscriptionPlans'
 import RegisterBusiness from './RegisterBusiness'
@@ -24,6 +34,7 @@ import BackupRestore from './BackupRestore'
 
 export default function SuperAdminDashboard() {
   const { user, logout } = useAuth()
+  const { t } = usePreferences()
   const { showSuccess } = useToast()
   const navigate = useNavigate()
   const location = useLocation()
@@ -83,18 +94,18 @@ export default function SuperAdminDashboard() {
 
   const handleCreateAdmin = async () => {
     if (!adminForm.name.trim() || !adminForm.email.trim() || !adminForm.password.trim()) {
-      setAdminMsg('❌ Name, email and password are required.')
+      setAdminMsg(`❌ ${t('Name, email and password are required.')}`)
       return
     }
     setAdminSaving(true)
     setAdminMsg('')
     try {
       await createAdmin({ name: adminForm.name, email: adminForm.email, phone: adminForm.phone, password: adminForm.password, role: adminForm.role, permissions: adminForm.role === 'super_admin' ? ['businesses', 'subscriptions', 'payments', 'users', 'reports', 'settings', 'backup'] : adminForm.permissions })
-      showSuccess('Changes saved successfully.')
+      showSuccess(t('Changes saved successfully.'))
       setAdminForm({ name: '', email: '', phone: '', password: '', role: 'admin', permissions: ['businesses', 'subscriptions', 'payments', 'reports'] })
       setTimeout(() => setAdminOpen(false), 1200)
     } catch (e) {
-      setAdminMsg('❌ ' + (e.response?.data?.error || e.message || 'Failed to create admin.'))
+      setAdminMsg('❌ ' + (e.response?.data?.error || e.message || t('Failed to create admin.')))
     } finally {
       setAdminSaving(false)
     }
@@ -105,16 +116,16 @@ export default function SuperAdminDashboard() {
     try {
       const [r, s] = await Promise.all([fetchPlatformReports(), fetchPlatformStats()])
       const rows = [
-        ['Metric', 'Value'],
-        ['Total Businesses', s?.totalBusinesses ?? 0],
-        ['Verified Businesses', s?.verifiedBusinesses ?? 0],
-        ['Suspended Businesses', s?.suspendedBusinesses ?? 0],
-        ['Active Subscriptions', s?.activeSubscriptions ?? 0],
-        ['Expired Subscriptions', s?.expiredSubscriptions ?? 0],
-        ['New Registrations (period)', (r?.growth || []).reduce((sum, g) => sum + g.registrations, 0)],
-        ['Income This Month', r?.income?.thisMonth ?? 0],
-        ['Income This Year', r?.income?.thisYear ?? 0],
-        ['Income All Time', r?.income?.allTime ?? 0],
+        [t('Metric'), t('Value')],
+        [t('Total Businesses'), s?.totalBusinesses ?? 0],
+        [t('Verified Businesses'), s?.verifiedBusinesses ?? 0],
+        [t('Suspended Businesses'), s?.suspendedBusinesses ?? 0],
+        [t('Active Subscriptions'), s?.activeSubscriptions ?? 0],
+        [t('Expired Subscriptions'), s?.expiredSubscriptions ?? 0],
+        [t('New Registrations (period)'), (r?.growth || []).reduce((sum, g) => sum + g.registrations, 0)],
+        [t('Income This Month'), r?.income?.thisMonth ?? 0],
+        [t('Income This Year'), r?.income?.thisYear ?? 0],
+        [t('Income All Time'), r?.income?.allTime ?? 0],
       ]
       const csv = rows.map((r2) => r2.join(',')).join('\n')
       const blob = new Blob([csv], { type: 'text/csv' })
@@ -126,7 +137,7 @@ export default function SuperAdminDashboard() {
       URL.revokeObjectURL(url)
     } catch (e) {
       console.error('Export failed:', e)
-      alert(e.response?.data?.error || 'Export failed.')
+      alert(e.response?.data?.error || t('Export failed.'))
     } finally {
       setExporting(false)
     }
@@ -141,12 +152,12 @@ export default function SuperAdminDashboard() {
   const expiringSoon = Number(stats?.expiringSoon || 0)
 
   const metrics = [
-    { title: 'Total Businesses', value: String(total), trend: `${verified} verified`, trendType: 'up', icon: <Building2 className="text-indigo-600" />, bg: 'bg-indigo-50' },
-    { title: 'Active Subscriptions', value: String(activeSubs), trend: 'Currently active', trendType: 'up', icon: <CheckCircle2 className="text-emerald-600" />, bg: 'bg-emerald-50' },
-    { title: 'Expired Subscriptions', value: String(expiredSubs), trend: 'Needs attention', trendType: 'down', icon: <XCircle className="text-rose-600" />, bg: 'bg-rose-50' },
-    { title: 'Awaiting Verification', value: String(pendingVerification), trend: 'Needs your review', trendType: 'neutral', icon: <Clock className="text-amber-500" />, bg: 'bg-amber-50' },
-    { title: 'Suspended Businesses', value: String(suspended), trend: 'Currently suspended', trendType: 'neutral', icon: <Ban className="text-red-500" />, bg: 'bg-red-50' },
-    { title: 'Expiring in 7 Days', value: String(expiringSoon), trend: 'Action required', trendType: 'neutral', icon: <CalendarDays className="text-blue-500" />, bg: 'bg-blue-50' },
+    { title: t('Total Businesses'), value: String(total), trend: `${verified} ${t('verified')}`, trendType: 'up', icon: <Building2 className="text-indigo-600" />, bg: 'bg-indigo-50', to: '/admin/businesses' },
+    { title: t('Active Subscriptions'), value: String(activeSubs), trend: t('Currently active'), trendType: 'up', icon: <CheckCircle2 className="text-emerald-600" />, bg: 'bg-emerald-50', to: '/admin/businesses?status=active' },
+    { title: t('Expired Subscriptions'), value: String(expiredSubs), trend: t('Needs attention'), trendType: 'down', icon: <XCircle className="text-rose-600" />, bg: 'bg-rose-50', to: '/admin/businesses?status=subscription%20inactive' },
+    { title: t('Awaiting Verification'), value: String(pendingVerification), trend: t('Needs your review'), trendType: 'neutral', icon: <Clock className="text-amber-500" />, bg: 'bg-amber-50', to: '/admin/businesses?status=pending' },
+    { title: t('Suspended Businesses'), value: String(suspended), trend: t('Currently suspended'), trendType: 'neutral', icon: <Ban className="text-red-500" />, bg: 'bg-red-50', to: '/admin/businesses?status=suspended' },
+    { title: t('Expiring in 7 Days'), value: String(expiringSoon), trend: t('Action required'), trendType: 'neutral', icon: <CalendarDays className="text-blue-500" />, bg: 'bg-blue-50', to: '/admin/businesses?status=active' },
   ]
 
   const getStatus = (b) => {
@@ -171,12 +182,12 @@ export default function SuperAdminDashboard() {
     const status = getStatus(b)
     return {
       name: b.name,
-      owner: b.contactEmail || 'N/A',
+      owner: b.contactEmail || t('N/A'),
       plan: b.plan || 'Monthly',
       planBg: getPlanBg(b.plan || 'Monthly'),
       status,
       statusColor: getStatusColor(status),
-      date: b.createdAt ? new Date(b.createdAt).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : 'N/A',
+      date: b.createdAt ? new Date(b.createdAt).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : t('N/A'),
       action: getAction(status),
     }
   })
@@ -210,7 +221,7 @@ export default function SuperAdminDashboard() {
               </svg>
               <span className="text-xl font-black text-white tracking-tight">BarFlow</span>
             </div>
-            <span className="text-[10px] font-bold tracking-wider text-slate-500 uppercase mt-0.5 pl-8">Platform Admin</span>
+            <span className="text-[10px] font-bold tracking-wider text-slate-500 uppercase mt-0.5 pl-8">{t('Platform Admin')}</span>
           </div>
 
           {/* Nav List */}
@@ -219,12 +230,12 @@ export default function SuperAdminDashboard() {
               <Link to="/admin/dashboard" className={`flex items-center gap-3 px-3 py-2.5 rounded-lg shadow-sm font-bold transition ${
                 location.pathname === '/admin/dashboard' || location.pathname === '/admin' ? 'bg-[#4F46E5] text-white' : 'text-slate-400 hover:bg-slate-800/30 hover:text-slate-200'
               }`}>
-                <LayoutDashboard size={16} /> Dashboard
+                <LayoutDashboard size={16} /> {t('Dashboard')}
               </Link>
             </div>
 
             <div className="space-y-1">
-              <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-2">Management</p>
+              <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-2">{t('Management')}</p>
               <SidebarLink to="/admin/businesses" icon={<Briefcase size={16} />} label="Businesses" active={location.pathname === '/admin/businesses'} />
               <SidebarLink to="/register" icon={<PlusCircle size={16} />} label="Business Registration" active={location.pathname === '/register'} />
               <SidebarLink to="/admin/plans" icon={<RefreshCw size={16} />} label="Subscriptions" active={location.pathname === '/admin/plans'} />
@@ -233,13 +244,13 @@ export default function SuperAdminDashboard() {
             </div>
 
             <div className="space-y-1">
-              <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-2">System</p>
+              <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-2">{t('System')}</p>
               <SidebarLink to="/admin/reports" icon={<BarChart3 size={16} />} label="Reports" active={location.pathname === '/admin/reports'} />
               <SidebarLink to="/admin/settings" icon={<Settings size={16} />} label="Settings" active={location.pathname === '/admin/settings'} />
             </div>
 
             <div className="space-y-1">
-              <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-2">Maintenance</p>
+              <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-2">{t('Maintenance')}</p>
               <SidebarLink to="/admin/backup" icon={<HardDriveDownload size={16} />} label="Backup & Restore" active={location.pathname === '/admin/backup'} />
             </div>
           </nav>
@@ -248,7 +259,7 @@ export default function SuperAdminDashboard() {
         {/* Profile / Logout Footer Row */}
         <div className="p-4 border-t border-slate-950 bg-slate-950/40 space-y-3">
           <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2 text-xs font-bold text-slate-400 hover:text-red-400 rounded-lg hover:bg-red-500/5 transition">
-            <LogOut size={16} /> Logout
+            <LogOut size={16} /> {t('Logout')}
           </button>
         </div>
       </aside>
@@ -264,7 +275,7 @@ export default function SuperAdminDashboard() {
                   type="button"
                   className="text-slate-500 hover:text-slate-800 transition flex items-center gap-1"
                   onClick={handleBack}
-                  aria-label="Back"
+                  aria-label={t('Back')}
                 >
                   <ArrowLeft size={20} />
                 </button>
@@ -273,13 +284,13 @@ export default function SuperAdminDashboard() {
                 type="button"
                 className="text-slate-500 hover:text-slate-800 transition"
                 onClick={() => setMobileMenuOpen((open) => !open)}
-                aria-label="Toggle navigation"
+                aria-label={t('Toggle navigation')}
               ><Menu size={20} /></button>
               <div className="flex flex-col">
                 <h1 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                  Welcome back, Super Admin
+                  {t('Welcome back, Super Admin')}
                 </h1>
-                <p className="text-xs text-slate-500 mt-0.5">Manage and grow the BarFlow platform</p>
+                <p className="text-xs text-slate-500 mt-0.5">{t('Manage and grow the BarFlow platform')}</p>
               </div>
             </div>
 
@@ -289,7 +300,7 @@ export default function SuperAdminDashboard() {
                   <Users size={14} />
                 </div>
                 <div className="text-left hidden sm:block">
-                  <p className="text-xs font-bold text-slate-900 leading-tight">Super Admin</p>
+                  <p className="text-xs font-bold text-slate-900 leading-tight">{t('Super Admin')}</p>
                   <p className="text-[10px] text-slate-400 font-medium">{user?.email || 'superadmin@barflow.rw'}</p>
                 </div>
                 <ChevronDown size={14} className="text-slate-400 group-hover:text-slate-600 transition" />
@@ -300,7 +311,7 @@ export default function SuperAdminDashboard() {
           {/* WORKSPACE APP BODY OVERFLOW SCROLL */}
           <main className="flex-1 overflow-y-auto p-8 space-y-6">
             {location.pathname === '/admin' || location.pathname === '/admin/dashboard' ? (
-              <Overview metrics={metrics} recentBusinesses={recentBusinesses} chartData={chartData} pendingVerification={pendingVerification} expiringSoon={expiringSoon} businesses={businesses} onViewBusiness={setViewing} onAddAdmin={() => setAdminOpen(true)} onExportReports={handleExportReports} exporting={exporting} />
+              <Overview metrics={metrics} recentBusinesses={recentBusinesses} chartData={chartData} pendingVerification={pendingVerification} expiringSoon={expiringSoon} businesses={businesses} onViewBusiness={setViewing} onNavigate={navigate} onAddAdmin={() => setAdminOpen(true)} onExportReports={handleExportReports} exporting={exporting} />
             ) : location.pathname === '/admin/businesses' ? (
               <BusinessList />
             ) : location.pathname === '/admin/plans' ? (
@@ -316,7 +327,7 @@ export default function SuperAdminDashboard() {
             ) : location.pathname === '/admin/backup' ? (
               <BackupRestore />
             ) : (
-              <Overview metrics={metrics} recentBusinesses={recentBusinesses} chartData={chartData} pendingVerification={pendingVerification} expiringSoon={expiringSoon} businesses={businesses} onViewBusiness={setViewing} onAddAdmin={() => setAdminOpen(true)} onExportReports={handleExportReports} exporting={exporting} />
+              <Overview metrics={metrics} recentBusinesses={recentBusinesses} chartData={chartData} pendingVerification={pendingVerification} expiringSoon={expiringSoon} businesses={businesses} onViewBusiness={setViewing} onNavigate={navigate} onAddAdmin={() => setAdminOpen(true)} onExportReports={handleExportReports} exporting={exporting} />
             )}
           </main>
         </div>
@@ -326,51 +337,51 @@ export default function SuperAdminDashboard() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setAdminOpen(false)}>
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white">
-              <h2 className="font-bold text-slate-900 flex items-center gap-2"><Users size={18} className="text-[#4F46E5]" /> Add Super Admin</h2>
-              <button onClick={() => setAdminOpen(false)} className="text-slate-400 hover:text-slate-700"><XCircle size={20} /></button>
+              <h2 className="font-bold text-slate-900 flex items-center gap-2"><Users size={18} className="text-[#4F46E5]" /> {t('Add Super Admin')}</h2>
+              <button onClick={() => setAdminOpen(false)} aria-label={t('Close')} title={t('Close')} className="text-slate-400 hover:text-slate-700"><XCircle size={20} /></button>
             </div>
             <div className="p-6 space-y-4">
               {adminMsg && <div className={`p-3 rounded-lg text-sm font-medium border ${adminMsg.startsWith('❌') ? 'bg-red-50 border-red-300 text-red-800' : 'bg-emerald-50 border-emerald-300 text-emerald-800'}`}>{adminMsg}</div>}
               <div className="space-y-1.5">
-                <label className="block text-sm font-semibold text-slate-700">Full Name</label>
+                <label className="block text-sm font-semibold text-slate-700">{t('Full Name')}</label>
                 <input value={adminForm.name} onChange={(e) => setAdminForm({ ...adminForm, name: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
               </div>
               <div className="space-y-1.5">
-                <label className="block text-sm font-semibold text-slate-700">Email</label>
+                <label className="block text-sm font-semibold text-slate-700">{t('Email')}</label>
                 <input type="email" value={adminForm.email} onChange={(e) => setAdminForm({ ...adminForm, email: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
               </div>
               <div className="space-y-1.5">
-                <label className="block text-sm font-semibold text-slate-700">Phone</label>
+                <label className="block text-sm font-semibold text-slate-700">{t('Phone')}</label>
                 <input value={adminForm.phone} onChange={(e) => setAdminForm({ ...adminForm, phone: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
               </div>
               <div className="space-y-1.5">
-                <label className="block text-sm font-semibold text-slate-700">Password</label>
+                <label className="block text-sm font-semibold text-slate-700">{t('Password')}</label>
                 <input type="password" value={adminForm.password} onChange={(e) => setAdminForm({ ...adminForm, password: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
               </div>
               <div className="space-y-1.5">
-                <label className="block text-sm font-semibold text-slate-700">Role</label>
+                <label className="block text-sm font-semibold text-slate-700">{t('Role')}</label>
                 <select value={adminForm.role} onChange={(e) => setAdminForm({ ...adminForm, role: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white capitalize focus:ring-2 focus:ring-indigo-500 outline-none">
-                  <option value="admin">Admin</option>
-                  <option value="billing">Billing</option>
-                  <option value="super_admin">Super Admin</option>
+                  <option value="admin">{t('Admin')}</option>
+                  <option value="billing">{t('Billing')}</option>
+                  <option value="super_admin">{t('Super Admin')}</option>
                 </select>
               </div>
               <div className="space-y-2">
-                <label className="block text-sm font-semibold text-slate-700 flex items-center gap-1.5"><ShieldAlert size={14} /> Permissions</label>
+                <label className="block text-sm font-semibold text-slate-700 flex items-center gap-1.5"><ShieldAlert size={14} /> {t('Permissions')}</label>
                 <div className="grid grid-cols-2 gap-2">
                   {['businesses', 'subscriptions', 'payments', 'users', 'reports', 'settings', 'backup'].map((p) => (
                     <label key={p} className="flex items-center gap-2 text-sm text-slate-600 capitalize">
                       <input type="checkbox" checked={adminForm.permissions.includes(p)} disabled={adminForm.role === 'super_admin'} onChange={() => setAdminForm((f) => ({ ...f, permissions: f.permissions.includes(p) ? f.permissions.filter((x) => x !== p) : [...f.permissions, p] }))} />
-                      {p}
+                      {t(PERMISSION_LABELS[p])}
                     </label>
                   ))}
                 </div>
-                {adminForm.role === 'super_admin' && <p className="text-xs text-slate-400">Super admins always have full access.</p>}
+                {adminForm.role === 'super_admin' && <p className="text-xs text-slate-400">{t('Super admins always have full access.')}</p>}
               </div>
             </div>
             <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-100">
-              <button onClick={() => setAdminOpen(false)} className="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50">Cancel</button>
-              <button onClick={handleCreateAdmin} disabled={adminSaving} className="px-5 py-2 text-sm bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-50">{adminSaving ? 'Saving...' : 'Create Admin'}</button>
+              <button onClick={() => setAdminOpen(false)} className="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50">{t('Cancel')}</button>
+              <button onClick={handleCreateAdmin} disabled={adminSaving} className="px-5 py-2 text-sm bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-50">{adminSaving ? t('Saving...') : t('Create Admin')}</button>
             </div>
           </div>
         </div>
@@ -382,26 +393,26 @@ export default function SuperAdminDashboard() {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white">
               <h2 className="font-bold text-slate-900 flex items-center gap-2">
-                <Building2 size={18} className="text-[#4F46E5]" /> Business Details
+                <Building2 size={18} className="text-[#4F46E5]" /> {t('Business Details')}
               </h2>
-              <button onClick={() => setViewing(null)} className="text-slate-400 hover:text-slate-700"><XCircle size={20} /></button>
+              <button onClick={() => setViewing(null)} aria-label={t('Close')} title={t('Close')} className="text-slate-400 hover:text-slate-700"><XCircle size={20} /></button>
             </div>
             <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-              <BusinessDetail label="Name" value={viewing.name} />
-              <BusinessDetail label="Registration Code" value={viewing.registrationCode || '—'} />
-              <BusinessDetail label="Business Type" value={viewing.businessType || '—'} />
-              <BusinessDetail label="Contact Email" value={viewing.contactEmail || '—'} />
-              <BusinessDetail label="Contact Phone" value={viewing.contactPhone || '—'} />
-              <BusinessDetail label="City" value={viewing.city || '—'} />
-              <BusinessDetail label="Country" value={viewing.country || '—'} />
-              <BusinessDetail label="Address" value={viewing.address || '—'} />
-              <BusinessDetail label="Owner" value={viewing.ownerName || viewing.contactEmail || '—'} />
-              <BusinessDetail label="Plan" value={viewing.plan || '—'} />
-              <BusinessDetail label="Status" value={viewing.isSuspended ? 'Suspended' : viewing.isVerified ? 'Active' : 'Pending'} />
-              <BusinessDetail label="Registered" value={viewing.createdAt ? new Date(viewing.createdAt).toLocaleString() : '—'} />
+              <BusinessDetail label={t('Name')} value={viewing.name} />
+              <BusinessDetail label={t('Registration Code')} value={viewing.registrationCode || '—'} />
+              <BusinessDetail label={t('Business Type')} value={viewing.businessType || '—'} />
+              <BusinessDetail label={t('Contact Email')} value={viewing.contactEmail || '—'} />
+              <BusinessDetail label={t('Contact Phone')} value={viewing.contactPhone || '—'} />
+              <BusinessDetail label={t('City')} value={viewing.city || '—'} />
+              <BusinessDetail label={t('Country')} value={viewing.country || '—'} />
+              <BusinessDetail label={t('Address')} value={viewing.address || '—'} />
+              <BusinessDetail label={t('Owner')} value={viewing.ownerName || viewing.contactEmail || '—'} />
+              <BusinessDetail label={t('Plan')} value={viewing.plan || '—'} />
+              <BusinessDetail label={t('Status')} value={t(viewing.isSuspended ? 'Suspended' : viewing.isVerified ? 'Active' : 'Pending')} />
+              <BusinessDetail label={t('Registered')} value={viewing.createdAt ? new Date(viewing.createdAt).toLocaleString() : '—'} />
             </div>
             <div className="flex justify-end px-6 pb-6">
-              <button onClick={() => setViewing(null)} className="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50">Close</button>
+              <button onClick={() => setViewing(null)} className="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50">{t('Close')}</button>
             </div>
           </div>
         </div>
@@ -410,7 +421,8 @@ export default function SuperAdminDashboard() {
   )
 }
 
-function Overview({ metrics, recentBusinesses, chartData, pendingVerification, expiringSoon, businesses = [], onViewBusiness, onAddAdmin, onExportReports, exporting }) {
+function Overview({ metrics, recentBusinesses, chartData, pendingVerification, expiringSoon, businesses = [], onViewBusiness, onNavigate, onAddAdmin, onExportReports, exporting }) {
+  const { t } = usePreferences()
 
   return (
     <div className="space-y-6">
@@ -418,7 +430,7 @@ function Overview({ metrics, recentBusinesses, chartData, pendingVerification, e
       {/* SECTION 1: 8x GRID METRICS ROW */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {metrics.map((m, i) => (
-          <div key={i} className="bg-white border border-slate-200 rounded-xl p-4 flex items-start justify-between shadow-xs">
+          <button type="button" key={i} onClick={() => onNavigate(m.to)} className="w-full text-left bg-white border border-slate-200 rounded-xl p-4 flex items-start justify-between shadow-xs transition hover:border-indigo-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
             <div className="space-y-1.5">
               <span className="text-[11px] font-bold tracking-wide text-slate-500 uppercase block">{m.title}</span>
               <p className="text-2xl font-black text-slate-900 tracking-tight">{m.value}</p>
@@ -431,7 +443,7 @@ function Overview({ metrics, recentBusinesses, chartData, pendingVerification, e
             <div className={`p-2 rounded-lg ${m.bg} shrink-0`}>
               {m.icon}
             </div>
-          </div>
+          </button>
         ))}
       </div>
 
@@ -444,10 +456,10 @@ function Overview({ metrics, recentBusinesses, chartData, pendingVerification, e
             <div className="p-5 flex items-center justify-between border-b border-slate-100">
               <div className="flex items-center gap-2 font-bold text-sm text-slate-900">
                 <Building2 size={16} className="text-[#4F46E5]" />
-                <span>Latest Registered Businesses</span>
+                <span>{t('Latest Registered Businesses')}</span>
               </div>
               <Link to="/admin/businesses" className="text-xs font-bold text-[#4F46E5] hover:underline flex items-center gap-1">
-                View All
+                {t('View All')}
               </Link>
             </div>
 
@@ -455,19 +467,19 @@ function Overview({ metrics, recentBusinesses, chartData, pendingVerification, e
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
-                    <th className="p-2 pl-6">Business Name</th>
-                    <th className="p-2">Owner</th>
-                    <th className="p-2">Plan</th>
-                    <th className="p-2">Status</th>
-                    <th className="p-2">Created Date</th>
-                    <th className="p-2 pr-6 text-right">Actions</th>
+                    <th className="p-2 pl-6">{t('Business Name')}</th>
+                    <th className="p-2">{t('Owner')}</th>
+                    <th className="p-2">{t('Plan')}</th>
+                    <th className="p-2">{t('Status')}</th>
+                    <th className="p-2">{t('Created Date')}</th>
+                    <th className="p-2 pr-6 text-right">{t('Actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                   {recentBusinesses.length === 0 && (
                     <tr>
                       <td colSpan={6} className="p-6 text-center text-slate-400">
-                        No businesses registered yet.
+                        {t('No businesses registered yet.')}
                       </td>
                     </tr>
                   )}
@@ -488,7 +500,7 @@ function Overview({ metrics, recentBusinesses, chartData, pendingVerification, e
                       <td className="p-2">
                         <span className="flex items-center gap-1.5">
                           <span className={`w-1.5 h-1.5 rounded-full ${b.statusColor}`}></span>
-                          {b.status}
+                          {t(b.status)}
                         </span>
                       </td>
                       <td className="p-2 text-slate-400">{b.date}</td>
@@ -502,7 +514,7 @@ function Overview({ metrics, recentBusinesses, chartData, pendingVerification, e
                             b.action === 'Renew' || b.action === 'Review' ? 'bg-indigo-600 border-indigo-600 text-white hover:bg-indigo-700' :
                             'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                           }`}>
-                          {b.action}
+                          {t(b.action)}
                         </button>
                       </td>
                     </tr>
@@ -518,10 +530,10 @@ function Overview({ metrics, recentBusinesses, chartData, pendingVerification, e
           <div className="flex items-center justify-between border-b border-slate-100 pb-4">
             <div className="flex items-center gap-2 font-bold text-sm text-slate-900">
               <Clock size={16} className="text-[#4F46E5]" />
-              <span>Subscription Revenue</span>
+              <span>{t('Subscription Revenue')}</span>
             </div>
             <select className="bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 py-1 px-2.5 focus:outline-hidden">
-              <option>Last 6 Months</option>
+              <option>{t('Last 6 Months')}</option>
             </select>
           </div>
 
@@ -550,9 +562,9 @@ function Overview({ metrics, recentBusinesses, chartData, pendingVerification, e
 
           {/* Custom Legend Rows */}
           <div className="flex items-center justify-center gap-5 text-[10px] font-bold text-slate-500 pt-4">
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-500"></span> Monthly</span>
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-purple-500"></span> Quarterly</span>
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-500"></span> Annual</span>
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-500"></span> {t('Monthly')}</span>
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-purple-500"></span> {t('Quarterly')}</span>
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-500"></span> {t('Annual')}</span>
           </div>
         </div>
 
@@ -565,22 +577,22 @@ function Overview({ metrics, recentBusinesses, chartData, pendingVerification, e
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col justify-between">
           <div className="border-b border-slate-100 pb-3 mb-4">
             <span className="font-bold text-sm text-slate-900 flex items-center gap-2">
-              <PlusCircle size={16} className="text-[#4F46E5]" /> Quick Actions
+            <PlusCircle size={16} className="text-[#4F46E5]" /> {t('Quick Actions')}
             </span>
           </div>
 
           <div className="grid grid-cols-2 gap-3 flex-1 content-start">
             <Link to="/admin/businesses" className="col-span-2 bg-[#4F46E5] hover:bg-indigo-700 text-white py-2.5 px-4 rounded-lg font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition">
-              <Plus size={16} /> Register Business
+              <Plus size={16} /> {t('Register Business')}
             </Link>
             <Link to="/admin/plans" className="border border-slate-200 hover:bg-slate-50 text-slate-700 py-2.5 px-4 rounded-lg font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition bg-white">
-              <FileText size={14} className="text-indigo-600" /> Create Plan
+              <FileText size={14} className="text-indigo-600" /> {t('Create Plan')}
             </Link>
             <button onClick={onAddAdmin} className="border border-slate-200 hover:bg-slate-50 text-slate-700 py-2.5 px-4 rounded-lg font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition bg-white">
-              <Users size={14} className="text-indigo-600" /> Add Super Admin
+              <Users size={14} className="text-indigo-600" /> {t('Add Super Admin')}
             </button>
             <button onClick={onExportReports} disabled={exporting} className="col-span-2 border border-slate-200 hover:bg-slate-50 text-slate-700 py-2.5 px-4 rounded-lg font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition bg-white mt-1 disabled:opacity-50">
-              <BarChart3 size={14} className="text-indigo-600" /> {exporting ? 'Exporting...' : 'Export Reports'}
+              <BarChart3 size={14} className="text-indigo-600" /> {exporting ? t('Exporting...') : t('Export Reports')}
             </button>
           </div>
         </div>
@@ -589,24 +601,24 @@ function Overview({ metrics, recentBusinesses, chartData, pendingVerification, e
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col justify-between">
           <div className="border-b border-slate-100 pb-3 mb-4">
             <span className="font-bold text-sm text-slate-900 flex items-center gap-2">
-              <ShieldAlert size={16} className="text-[#4F46E5]" /> System Status
+              <ShieldAlert size={16} className="text-[#4F46E5]" /> {t('System Status')}
             </span>
           </div>
 
           <div className="space-y-4 flex-1 flex flex-col justify-between">
             <div className="space-y-3.5">
-              <StatusRow label="Server Status" status="Online" color="text-emerald-600" dot="bg-emerald-500" />
-              <StatusRow label="Database" status="Connected" color="text-emerald-600" dot="bg-emerald-500" />
-              <StatusRow label="API Services" status="Healthy" color="text-emerald-600" dot="bg-emerald-500" />
+              <StatusRow label={t('Server Status')} status={t('Online')} color="text-emerald-600" dot="bg-emerald-500" />
+              <StatusRow label={t('Database')} status={t('Connected')} color="text-emerald-600" dot="bg-emerald-500" />
+              <StatusRow label={t('API Services')} status={t('Healthy')} color="text-emerald-600" dot="bg-emerald-500" />
             </div>
 
             <div className="border-t border-slate-100 pt-3 space-y-2.5">
               <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-                <span>Awaiting Verification</span>
+                <span>{t('Awaiting Verification')}</span>
                 <span className="text-slate-900 font-black text-sm">{pendingVerification}</span>
               </div>
               <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-                <span>Expiring (7d)</span>
+                <span>{t('Expiring (7d)')}</span>
                 <span className="text-slate-900 font-black text-sm">{expiringSoon}</span>
               </div>
             </div>
@@ -621,12 +633,13 @@ function Overview({ metrics, recentBusinesses, chartData, pendingVerification, e
 /* --- REUSABLE HELPER BUILDING SUB-COMPONENTS --- */
 
 function SidebarLink({ icon, label, to, active = false }) {
+  const { t } = usePreferences()
   return (
     <Link to={to || '#'} className={`flex items-center gap-3 px-3 py-2 rounded-lg transition group ${
       active ? 'bg-[#4F46E5]/20 text-[#818CF8] font-bold' : 'text-slate-400 hover:bg-slate-800/30 hover:text-slate-200'
     }`}>
       <span className={active ? 'text-[#818CF8]' : 'text-slate-500 group-hover:text-slate-400 transition'}>{icon}</span>
-      <span>{label}</span>
+      <span>{t(label)}</span>
     </Link>
   )
 }

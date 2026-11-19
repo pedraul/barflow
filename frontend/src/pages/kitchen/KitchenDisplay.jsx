@@ -1,11 +1,13 @@
+import { usePreferences } from '../../context/PreferencesContext'
 import React from 'react'
 import StationDisplay from '../../components/StationDisplay'
 import * as api from '../../api/endpoints'
 
 export default function KitchenDisplay() {
+  const { t } = usePreferences()
   return (
     <StationDisplay
-      title="👨‍🍳 Kitchen Display"
+      title={t("👨‍🍳 Kitchen Display")}
       accent="#fd7e14"
       stationLabel="Kitchen"
       fetchOrders={api.fetchKitchenOrders}

@@ -1,3 +1,5 @@
+import { usePreferences } from '../../context/PreferencesContext'
+import BackButton from '../../components/BackButton'
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
@@ -29,6 +31,7 @@ function SidebarLink({ icon, label, badge, badgeColor, status, active, onClick }
 }
 
 export default function OperatorReceipts() {
+  const { t } = usePreferences()
   const navigate = useNavigate()
   const { token } = useAuth()
   const [tab, setTab] = useState('printed')
@@ -65,15 +68,16 @@ export default function OperatorReceipts() {
       )}
 
       {/* Mobile topbar */}
-      <header className="mobile-topbar">
+      <header className="mobile-topbar app-topbar">
         <button
           type="button"
           className="mobile-menu-button"
           onClick={() => setMobileMenuOpen((prev) => !prev)}
-          aria-label="Toggle navigation"
+          aria-label={t("Toggle navigation")}
         >
           {mobileMenuOpen ? '✕' : '☰'}
         </button>
+        <BackButton fallback="/operator/orders" />
         <div className="mobile-brand">BarFlow</div>
       </header>
 
@@ -89,27 +93,27 @@ export default function OperatorReceipts() {
 
           <nav className="p-4 space-y-6 text-sm">
             <div>
-              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Order Management</p>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">{t("Order Management")}</p>
               <div className="space-y-1">
-                <SidebarLink icon={<FileText size={18} />} label="New Orders" onClick={() => navigate('/operator/orders')} />
-                <SidebarLink icon={<ChefHat size={18} />} label="Preparing" onClick={() => navigate('/operator/orders')} />
-                <SidebarLink icon={<CheckCircle2 size={18} />} label="Ready" onClick={() => navigate('/operator/orders')} />
-                <SidebarLink icon={<FileText size={18} />} label="All Orders" onClick={() => navigate('/operator/orders')} />
+                <SidebarLink icon={<FileText size={18} />} label={t("New Orders")} onClick={() => navigate('/operator/orders')} />
+                <SidebarLink icon={<ChefHat size={18} />} label={t("Preparing")} onClick={() => navigate('/operator/orders')} />
+                <SidebarLink icon={<CheckCircle2 size={18} />} label={t("Ready")} onClick={() => navigate('/operator/orders')} />
+                <SidebarLink icon={<FileText size={18} />} label={t("All Orders")} onClick={() => navigate('/operator/orders')} />
               </div>
             </div>
 
             <div>
-              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Receipts</p>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">{t("Receipts")}</p>
               <div className="space-y-1">
-                <SidebarLink icon={<Printer size={18} />} label="Printed Receipts" active={tab === 'printed'} onClick={() => setTab('printed')} />
+                <SidebarLink icon={<Printer size={18} />} label={t("Printed Receipts")} active={tab === 'printed'} onClick={() => setTab('printed')} />
               </div>
             </div>
 
             <div>
-              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Other</p>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">{t("Other")}</p>
               <div className="space-y-1">
-                <SidebarLink icon={<FileSpreadsheet size={18} />} label="Reports" onClick={() => navigate('/operator/reports')} />
-                <SidebarLink icon={<User size={18} />} label="My Account" onClick={() => navigate('/account')} />
+                <SidebarLink icon={<FileSpreadsheet size={18} />} label={t("Reports")} onClick={() => navigate('/operator/reports')} />
+                <SidebarLink icon={<User size={18} />} label={t("My Account")} onClick={() => navigate('/account')} />
               </div>
             </div>
           </nav>
@@ -117,8 +121,7 @@ export default function OperatorReceipts() {
 
         <div className="p-4 border-t border-slate-800">
           <button onClick={() => { navigate('/login') }} className="flex items-center gap-3 px-3 py-2.5 text-red-400 hover:bg-red-950/30 rounded-lg font-medium transition w-full">
-            <LogOut size={18} /> Logout
-          </button>
+            <LogOut size={18} />{t("Logout")}</button>
         </div>
       </aside>
 
@@ -137,27 +140,27 @@ export default function OperatorReceipts() {
 
           <nav className="p-4 space-y-6 text-sm">
             <div>
-              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Order Management</p>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">{t("Order Management")}</p>
               <div className="space-y-1">
-                <SidebarLink icon={<FileText size={18} />} label="New Orders" onClick={() => navigate('/operator/orders')} />
-                <SidebarLink icon={<ChefHat size={18} />} label="Preparing" onClick={() => navigate('/operator/orders')} />
-                <SidebarLink icon={<CheckCircle2 size={18} />} label="Ready" onClick={() => navigate('/operator/orders')} />
-                <SidebarLink icon={<FileText size={18} />} label="All Orders" onClick={() => navigate('/operator/orders')} />
+                <SidebarLink icon={<FileText size={18} />} label={t("New Orders")} onClick={() => navigate('/operator/orders')} />
+                <SidebarLink icon={<ChefHat size={18} />} label={t("Preparing")} onClick={() => navigate('/operator/orders')} />
+                <SidebarLink icon={<CheckCircle2 size={18} />} label={t("Ready")} onClick={() => navigate('/operator/orders')} />
+                <SidebarLink icon={<FileText size={18} />} label={t("All Orders")} onClick={() => navigate('/operator/orders')} />
               </div>
             </div>
 
             <div>
-              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Receipts</p>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">{t("Receipts")}</p>
               <div className="space-y-1">
-                <SidebarLink icon={<Printer size={18} />} label="Printed Receipts" active={tab === 'printed'} onClick={() => setTab('printed')} />
+                <SidebarLink icon={<Printer size={18} />} label={t("Printed Receipts")} active={tab === 'printed'} onClick={() => setTab('printed')} />
               </div>
             </div>
 
             <div>
-              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Other</p>
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">{t("Other")}</p>
               <div className="space-y-1">
-                <SidebarLink icon={<FileSpreadsheet size={18} />} label="Reports" onClick={() => navigate('/operator/reports')} />
-                <SidebarLink icon={<User size={18} />} label="My Account" onClick={() => navigate('/account')} />
+                <SidebarLink icon={<FileSpreadsheet size={18} />} label={t("Reports")} onClick={() => navigate('/operator/reports')} />
+                <SidebarLink icon={<User size={18} />} label={t("My Account")} onClick={() => navigate('/account')} />
               </div>
             </div>
           </nav>
@@ -165,8 +168,7 @@ export default function OperatorReceipts() {
 
         <div className="p-4 border-t border-slate-800">
           <button onClick={() => { navigate('/login') }} className="flex items-center gap-3 px-3 py-2.5 text-red-400 hover:bg-red-950/30 rounded-lg font-medium transition w-full">
-            <LogOut size={18} /> Logout
-          </button>
+            <LogOut size={18} />{t("Logout")}</button>
         </div>
       </aside>
 
@@ -174,19 +176,16 @@ export default function OperatorReceipts() {
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
           <div className="flex items-center gap-4">
-            <h1 className="text-lg font-semibold text-slate-900">Receipts</h1>
+            <h1 className="text-lg font-semibold text-slate-900">{t("Receipts")}</h1>
           </div>
           <div className="flex items-center gap-6">
             <button className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm">
-              <Printer size={16} /> Print
-            </button>
+              <Printer size={16} />{t("Print")}</button>
             <div className="flex items-center gap-3 border-l pl-6 border-slate-200">
-              <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold text-sm">
-                OP
-              </div>
+              <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold text-sm">{t("OP")}</div>
               <div className="text-left">
-                <p className="text-sm font-semibold text-slate-900 leading-tight">Operator</p>
-                <p className="text-xs text-emerald-500 flex items-center gap-1"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full inline-block"></span> Online</p>
+                <p className="text-sm font-semibold text-slate-900 leading-tight">{t("Operator")}</p>
+                <p className="text-xs text-emerald-500 flex items-center gap-1"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full inline-block"></span>{' '}{t("Online")}</p>
               </div>
             </div>
           </div>
@@ -195,22 +194,20 @@ export default function OperatorReceipts() {
         <main className="operator-main flex-1 overflow-y-auto p-6">
           <div className="bg-white border border-slate-200 rounded-xl shadow-sm">
             <div className="flex border-b border-slate-200">
-              <button onClick={() => setTab('printed')} className={`px-6 py-3 text-sm font-semibold transition ${tab === 'printed' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-600 hover:text-slate-900'}`}>
-                Printed Receipts
-              </button>
+              <button onClick={() => setTab('printed')} className={`px-6 py-3 text-sm font-semibold transition ${tab === 'printed' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-600 hover:text-slate-900'}`}>{t("Printed Receipts")}</button>
             </div>
 
             <div className="p-4 space-y-4">
               {loading ? (
-                <div className="text-center text-slate-400 py-8">Loading receipts...</div>
+                <div className="text-center text-slate-400 py-8">{t("Loading receipts...")}</div>
               ) : receipts.length === 0 ? (
-                <div className="text-center text-slate-400 py-8">No receipts</div>
+                <div className="text-center text-slate-400 py-8">{t("No receipts")}</div>
               ) : receipts.map((receipt) => (
                 <div key={receipt.id} className="border border-slate-100 rounded-xl p-4 bg-slate-50/40 hover:bg-slate-50 transition space-y-3">
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-slate-900 text-sm">{receipt.orderNumber}</span>
-                      <span className="text-xs text-slate-500 font-medium">Table {receipt.tableNumber}</span>
+                      <span className="text-xs text-slate-500 font-medium">{t("Table")}{' '}{receipt.tableNumber}</span>
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${receipt.status === 'Served' || receipt.status === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>{receipt.status}</span>
                     </div>
                     <span className="text-[11px] text-slate-400 font-medium">{receipt.createdAt}</span>
@@ -219,18 +216,18 @@ export default function OperatorReceipts() {
                     {(receipt.items || []).map((item, idx) => (
                       <div key={idx} className="flex justify-between text-xs text-slate-600">
                         <span>{item.name}</span>
-                        <span className="text-slate-400">x{item.quantity}</span>
+                        <span className="text-slate-400">{t("x")}{item.quantity}</span>
                         <span className="font-medium text-slate-700">{MONEY(item.price)}</span>
                       </div>
                     ))}
                   </div>
                   <div className="border-t border-dashed border-slate-200 pt-2 flex justify-between items-center">
-                    <span className="text-xs text-slate-500 font-bold">Total</span>
+                    <span className="text-xs text-slate-500 font-bold">{t("Total")}</span>
                     <span className="text-sm font-black text-slate-900">{MONEY(receipt.total)}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-1.5 pt-1">
-                    <button onClick={() => navigate(`/operator/receipt/${receipt.id}`)} className="text-xs font-semibold border border-slate-200 text-slate-600 py-1.5 rounded-md hover:bg-white transition bg-white shadow-xs">View</button>
-                    <button onClick={() => { navigate(`/operator/receipt/${receipt.id}`); }} className="text-xs font-semibold border border-slate-200 text-slate-600 py-1.5 rounded-md hover:bg-white transition flex items-center justify-center gap-1 bg-white shadow-xs"><Printer size={12} /> Print</button>
+                    <button onClick={() => navigate(`/operator/receipt/${receipt.id}`)} className="text-xs font-semibold border border-slate-200 text-slate-600 py-1.5 rounded-md hover:bg-white transition bg-white shadow-xs">{t("View")}</button>
+                    <button onClick={() => { navigate(`/operator/receipt/${receipt.id}`); }} className="text-xs font-semibold border border-slate-200 text-slate-600 py-1.5 rounded-md hover:bg-white transition flex items-center justify-center gap-1 bg-white shadow-xs"><Printer size={12} />{' '}{t("Print")}</button>
                   </div>
                 </div>
               ))}

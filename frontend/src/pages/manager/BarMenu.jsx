@@ -7,6 +7,7 @@ import {
   deleteProduct,
 } from '../../api/endpoints'
 import compressImage from '../../utils/compressImage'
+import { usePreferences } from '../../context/PreferencesContext'
 
 const BAR_CATEGORIES = [
   'Beer', 'Wine', 'Spirits', 'Cocktails', 'Mocktails',
@@ -19,6 +20,7 @@ const emptyForm = {
 }
 
 export default function ManagerBarMenu() {
+  const { t } = usePreferences()
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -64,7 +66,7 @@ export default function ManagerBarMenu() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!selectedCategory) {
-      setError('Select a bar category first.')
+      setError(t('Select a bar category first.'))
       return
     }
     setSaving(true); setError(null)
@@ -145,12 +147,12 @@ export default function ManagerBarMenu() {
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Manager workspace</p>
-          <h1 className="text-2xl font-black text-slate-900">Bar menu</h1>
-          <p className="text-sm text-slate-500">Select a bar category, then add the drinks menu items under it. Items appear instantly for waiters and QR menu customers.</p>
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{t('Manager workspace')}</p>
+          <h1 className="text-2xl font-black text-slate-900">{t('Bar menu')}</h1>
+          <p className="text-sm text-slate-500">{t('Select a bar category, then add the drinks menu items under it. Items appear instantly for waiters and QR menu customers.')}</p>
         </div>
         <button type="button" onClick={loadProducts} className="secondary-action" disabled={loading}>
-          {loading ? 'Refreshing...' : 'Refresh'}
+          {loading ? t('Refreshing...') : t('Refresh')}
         </button>
       </div>
 
@@ -158,8 +160,8 @@ export default function ManagerBarMenu() {
 
       {!selectedCategory ? (
         <section className="user-section">
-          <h2>Choose a bar category</h2>
-          <p className="text-sm text-slate-500" style={{ marginBottom: '1rem' }}>Click a category to add or manage the drinks that belong to it.</p>
+          <h2>{t('Choose a bar category')}</h2>
+          <p className="text-sm text-slate-500" style={{ marginBottom: '1rem' }}>{t('Click a category to add or manage the drinks that belong to it.')}</p>
           <div className="stock-grid">
             {BAR_CATEGORIES.map((category) => {
               const count = products.filter((p) => String(p.category || '').trim().toLowerCase() === String(category).trim().toLowerCase()).length
@@ -170,7 +172,7 @@ export default function ManagerBarMenu() {
                     <GlassWater size={18} />
                     <strong>{category}</strong>
                   </div>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-3)' }}>{count} item{count === 1 ? '' : 's'}</span>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-3)' }}>{count} {t('item')}{count === 1 ? '' : 's'}</span>
                 </button>
               )
             })}
@@ -182,60 +184,60 @@ export default function ManagerBarMenu() {
         <>
           <button type="button" className="secondary-action"
             onClick={() => { setSelectedCategory(null); setEditingId(null); setForm({ ...emptyForm }); setImagePreview(''); setError(null) }}>
-            <ArrowLeft size={16} style={{ marginRight: '0.35rem', verticalAlign: 'middle' }} /> Back to categories
+            <ArrowLeft size={16} style={{ marginRight: '0.35rem', verticalAlign: 'middle' }} /> {t('Back to categories')}
           </button>
 
           <section className="user-section">
-            <h2>{editingId ? 'Edit drink' : `Add drink to ${selectedCategory}`}</h2>
+            <h2>{editingId ? t('Edit drink') : `Add drink to ${selectedCategory}`}</h2>
             <form onSubmit={handleSubmit} className="create-user-form">
               <label>
-                Drink name
-                <input type="text" name="name" value={form.name} onChange={handleChange} required placeholder="Drink name" />
+                {t('Drink name')}
+                <input type="text" name="name" value={form.name} onChange={handleChange} required placeholder={t('Drink name')} />
               </label>
               <label>
-                Category
+                {t('Category')}
                 <input type="text" value={selectedCategory} disabled />
               </label>
               <label>
-                Price (RWF)
+                {t('Price (RWF)')}
                 <input type="number" name="price" value={form.price} onChange={handleChange} required min="0" step="1" />
               </label>
               <label>
-                Cost price (RWF)
+                {t('Cost price (RWF)')}
                 <input type="number" name="costPrice" value={form.costPrice} onChange={handleChange} min="0" step="1" />
               </label>
               <label>
-                Unit
-                <input type="text" name="unit" value={form.unit} onChange={handleChange} placeholder="e.g. unit, bottle, litre" />
+                {t('Unit')}
+                <input type="text" name="unit" value={form.unit} onChange={handleChange} placeholder={t('e.g. unit, bottle, litre')} />
               </label>
               <label>
-                Quantity in stock
+                {t('Quantity in stock')}
                 <input type="number" name="quantity" value={form.quantity} onChange={handleChange} min="0" step="1" />
               </label>
               <label>
-                Min stock level
+                {t('Min stock level')}
                 <input type="number" name="minStockLevel" value={form.minStockLevel} onChange={handleChange} min="0" step="1" />
               </label>
               <label>
-                Image
+                {t('Image')}
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                   <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
-                  <button type="button" className="secondary-action" onClick={triggerImageUpload} style={{ margin: 0 }}>Choose image</button>
+                  <button type="button" className="secondary-action" onClick={triggerImageUpload} style={{ margin: 0 }}>{t('Choose image')}</button>
                   {form.imageUrl && (
-                    <button type="button" className="danger-action" onClick={() => { setForm((prev) => ({ ...prev, imageUrl: '' })); setImagePreview(''); if (fileInputRef.current) fileInputRef.current.value = '' }} style={{ margin: 0 }}>Remove</button>
+                    <button type="button" className="danger-action" onClick={() => { setForm((prev) => ({ ...prev, imageUrl: '' })); setImagePreview(''); if (fileInputRef.current) fileInputRef.current.value = '' }} style={{ margin: 0 }}>{t('Remove')}</button>
                   )}
                 </div>
                 {imagePreview && (
-                  <img src={imagePreview} alt="Preview" style={{ marginTop: '0.5rem', width: '80px', height: '80px', objectFit: 'cover', borderRadius: 'var(--radius-sm)' }} />
+                  <img src={imagePreview} alt={t('Preview')} style={{ marginTop: '0.5rem', width: '80px', height: '80px', objectFit: 'cover', borderRadius: 'var(--radius-sm)' }} />
                 )}
-                <input type="text" name="imageUrl" value={form.imageUrl} onChange={handleChange} placeholder="Or paste image URL here..." style={{ marginTop: '0.5rem' }} />
+                <input type="text" name="imageUrl" value={form.imageUrl} onChange={handleChange} placeholder={t('Or paste image URL here...')} style={{ marginTop: '0.5rem' }} />
               </label>
               <div className="create-user-form-actions">
                 {editingId && (
-                  <button type="button" className="secondary-action" onClick={() => { setEditingId(null); setForm({ ...emptyForm, category: selectedCategory }); setImagePreview('') }} disabled={saving}>Cancel</button>
+                  <button type="button" className="secondary-action" onClick={() => { setEditingId(null); setForm({ ...emptyForm, category: selectedCategory }); setImagePreview('') }} disabled={saving}>{t('Cancel')}</button>
                 )}
                 <button type="submit" className="pay-action" disabled={saving}>
-                  {saving ? 'Saving...' : editingId ? 'Update drink' : 'Add drink'}
+                  {saving ? t('Saving...') : editingId ? t('Update drink') : t('Add drink')}
                 </button>
               </div>
             </form>
@@ -243,14 +245,14 @@ export default function ManagerBarMenu() {
 
           <section className="user-section">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h2 style={{ margin: 0, border: 'none', padding: 0 }}>Drinks in {selectedCategory}</h2>
+              <h2 style={{ margin: 0, border: 'none', padding: 0 }}>{t('Drinks in')} {selectedCategory}</h2>
               <button type="button" className="secondary-action" onClick={loadProducts} disabled={loading}>
-                {loading ? 'Refreshing...' : 'Refresh'}
+                {loading ? t('Refreshing...') : t('Refresh')}
               </button>
             </div>
 
             {!itemsInCategory.length && !loading && (
-              <p style={{ color: 'var(--text-3)' }}>No drinks in this category yet. Add your first drink above.</p>
+              <p style={{ color: 'var(--text-3)' }}>{t('No drinks in this category yet. Add your first drink above.')}</p>
             )}
 
             <div className="stock-grid">
@@ -263,17 +265,17 @@ export default function ManagerBarMenu() {
                   )}
                   <div className="stock-info">
                     <strong>{product.name}</strong>
-                    <span>{Number(product.price).toLocaleString()} RWF {product.unit ? `/ ${product.unit}` : ''}</span>
+                    <span>{Number(product.price).toLocaleString()} {t('RWF')} {product.unit ? `/ ${product.unit}` : ''}</span>
                     <span style={{ fontWeight: 700, color: Number(product.quantity) <= Number(product.minStockLevel) ? 'var(--danger-text)' : 'var(--text)' }}>
-                      Qty: {Number(product.quantity).toLocaleString()}
+                      {t('Qty:')} {Number(product.quantity).toLocaleString()}
                     </span>
                     {Number(product.quantity) <= Number(product.minStockLevel) && (
-                      <span style={{ fontSize: '0.75rem', color: 'var(--danger-text)', fontWeight: 700 }}>Low stock</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--danger-text)', fontWeight: 700 }}>{t('Low stock')}</span>
                     )}
                   </div>
                   <div style={{ display: 'flex', gap: '0.4rem' }}>
-                    <button type="button" className="secondary-action" style={{ flex: 1, margin: 0, padding: '0.4rem', fontSize: '0.8rem' }} onClick={() => handleEdit(product)}>Edit</button>
-                    <button type="button" className="danger-action" style={{ flex: 1, margin: 0, padding: '0.4rem', fontSize: '0.8rem' }} onClick={() => setDeletingId(product.id)}>Delete</button>
+                    <button type="button" className="secondary-action" style={{ flex: 1, margin: 0, padding: '0.4rem', fontSize: '0.8rem' }} onClick={() => handleEdit(product)}>{t('Edit')}</button>
+                    <button type="button" className="danger-action" style={{ flex: 1, margin: 0, padding: '0.4rem', fontSize: '0.8rem' }} onClick={() => setDeletingId(product.id)}>{t('Delete')}</button>
                   </div>
                 </div>
               ))}
@@ -285,12 +287,12 @@ export default function ManagerBarMenu() {
       {deletingId && (
         <div className="modal-backdrop" onClick={() => setDeletingId(null)}>
           <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
-            <h2>Delete menu item</h2>
-            <p>Are you sure you want to remove this drink from the menu? This action cannot be undone.</p>
+            <h2>{t('Delete menu item')}</h2>
+            <p>{t('Are you sure you want to remove this drink from the menu? This action cannot be undone.')}</p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.25rem' }}>
-              <button type="button" className="secondary-action" onClick={() => setDeletingId(null)} disabled={saving}>Cancel</button>
+              <button type="button" className="secondary-action" onClick={() => setDeletingId(null)} disabled={saving}>{t('Cancel')}</button>
               <button type="button" className="danger-action" onClick={handleDelete} disabled={saving} style={{ color: 'var(--danger-text)', background: 'var(--danger-bg)', border: '1px solid var(--danger)' }}>
-                {saving ? 'Deleting...' : 'Delete'}
+                {saving ? t('Deleting...') : t('Delete')}
               </button>
             </div>
           </div>

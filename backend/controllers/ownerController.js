@@ -1,5 +1,6 @@
 import { query, pool } from '../config/database.js'
 import bcrypt from 'bcryptjs'
+import { checkCanManageUser } from '../utils/staffPermissions.js'
 import { sign } from '../config/jwt.js'
 import crypto from 'crypto'
 import QRCode from 'qrcode'
@@ -9,24 +10,28 @@ import { logAudit, getClientIp, serializeAuditLogs } from '../utils/audit.js'
 import {
   sendSubscriptionActivation,
   sendAdminSubscriptionActivation,
-  sendRenewalConfirmation,
 } from '../services/emailNotificationService.js'
 import { createBackup as createSqlBackup, restoreBackup as restoreSqlBackup } from '../utils/backup.js'
 import { getFinancialSummary } from '../services/financialSummaryService.js'
 import { getBranchContext } from '../middleware/branchContext.js'
+import { getTaxBreakdown } from '../utils/taxCalculator.js'
+import { initiateSalaryPayout } from '../services/salaryPayoutService.js'
+import {
+  createOutboundPayoutRequest,
+  initiateOutboundPayout,
+} from '../services/outboundPayoutService.js'
+import {
+  getMobileMoneyPaymentStatus,
+  normalizeRwandaPhone,
+  requestMobileMoneyPayment,
+  validateMobileMoneyPayoutConfig,
+} from '../services/mobileMoneyProviders.js'
 
 // ──────────────────────────────────────────────
 // Helper: generate receipt number
 // ──────────────────────────────────────────────
 function generateReceiptNumber() {
   return 'RCP-' + Date.now().toString(36).toUpperCase() + '-' + crypto.randomBytes(3).toString('hex').toUpperCase()
-}
-
-// ──────────────────────────────────────────────
-// Helper: generate USSD code
-// ──────────────────────────────────────────────
-function generateUssdCode() {
-  return '*182*' + Math.floor(100000 + Math.random() * 900000) + '#'
 }
 
 // ──────────────────────────────────────────────
@@ -122,7 +127,8 @@ export async function ownerLogin(req, res) {
     }
 
     const { rows } = await query(
-      `SELECT u.*, b.name AS branch_name, bu.id AS business_id, bu.name AS business_name, bu.is_verified AS business_verified
+      `SELECT u.*, b.name AS branch_name, bu.id AS business_id, bu.name AS business_name,
+              bu.is_verified AS business_verified, bu.unpaid_access_granted
        FROM users u
        LEFT JOIN branches b ON b.id = u.branch_id
        LEFT JOIN businesses bu ON bu.id = u.business_id
@@ -143,7 +149,8 @@ export async function ownerLogin(req, res) {
 
     let subscriptionStatus = 'active'
     let subscriptionExpired = false
-    if (user.business_id) {
+    const unpaidAccessGranted = user.unpaid_access_granted === true
+    if (user.business_id && !unpaidAccessGranted) {
       const { rows: biz } = await query('SELECT is_verified FROM businesses WHERE id = $1', [user.business_id])
       if (biz.length && !biz[0].is_verified) {
         subscriptionExpired = true
@@ -167,7 +174,7 @@ export async function ownerLogin(req, res) {
       }
     }
 
-    if (subscriptionExpired) {
+    if (subscriptionExpired && String(user.role).toLowerCase() !== 'owner') {
       return res.status(403).json({
         error: 'Your business subscription is pending activation. Please complete payment and wait for admin verification.',
         code: 'SUBSCRIPTION_PENDING',
@@ -184,6 +191,7 @@ export async function ownerLogin(req, res) {
       businessName: user.business_name,
       subscriptionStatus,
       subscriptionExpired,
+      unpaidAccessGranted,
     }
     const token = sign(tokenPayload)
 
@@ -209,6 +217,7 @@ export async function ownerLogin(req, res) {
         businessName: user.business_name,
         subscriptionStatus,
         subscriptionExpired,
+        unpaidAccessGranted,
       },
     })
   } catch (error) {
@@ -580,10 +589,14 @@ export async function resetUserPassword(req, res) {
       return res.status(400).json({ error: 'Password must be at least 6 characters.' })
     }
 
+    // Owner: any account in the business. Granted staff: delegable roles in their branch.
+    const denied = await checkCanManageUser(req, id)
+    if (denied) return res.status(denied.status).json({ error: denied.error })
+
     const passwordHash = await bcrypt.hash(newPassword, 10)
     const { rows } = await query(
-      `UPDATE users SET password_hash = $1 WHERE id = $2 RETURNING id, full_name, email`,
-      [passwordHash, id]
+      `UPDATE users SET password_hash = $1 WHERE id = $2 AND business_id = $3 RETURNING id, full_name, email`,
+      [passwordHash, id, req.user.businessId]
     )
 
     if (!rows.length) {
@@ -619,7 +632,8 @@ export async function getSalaries(req, res) {
       `SELECT s.id, s.user_id, u.full_name AS user_name, u.email, u.role, u.phone,
               b.name AS branch_name, u.salary AS base_salary,
               s.gross_amount, s.tax_amount, s.insurance_amount, s.net_amount,
-              s.amount, s.payment_date, s.status, s.pay_period_start, s.pay_period_end
+              s.amount, s.payment_date, s.paid_at, s.status, s.pay_period_start, s.pay_period_end,
+              s.method, s.provider_status
          FROM salary_payments s
          JOIN users u ON u.id = s.user_id
          LEFT JOIN branches b ON b.id = u.branch_id
@@ -643,8 +657,10 @@ export async function getSalaries(req, res) {
         insuranceAmount: Number(r.insurance_amount) || 0,
         netAmount: Number(r.net_amount) || 0,
         amount: Number(r.amount) || 0,
-        paymentDate: r.payment_date ? new Date(r.payment_date).toISOString() : null,
+        paymentDate: r.paid_at || r.payment_date ? new Date(r.paid_at || r.payment_date).toISOString() : null,
         status: r.status || 'Pending',
+        method: r.method || '',
+        providerStatus: r.provider_status || null,
         payPeriodStart: r.pay_period_start ? new Date(r.pay_period_start).toISOString() : null,
         payPeriodEnd: r.pay_period_end ? new Date(r.pay_period_end).toISOString() : null,
       }))
@@ -657,6 +673,11 @@ export async function getSalaries(req, res) {
 // POST /api/v1/owner/salaries/payout
 export async function processPayout(req, res) {
   try {
+    const { method, payPeriodStart, payPeriodEnd } = req.body
+    if (!['mtn_momo', 'airtel_money'].includes(method)) {
+      return res.status(400).json({ error: 'Choose MTN MoMo or Airtel Money for payroll payouts.' })
+    }
+    validateMobileMoneyPayoutConfig(method)
     const scope = await getBranchContext(req, { requestedBranchId: req.body.branchId || req.query.branchId, allowOwnerAll: false })
     const { rows: employees } = await query(
       `SELECT id, full_name, salary, phone FROM users
@@ -668,34 +689,79 @@ export async function processPayout(req, res) {
       return res.status(400).json({ error: 'No active employees with salary configured.' })
     }
 
-    const payPeriodStart = req.body.payPeriodStart || new Date().toISOString().slice(0, 10)
-    const payPeriodEnd = req.body.payPeriodEnd || new Date().toISOString().slice(0, 10)
+    const periodStart = payPeriodStart || new Date().toISOString().slice(0, 10)
+    const periodEnd = payPeriodEnd || new Date().toISOString().slice(0, 10)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(periodStart) || !/^\d{4}-\d{2}-\d{2}$/.test(periodEnd) || periodStart > periodEnd) {
+      return res.status(400).json({ error: 'Enter a valid pay period with the start date no later than the end date.' })
+    }
     const results = []
 
     for (const emp of employees) {
+      try {
+        normalizeRwandaPhone(emp.phone)
+      } catch (error) {
+        results.push({ userId: emp.id, name: emp.full_name, status: 'failed', skipped: true, skipReason: 'invalid_phone', message: error.message })
+        continue
+      }
       const gross = Number(emp.salary) || 0
-      const tax = gross > 60000 ? Math.round((gross - 60000) * (gross <= 200000 ? 0.10 : gross <= 1000000 ? 0.15 : 0.20)) : 0
-      const insurance = 2000
-      const net = Math.max(0, gross - tax - insurance)
+      const { grossAmount, taxAmount: tax, insuranceAmount: insurance, netAmount: net } = getTaxBreakdown(gross)
+      if (net <= 0) {
+        results.push({ userId: emp.id, name: emp.full_name, status: 'failed', skipped: true, skipReason: 'invalid_amount', message: 'Salary has no positive net amount after deductions.' })
+        continue
+      }
+
+      const { rows: existingRows } = await query(
+        `SELECT id, status FROM salary_payments
+         WHERE user_id = $1 AND business_id = $2 AND branch_id = $3
+           AND pay_period_start = $4 AND pay_period_end = $5
+           AND status != 'rejected'
+         LIMIT 1`,
+        [emp.id, scope.businessId, scope.branchId, periodStart, periodEnd]
+      )
+      if (existingRows.length) {
+        results.push({ userId: emp.id, name: emp.full_name, status: existingRows[0].status, skipped: true, skipReason: 'already_exists' })
+        continue
+      }
 
       const { rows: inserted } = await query(
-        `INSERT INTO salary_payments (user_id, branch_id, name, phone, gross_amount, tax_amount, insurance_amount, net_amount, amount, method, status, pay_period_start, pay_period_end)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'direct', 'Paid', $10, $11) RETURNING id`,
-        [emp.id, scope.branchId, emp.full_name, emp.phone || '', gross, tax, insurance, net, net, payPeriodStart, payPeriodEnd]
+        `INSERT INTO salary_payments
+           (business_id, user_id, branch_id, name, phone, gross_amount, tax_amount,
+            insurance_amount, net_amount, amount, method, actor, status,
+            pay_period_start, pay_period_end)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9, $10, $11, 'pending', $12, $13)
+         RETURNING id`,
+        [scope.businessId, emp.id, scope.branchId, emp.full_name, emp.phone || '', grossAmount, tax, insurance, net, method, req.user.full_name || req.user.email, periodStart, periodEnd]
       )
-      results.push({ userId: emp.id, name: emp.full_name, gross, tax, insurance, net, paymentId: inserted[0].id })
+      const payout = await initiateSalaryPayout({
+        salaryPaymentId: inserted[0].id,
+        businessId: scope.businessId,
+        branchId: scope.branchId,
+        approverId: req.user.id,
+      })
+      results.push({ userId: emp.id, name: emp.full_name, gross, tax, insurance, net, paymentId: inserted[0].id, ...payout })
     }
 
+    const notSent = results.filter((result) => !result.skipped && result.status === 'pending').length
+    const initiated = results.filter((result) => !result.skipped && result.status !== 'pending').length
+    const pending = results.filter((result) => !result.skipped && result.status === 'processing').length
+    const paid = results.filter((result) => !result.skipped && result.status === 'Paid').length
+    const failed = results.filter((result) => !result.skipped && result.status === 'failed').length
+    const existing = results.filter((result) => result.skipReason === 'already_exists').length
+    const invalidPhone = results.filter((result) => result.skipReason === 'invalid_phone').length
+    const invalidAmount = results.filter((result) => result.skipReason === 'invalid_amount').length
     await logAudit({
       userId: req.user.id,
       actorName: req.user.full_name || req.user.email,
-      action: `Processed mass payroll payout for ${results.length} employees`,
+      action: `Started ${method} payroll payouts for ${initiated} employees (${paid} paid, ${pending} awaiting provider confirmation, ${failed} failed)`,
       targetModule: 'Payroll',
       ipAddress: getClientIp(req),
       businessId: req.user?.businessId,
     })
 
-    res.status(201).json({ message: `Paid ${results.length} employees.`, payments: results })
+    res.status(201).json({
+      message: `Started ${initiated} payroll payouts: ${paid} paid, ${pending} awaiting provider confirmation, ${notSent} not sent, and ${failed} failed. Skipped ${existing} existing payrolls, ${invalidPhone} employees with invalid phone numbers, and ${invalidAmount} salaries with no payable net amount.`,
+      payments: results,
+    })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
@@ -708,23 +774,24 @@ export async function processPayout(req, res) {
 // POST /api/v1/owner/withdraw
 export async function createWithdrawal(req, res) {
   try {
-    const { phoneNumber, purpose, amount } = req.body
+    const { phoneNumber, purpose, amount, method } = req.body
     if (!phoneNumber || !purpose || !amount) {
       return res.status(400).json({ error: 'Phone number, purpose, and amount are required.' })
     }
+    const payout = createOutboundPayoutRequest({ phone: phoneNumber, amount, method })
 
     const scope = await getBranchContext(req, { requestedBranchId: req.body.branchId || req.query.branchId, allowOwnerAll: false })
 
     const { rows } = await query(
-      `INSERT INTO withdrawals (business_id, branch_id, phone_number, purpose, amount, initiated_by, status)
-       VALUES ($1, $2, $3, $4, $5, $6, 'pending') RETURNING *`,
-      [scope.businessId, scope.branchId, phoneNumber, purpose, amount, req.user.id]
+      `INSERT INTO withdrawals (business_id, branch_id, phone_number, purpose, amount, initiated_by, status, payout_method)
+       VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7) RETURNING *`,
+      [scope.businessId, scope.branchId, payout.phone, purpose, payout.amount, req.user.id, payout.method]
     )
 
     await logAudit({
       userId: req.user.id,
       actorName: req.user.full_name || req.user.email,
-      action: `Created withdrawal request of ${amount} to ${phoneNumber} (${purpose}) - pending manager approval`,
+      action: `Created ${payout.method} withdrawal request of ${payout.amount} to ${payout.phone} (${purpose}) - pending manager approval`,
       targetModule: 'Withdrawals',
       ipAddress: getClientIp(req),
       businessId: req.user?.businessId,
@@ -766,6 +833,9 @@ export async function getWithdrawalLogs(req, res) {
         purpose: w.purpose,
         amount: Number(w.amount),
         status: w.status,
+        method: w.payout_method,
+        payoutReference: w.payout_reference || null,
+        providerStatus: w.provider_status || null,
         initiatedBy: w.initiated_by_name,
         createdAt: new Date(w.created_at).toISOString(),
       })),
@@ -783,20 +853,21 @@ export async function getWithdrawalLogs(req, res) {
 // POST /api/v1/owner/transfer
 export async function createTransfer(req, res) {
   try {
-    const { toPhone, amount, description } = req.body
+    const { toPhone, amount, description, method } = req.body
     if (!amount) {
       return res.status(400).json({ error: 'Amount is required.' })
     }
+    const payout = createOutboundPayoutRequest({ phone: toPhone, amount, method })
 
     const scope = await getBranchContext(req, { requestedBranchId: req.body.branchId || req.query.branchId, allowOwnerAll: false })
 
     // Resolve recipient by phone number (transfers are made to a phone)
     let toUserId = null
     let resolvedName = null
-    if (toPhone) {
+    if (payout.phone) {
       const { rows: users } = await query(
         'SELECT id, full_name FROM users WHERE phone = $1 AND business_id = $2 LIMIT 1',
-        [toPhone, scope.businessId]
+        [payout.phone, scope.businessId]
       )
       if (users.length) {
         toUserId = users[0].id
@@ -805,15 +876,15 @@ export async function createTransfer(req, res) {
     }
 
     const { rows } = await query(
-      `INSERT INTO transfers (business_id, branch_id, from_user, to_user, to_phone, amount, description, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending') RETURNING *`,
-      [scope.businessId, scope.branchId, req.user.id, toUserId, toPhone || null, amount, description || '']
+      `INSERT INTO transfers (business_id, branch_id, from_user, to_user, to_phone, amount, description, status, payout_method)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8) RETURNING *`,
+      [scope.businessId, scope.branchId, req.user.id, toUserId, payout.phone, payout.amount, description || '', payout.method]
     )
 
     await logAudit({
       userId: req.user.id,
       actorName: req.user.full_name || req.user.email,
-      action: `Created transfer of ${amount}${toPhone ? ' to ' + (resolvedName || toPhone) : ''}`,
+      action: `Created ${payout.method} transfer of ${payout.amount} to ${resolvedName || payout.phone}`,
       targetModule: 'Transfers',
       ipAddress: getClientIp(req),
       businessId: req.user?.businessId,
@@ -836,14 +907,23 @@ export async function approveTransfer(req, res) {
     }
     const scope = await getBranchContext(req, { requestedBranchId: req.body.branchId || req.query.branchId, allowOwnerAll: false })
 
-    const { rows } = await query(
-      `UPDATE transfers SET status = $1, manager_approval = 1, manager_approved_by = $2, approved_at = NOW()
-       WHERE id = $3 AND business_id = $4 AND branch_id = $5 RETURNING *`,
-      [action, req.user.id, id, scope.businessId, scope.branchId]
-    )
-
-    if (!rows.length) {
-      return res.status(404).json({ error: 'Transfer not found.' })
+    let result
+    if (action === 'approved') {
+      result = await initiateOutboundPayout({
+        type: 'transfer',
+        payoutId: id,
+        businessId: scope.businessId,
+        branchId: scope.branchId,
+        approverId: req.user.id,
+      })
+    } else {
+      const { rows } = await query(
+        `UPDATE transfers SET status = 'rejected', manager_approval = 1, manager_approved_by = $1, approved_at = NOW()
+         WHERE id = $2 AND business_id = $3 AND branch_id = $4 AND status = 'pending' RETURNING *`,
+        [req.user.id, id, scope.businessId, scope.branchId]
+      )
+      if (!rows.length) return res.status(404).json({ error: 'Pending transfer not found.' })
+      result = rows[0]
     }
 
     await logAudit({
@@ -855,7 +935,7 @@ export async function approveTransfer(req, res) {
       businessId: req.user?.businessId,
     })
 
-    res.json(rows[0])
+    res.json(result)
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
@@ -895,6 +975,9 @@ export async function getTransferLogs(req, res) {
         amount: Number(t.amount),
         description: t.description,
         status: t.status,
+        method: t.payout_method,
+        payoutReference: t.payout_reference || null,
+        providerStatus: t.provider_status || null,
         managerApproval: t.manager_approval === 1,
         approvedBy: t.approved_by_name || null,
         approvedAt: t.approved_at ? new Date(t.approved_at).toISOString() : null,
@@ -928,14 +1011,7 @@ export async function getRevenue(req, res) {
       })
     }
 
-    const { rows: revenueReceived } = await query(
-      `SELECT COALESCE(SUM(total_amount), 0) AS total FROM orders WHERE status IN ('Paid', 'Served') AND business_id = $1${branchFilter}`,
-      branchParams
-    )
-    const { rows: refundTotalRows } = await query(
-      `SELECT COALESCE(SUM(amount), 0) AS total FROM refunds WHERE status = 'approved' AND business_id = $1${branchFilter}`,
-      branchParams
-    )
+    const financialSummary = await getFinancialSummary(businessId, scope.branchId)
 
     const { rows: stockAvailable } = await query(
       `SELECT COUNT(DISTINCT p.id) FILTER (WHERE bs.quantity > 0) AS total_items,
@@ -963,13 +1039,13 @@ export async function getRevenue(req, res) {
       `SELECT COALESCE(SUM(oi.quantity * p.selling_price), 0) AS total_value
        FROM order_items oi
        JOIN products p ON p.id = oi.product_id
-       JOIN orders o ON o.id = oi.order_id AND o.status IN ('Paid', 'Served')
+       JOIN orders o ON o.id = oi.order_id AND LOWER(BTRIM(o.status::text)) IN ('paid', 'served')
       WHERE o.business_id = $1${scope.branchId ? ' AND o.branch_id = $2' : ''}`,
           branchParams
     )
 
     res.json({
-      revenueReceived: (Number(revenueReceived[0].total) || 0) - (Number(refundTotalRows[0]?.total) || 0),
+      revenueReceived: financialSummary.totalSales,
       stockAvailable: {
         items: Number(stockAvailable[0].total_items) || 0,
         quantity: Number(stockAvailable[0].total_quantity) || 0,
@@ -1407,9 +1483,25 @@ export async function getSubscription(req, res) {
     }
 
     const { rows } = await query(
-      `SELECT s.*, b.name AS business_name, b.id AS business_id
+      `SELECT s.*, b.name AS business_name, b.id AS business_id,
+              pending_payment.id AS pending_payment_id,
+              pending_payment.transaction_id AS pending_payment_reference,
+             pending_payment.provider_status AS pending_payment_provider_status,
+             pending_payment.plan AS pending_payment_plan,
+             pending_payment.amount_paid AS pending_payment_amount,
+             pending_payment.payment_method AS pending_payment_method,
+             pending_payment.phone_number AS pending_payment_phone
        FROM subscriptions s
        LEFT JOIN businesses b ON b.id = s.business_id
+       LEFT JOIN LATERAL (
+         SELECT pp.id, pp.transaction_id, pp.provider_status,
+                ps.plan, ps.amount_paid, ps.payment_method, ps.phone_number
+         FROM platform_payments pp
+         JOIN subscriptions ps ON ps.id = pp.subscription_id
+         WHERE pp.business_id = $1 AND pp.status = 'pending'
+         ORDER BY pp.created_at DESC
+         LIMIT 1
+       ) pending_payment ON TRUE
        WHERE s.business_id = $1
        ORDER BY (s.is_active = TRUE AND s.payment_status = 'verified') DESC, s.created_at DESC
        LIMIT 1`,
@@ -1458,8 +1550,14 @@ export async function getSubscription(req, res) {
       nextRenewalDate: sub.next_renewal_date ? new Date(sub.next_renewal_date).toISOString() : null,
       paymentMethod: sub.payment_method || null,
       phoneNumber: sub.phone_number || null,
-      ussdCode: sub.ussd_code || null,
       paymentStatus: sub.payment_status || 'pending',
+      pendingPaymentId: sub.pending_payment_id || null,
+      pendingPaymentReference: sub.pending_payment_reference || null,
+      pendingPaymentStatus: sub.pending_payment_provider_status || null,
+      pendingPaymentPlan: sub.pending_payment_id ? sub.pending_payment_plan : null,
+      pendingPaymentAmount: sub.pending_payment_id ? Number(sub.pending_payment_amount) : null,
+      pendingPaymentMethod: sub.pending_payment_id ? sub.pending_payment_method : null,
+      pendingPaymentPhone: sub.pending_payment_id ? sub.pending_payment_phone : null,
       receiptNumber: sub.receipt_number || null,
       receiptGenerated: sub.receipt_generated === 1,
       amountPaid: Number(sub.amount_paid) || 0,
@@ -1473,216 +1571,360 @@ export async function getSubscription(req, res) {
 
 // POST /api/v1/owner/subscription/select-plan
 export async function selectSubscriptionPlan(req, res) {
+  const businessId = req.user?.businessId
+  const { plan, planId, paymentMethod, phoneNumber, billingCycle } = req.body
+  if (!businessId) return res.status(400).json({ error: 'No business associated with this account.' })
+
+  const method = String(paymentMethod || '').toLowerCase()
+  const providerMethod = ({ momo: 'mtn_momo', airtel: 'airtel_money' })[method] || method
+  if (!['mtn_momo', 'airtel_money'].includes(providerMethod)) {
+    return res.status(400).json({ error: 'Choose MTN MoMo or Airtel Money.' })
+  }
+  if (!phoneNumber) return res.status(400).json({ error: 'Phone number is required.' })
+
   try {
-    const { plan, planId, paymentMethod, phoneNumber, billingCycle } = req.body
-    const allowedMethods = ['momo', 'airtel', 'mtn_momo', 'airtel_money']
-    if (!paymentMethod || !allowedMethods.includes(String(paymentMethod).toLowerCase())) {
-      return res.status(400).json({ error: 'Invalid payment method. Only MTN MoMo and Airtel Money are allowed for subscriptions.' })
-    }
-    if (!phoneNumber) {
-      return res.status(400).json({ error: 'Phone number is required.' })
-    }
-
-    const businessId = req.user?.businessId
-    if (!businessId) {
-      return res.status(400).json({ error: 'No business associated with this account.' })
+    const { rows: pendingRows } = await query(
+      `SELECT id FROM platform_payments WHERE business_id = $1 AND status = 'pending' LIMIT 1`,
+      [businessId]
+    )
+    if (pendingRows.length) {
+      return res.status(409).json({ error: 'A subscription payment is already in progress. Check its status before starting another.' })
     }
 
-    const normalizedMethod = String(paymentMethod).toLowerCase()
-
-    let selectedPlan = null
+    let selectedPlan
     if (planId) {
       const { rows } = await query('SELECT * FROM subscription_plans WHERE id = $1 AND is_active = TRUE', [planId])
       selectedPlan = rows[0]
-      if (!selectedPlan) return res.status(404).json({ error: 'Selected subscription plan is not available.' })
+    } else if (plan && !['monthly', 'quarterly', 'annually', 'yearly'].includes(String(plan).toLowerCase())) {
+      const { rows } = await query('SELECT * FROM subscription_plans WHERE LOWER(name) = $1 AND is_active = TRUE', [String(plan).toLowerCase()])
+      selectedPlan = rows[0]
+    }
+    if (planId && !selectedPlan) return res.status(404).json({ error: 'Selected subscription plan is not available.' })
+
+    const cycle = String(billingCycle || 'monthly').toLowerCase()
+    if (!['monthly', 'quarterly', 'annually', 'yearly'].includes(cycle)) {
+      return res.status(400).json({ error: 'Billing cycle must be monthly, quarterly or annually.' })
+    }
+    const normalizedCycle = cycle === 'yearly' ? 'annually' : cycle
+    const { rows: currentPlans } = await query(
+      `SELECT plan_id, plan FROM subscriptions
+       WHERE business_id = $1
+       ORDER BY (is_active = TRUE AND payment_status = 'verified') DESC, created_at DESC
+       LIMIT 1`,
+      [businessId]
+    )
+    const currentPlan = currentPlans[0]
+    if (!selectedPlan && currentPlan?.plan_id) {
+      const { rows } = await query('SELECT * FROM subscription_plans WHERE id = $1', [currentPlan.plan_id])
+      selectedPlan = rows[0]
+    }
+    if (!selectedPlan && !['monthly', 'quarterly', 'annually', 'yearly'].includes(String(plan || '').toLowerCase())) {
+      return res.status(404).json({ error: 'Selected subscription plan is not available.' })
     }
 
-    if (!selectedPlan && !plan) {
-      return res.status(400).json({ error: 'Select a subscription plan.' })
+    const { rows: platformPrices } = await query(
+      `SELECT setting_key, setting_value FROM platform_settings
+       WHERE setting_key IN (
+         'subscription_monthly_price', 'subscription_quarterly_price', 'subscription_annually_price',
+         'subscription_quarterly_discount', 'subscription_annually_discount'
+       )`
+    )
+    const priceSettings = Object.fromEntries(platformPrices.map((row) => [row.setting_key, Number(row.setting_value)]))
+    const monthlyPrice = Number(selectedPlan?.price_monthly) || priceSettings.subscription_monthly_price || 50000
+    const monthsToAdd = normalizedCycle === 'quarterly' ? 3 : normalizedCycle === 'annually' ? 12 : 1
+    const discountPercent = normalizedCycle === 'quarterly'
+      ? Number(selectedPlan?.discount_quarterly ?? priceSettings.subscription_quarterly_discount ?? 8)
+      : normalizedCycle === 'annually'
+        ? Number(selectedPlan?.discount_annually ?? priceSettings.subscription_annually_discount ?? 14)
+        : 0
+    const amount = normalizedCycle === 'annually'
+      ? Number(selectedPlan?.price_yearly) || priceSettings.subscription_annually_price || Math.round(monthlyPrice * monthsToAdd * (1 - discountPercent / 100))
+      : normalizedCycle === 'quarterly' && !selectedPlan
+        ? priceSettings.subscription_quarterly_price || Math.round(monthlyPrice * monthsToAdd * (1 - discountPercent / 100))
+        : Math.round(monthlyPrice * monthsToAdd * (1 - discountPercent / 100))
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return res.status(400).json({ error: 'The selected plan has an invalid price.' })
     }
 
-    const planName = selectedPlan ? selectedPlan.name : plan
-    const cycle = String(billingCycle || (selectedPlan ? 'monthly' : plan) || 'monthly').toLowerCase()
-    const monthlyPrice = Number(selectedPlan?.price_monthly) || 0
-
-    let amount = monthlyPrice
-    let monthsToAdd = 1
-    let discountPercent = 0
-
-    if (selectedPlan) {
-      if (cycle === 'quarterly') {
-        monthsToAdd = 3
-        discountPercent = Number(selectedPlan.discount_quarterly ?? 8)
-        amount = Math.round(monthlyPrice * 3 * (1 - discountPercent / 100))
-      } else if (cycle === 'annually' || cycle === 'yearly') {
-        monthsToAdd = 12
-        discountPercent = Number(selectedPlan.discount_annually ?? 14)
-        amount = Number(selectedPlan.price_yearly) || Math.round(monthlyPrice * 12 * (1 - discountPercent / 100))
-      }
-    } else {
-      amount = Number(amount) || 0
-      monthsToAdd = cycle === 'quarterly' ? 3 : cycle === 'annually' || cycle === 'yearly' ? 12 : 1
-    }
-
-    const ussdCode = generateUssdCode()
-
+    const phone = normalizeRwandaPhone(phoneNumber)
+    const { rows: activeRows } = await query(
+      `SELECT current_period_end FROM subscriptions
+       WHERE business_id = $1 AND is_active = TRUE AND payment_status = 'verified'
+       ORDER BY current_period_end DESC NULLS LAST LIMIT 1`,
+      [businessId]
+    )
     const now = new Date()
-    const periodEnd = new Date(now)
+    const currentEnd = activeRows[0]?.current_period_end
+    const periodStart = currentEnd && new Date(currentEnd) > now ? new Date(currentEnd) : now
+    const periodEnd = new Date(periodStart)
     periodEnd.setMonth(periodEnd.getMonth() + monthsToAdd)
-    const nextRenewal = new Date(periodEnd)
+    const reference = crypto.randomUUID()
 
-    const { rows: existing } = await query('SELECT id FROM subscriptions WHERE business_id = $1 ORDER BY created_at DESC LIMIT 1', [businessId])
+    const { rows: subscriptions } = await query(
+      `INSERT INTO subscriptions
+         (business_id, plan_id, plan, billing_cycle, discount_percent, amount_paid,
+          status, is_active, payment_status, payment_method, phone_number,
+          start_date, current_period_end, expiration_date, next_renewal_date, remaining_days)
+       VALUES ($1, $2, $3, $4, $5, $6, 'pending', FALSE, 'pending', $7, $8, $9, $10, $10, $10, $11)
+       RETURNING id, plan, billing_cycle, amount_paid, current_period_end, next_renewal_date`,
+      [businessId, selectedPlan?.id || currentPlan?.plan_id || null, selectedPlan?.name || currentPlan?.plan || 'Subscription', normalizedCycle, discountPercent, amount, providerMethod, phone, periodStart, periodEnd, monthsToAdd * 30]
+    )
+    const subscription = subscriptions[0]
+    const { rows: payments } = await query(
+      `INSERT INTO platform_payments
+         (business_id, subscription_id, plan, billing_cycle, amount, payment_method, transaction_id, status, provider_status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', 'PENDING')
+       RETURNING id`,
+      [businessId, subscription.id, subscription.plan, normalizedCycle, amount, providerMethod, reference]
+    )
+    const paymentId = payments[0].id
 
-    let result
-    if (existing.length) {
-      const { rows: updated } = await query(
-        `UPDATE subscriptions SET plan = $1, plan_id = $12, billing_cycle = $10, discount_percent = $11, status = 'pending', payment_method = $2, phone_number = $3,
-         ussd_code = $4, amount_paid = $5, start_date = $6, current_period_end = $7, next_renewal_date = $8,
-         expiration_date = $7, payment_status = 'pending', is_active = FALSE, receipt_generated = 0,
-         remaining_days = $9
-         WHERE id = $13 RETURNING *`,
-        [planName, normalizedMethod, phoneNumber, ussdCode, amount, now, periodEnd, nextRenewal, monthsToAdd * 30, cycle, discountPercent, selectedPlan?.id || null, existing[0].id]
+    try {
+      const providerRequest = await requestMobileMoneyPayment({
+        method: providerMethod,
+        reference,
+        amount,
+        phone,
+      })
+      await query(
+        `UPDATE platform_payments
+         SET provider_txn_id = $2, provider_status = $3
+         WHERE id = $1`,
+        [paymentId, providerRequest.providerTxnId, providerRequest.providerStatus]
       )
-      result = updated[0]
-    } else {
-      const { rows: inserted } = await query(
-        `INSERT INTO subscriptions (business_id, plan_id, plan, billing_cycle, discount_percent, status, payment_method, phone_number, ussd_code,
-         amount_paid, start_date, current_period_end, next_renewal_date, expiration_date,
-         payment_status, is_active, remaining_days)
-         VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9, $10, $11, $12, $11, 'pending', FALSE, $13) RETURNING *`,
-        [businessId, selectedPlan?.id || null, planName, cycle, discountPercent, normalizedMethod, phoneNumber, ussdCode, amount, now, periodEnd, nextRenewal, monthsToAdd * 30]
+    } catch (error) {
+      await query(
+        `UPDATE platform_payments SET status = 'failed', provider_status = 'FAILED', provider_payload = $2 WHERE id = $1`,
+        [paymentId, JSON.stringify({ error: error.message })]
       )
-      result = inserted[0]
+      await query(`UPDATE subscriptions SET status = 'payment_failed', payment_status = 'failed' WHERE id = $1`, [subscription.id])
+      throw error
     }
 
     await logAudit({
       userId: req.user.id,
       actorName: req.user.full_name || req.user.email,
-      action: `Selected ${planName} subscription plan for ${amount} (${discountPercent}% off) via ${normalizedMethod}`,
+      action: `Started ${providerMethod} subscription payment for ${subscription.plan} (${amount} RWF)`,
       targetModule: 'Subscription',
       ipAddress: getClientIp(req),
-      businessId: req.user?.businessId,
+      businessId,
+      metadata: { subscriptionId: subscription.id, paymentId, reference },
     })
 
-    res.json({
-      id: result.id,
-      plan: result.plan,
-      billingCycle: result.billing_cycle,
+    res.status(201).json({
+      id: subscription.id,
+      paymentId,
+      reference,
+      plan: subscription.plan,
+      billingCycle: subscription.billing_cycle,
       discountPercent,
       amount,
-      paymentMethod: normalizedMethod,
-      phoneNumber,
-      ussdCode,
-      periodEnd,
-      nextRenewalDate: nextRenewal,
-      message: `Please dial ${ussdCode} on ${phoneNumber} to complete payment of ${amount}`,
+      paymentMethod: providerMethod,
+      phoneNumber: phone,
+      periodEnd: subscription.current_period_end,
+      nextRenewalDate: subscription.next_renewal_date,
+      status: 'pending',
+      message: `Approve the ${amount} RWF payment request sent to ${phone}. Access will activate automatically after provider confirmation.`,
     })
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    res.status(502).json({ error: error.message })
   }
 }
 
-// POST /api/v1/owner/subscription/verify-payment
-export async function verifySubscriptionPayment(req, res) {
+async function completeSubscriptionPayment(paymentId, businessId, providerStatus, providerPayload) {
+  const client = await pool.connect()
   try {
-    const { ussdCode } = req.body
-    if (!ussdCode) {
-      return res.status(400).json({ error: 'USSD code is required for verification.' })
-    }
-
-    const { rows } = await query(
-      `SELECT * FROM subscriptions WHERE ussd_code = $1 ORDER BY created_at DESC LIMIT 1`,
-      [ussdCode]
+    await client.query('BEGIN')
+    const { rows } = await client.query(
+      `SELECT pp.id, pp.business_id, pp.subscription_id, pp.status, s.plan, s.billing_cycle,
+              s.amount_paid, s.start_date, s.current_period_end, s.next_renewal_date,
+              s.payment_method
+       FROM platform_payments pp
+       JOIN subscriptions s ON s.id = pp.subscription_id
+       WHERE pp.id = $1 AND pp.business_id = $2
+       FOR UPDATE OF pp, s`,
+      [paymentId, businessId]
     )
-
-    if (!rows.length) {
-      return res.status(404).json({ error: 'Subscription not found with this USSD code.' })
-    }
-
-    const sub = rows[0]
-
-    // Verify payment (in production this would check with the payment provider)
-    const receiptNumber = generateReceiptNumber()
-    const now = new Date()
-    const remainingDays = sub.remaining_days || 30
-
-    const { rows: updated } = await query(
-      `UPDATE subscriptions SET payment_status = 'verified', status = 'active', is_active = TRUE,
-       receipt_number = $1, receipt_generated = 1
-       WHERE id = $2 RETURNING *`,
-      [receiptNumber, sub.id]
-    )
-
-    if (sub.business_id) {
-      await query('UPDATE businesses SET is_verified = TRUE, unpaid_access_granted = FALSE WHERE id = $1', [sub.business_id])
-    }
-
-    // Record the payment in platform_payments for platform admin control
-    const transactionId = 'SUB-' + Date.now().toString(36).toUpperCase() + '-' + crypto.randomBytes(3).toString('hex').toUpperCase()
-    await query(
-      `INSERT INTO platform_payments (business_id, subscription_id, plan, billing_cycle, amount, payment_method, transaction_id, status, paid_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 'paid', NOW())`,
-      [sub.business_id, sub.id, sub.plan, sub.billing_cycle, sub.amount_paid, sub.payment_method, transactionId]
-    )
-
-    // Send subscription activation emails after successful verification
-    try {
-      const { rows: bizData } = await query(
-        `SELECT b.name AS business_name, b.contact_email,
-                u.full_name AS owner_name, u.email AS owner_email
-         FROM businesses b
-         LEFT JOIN users u ON u.business_id = b.id AND u.role = 'owner'
-         WHERE b.id = $1
-         LIMIT 1`,
-        [sub.business_id]
+    if (!rows.length) throw new Error('Subscription payment not found.')
+    const payment = rows[0]
+    if (payment.status === 'paid') {
+      const { rows: existing } = await client.query(
+        'SELECT receipt_number FROM subscriptions WHERE id = $1',
+        [payment.subscription_id]
       )
-      if (bizData.length) {
-        const b = bizData[0]
-        sendSubscriptionActivation({
-          businessName: b.business_name,
-          ownerName: b.owner_name || 'Business Owner',
-          ownerEmail: b.owner_email || b.contact_email,
-          planName: sub.plan || 'N/A',
-          activationDate: new Date().toLocaleDateString(),
-          expiryDate: sub.current_period_end ? new Date(sub.current_period_end).toLocaleDateString() : 'N/A',
-          amount: sub.amount_paid,
-          businessId: sub.business_id,
-        }).catch(err => console.error('Failed to send subscription activation email:', err.message))
-
-        sendAdminSubscriptionActivation({
-          businessName: b.business_name,
-          ownerName: b.owner_name || 'Business Owner',
-          ownerEmail: b.owner_email || b.contact_email,
-          planName: sub.plan || 'N/A',
-          amount: sub.amount_paid,
-          businessId: sub.business_id,
-        }).catch(err => console.error('Failed to send admin subscription activation email:', err.message))
+      await client.query('COMMIT')
+      return {
+        status: 'completed',
+        alreadyCompleted: true,
+        receiptNumber: existing[0]?.receipt_number || null,
+        plan: payment.plan,
+        amount: Number(payment.amount_paid),
       }
-    } catch (emailErr) {
-      console.error('Failed to prepare subscription activation emails:', emailErr.message)
+    }
+    if (payment.status !== 'pending') throw new Error('This subscription payment is no longer pending.')
+
+    const receiptNumber = generateReceiptNumber()
+    await client.query(
+      `UPDATE subscriptions
+       SET is_active = FALSE
+       WHERE business_id = $1 AND is_active = TRUE AND id <> $2`,
+      [businessId, payment.subscription_id]
+    )
+    await client.query(
+      `UPDATE subscriptions
+       SET status = 'active', is_active = TRUE, payment_status = 'verified',
+           receipt_number = $2, receipt_generated = 1
+       WHERE id = $1`,
+      [payment.subscription_id, receiptNumber]
+    )
+    await client.query(
+      `UPDATE platform_payments
+       SET status = 'paid', provider_status = $2, provider_payload = $3, paid_at = NOW()
+       WHERE id = $1`,
+      [paymentId, providerStatus, JSON.stringify(providerPayload || {})]
+    )
+    await client.query(
+      `UPDATE businesses SET is_verified = TRUE, unpaid_access_granted = FALSE WHERE id = $1`,
+      [businessId]
+    )
+    await client.query('COMMIT')
+    return {
+      status: 'completed',
+      alreadyCompleted: false,
+      receiptNumber,
+      plan: payment.plan,
+      amount: Number(payment.amount_paid),
+      startDate: payment.start_date,
+      endDate: payment.current_period_end,
+      nextRenewalDate: payment.next_renewal_date,
+    }
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
+  }
+}
+
+export async function checkSubscriptionPayment(req, res) {
+  const businessId = req.user?.businessId
+  if (!businessId) return res.status(400).json({ error: 'No business associated with this account.' })
+  try {
+    const { rows } = await query(
+      `SELECT pp.*, s.plan AS subscription_plan, s.receipt_number
+       FROM platform_payments pp
+       JOIN subscriptions s ON s.id = pp.subscription_id
+       WHERE pp.id = $1 AND pp.business_id = $2`,
+      [req.params.paymentId, businessId]
+    )
+    if (!rows.length) return res.status(404).json({ error: 'Subscription payment not found.' })
+    const payment = rows[0]
+    if (payment.status === 'paid') {
+      return res.json({
+        status: 'completed',
+        receiptNumber: payment.receipt_number,
+        plan: payment.subscription_plan,
+        amount: Number(payment.amount),
+      })
+    }
+    if (payment.status !== 'pending') {
+      return res.json({ status: 'failed', providerStatus: payment.provider_status })
     }
 
-    await logAudit({
-      userId: req.user.id,
-      actorName: req.user.full_name || req.user.email,
-      action: `Verified subscription payment. Receipt: ${receiptNumber}`,
-      targetModule: 'Subscription',
-      ipAddress: getClientIp(req),
-      businessId: req.user?.businessId,
+    const result = await getMobileMoneyPaymentStatus({
+      method: payment.payment_method,
+      reference: payment.transaction_id,
+      provider_txn_id: payment.provider_txn_id,
+      amount: payment.amount,
     })
+    await query(
+      `UPDATE platform_payments
+       SET provider_status = $2, provider_payload = $3
+       WHERE id = $1 AND status = 'pending'`,
+      [payment.id, result.providerStatus, JSON.stringify(result.payload || {})]
+    )
+    if (result.status === 'failed') {
+      const { rows: failedPayments } = await query(
+        `UPDATE platform_payments SET status = 'failed' WHERE id = $1 AND status = 'pending' RETURNING id`,
+        [payment.id]
+      )
+      if (!failedPayments.length) {
+        const { rows: currentPayments } = await query(
+          `SELECT pp.status, pp.amount, pp.provider_status, s.plan AS subscription_plan, s.receipt_number
+           FROM platform_payments pp
+           JOIN subscriptions s ON s.id = pp.subscription_id
+           WHERE pp.id = $1`,
+          [payment.id]
+        )
+        const current = currentPayments[0]
+        if (current?.status === 'paid') {
+          return res.json({
+            status: 'completed',
+            receiptNumber: current.receipt_number,
+            plan: current.subscription_plan,
+            amount: Number(current.amount),
+          })
+        }
+        return res.json({ status: 'failed', providerStatus: current?.provider_status || result.providerStatus })
+      }
+      await query(
+        `UPDATE subscriptions SET status = 'payment_failed', payment_status = 'failed'
+         WHERE id = $1 AND payment_status = 'pending'`,
+        [payment.subscription_id]
+      )
+      return res.json({ status: 'failed', providerStatus: result.providerStatus })
+    }
+    if (result.status !== 'completed') {
+      return res.json({ status: 'pending', providerStatus: result.providerStatus })
+    }
 
-    res.json({
-      message: 'Payment verified successfully!',
-      receiptNumber,
-      plan: sub.plan,
-      amount: Number(sub.amount_paid),
-      startDate: sub.start_date,
-      endDate: sub.current_period_end,
-      remainingDays,
-      nextRenewalDate: sub.next_renewal_date,
-    })
+    const completion = await completeSubscriptionPayment(payment.id, businessId, result.providerStatus, result.payload)
+    if (!completion.alreadyCompleted) {
+      try {
+        const { rows: businessRows } = await query(
+          `SELECT b.name AS business_name, b.contact_email,
+                  u.full_name AS owner_name, u.email AS owner_email
+           FROM businesses b
+           LEFT JOIN users u ON u.business_id = b.id AND u.role = 'owner'
+           WHERE b.id = $1 LIMIT 1`,
+          [businessId]
+        )
+        if (businessRows.length) {
+          const business = businessRows[0]
+          const notification = {
+            businessName: business.business_name,
+            ownerName: business.owner_name || 'Business Owner',
+            ownerEmail: business.owner_email || business.contact_email,
+            planName: completion.plan || 'N/A',
+            activationDate: new Date().toLocaleDateString(),
+            expiryDate: completion.endDate ? new Date(completion.endDate).toLocaleDateString() : 'N/A',
+            amount: completion.amount,
+            businessId,
+          }
+          sendSubscriptionActivation(notification).catch((error) => {
+            console.error('Failed to send subscription activation email:', error.message)
+          })
+          sendAdminSubscriptionActivation(notification).catch((error) => {
+            console.error('Failed to send admin subscription activation email:', error.message)
+          })
+        }
+      } catch (error) {
+        console.error('Failed to prepare subscription activation emails:', error.message)
+      }
+      await logAudit({
+        userId: req.user.id,
+        actorName: req.user.full_name || req.user.email,
+        action: `Subscription payment verified by provider. Receipt: ${completion.receiptNumber}`,
+        targetModule: 'Subscription',
+        ipAddress: getClientIp(req),
+        businessId,
+        metadata: { paymentId: payment.id, provider: payment.payment_method, providerStatus: result.providerStatus },
+      })
+    }
+    const { alreadyCompleted, ...publicCompletion } = completion
+    return res.json(publicCompletion)
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    res.status(502).json({ error: error.message })
   }
 }
 
@@ -1727,123 +1969,45 @@ export async function getReceipt(req, res) {
 
 // POST /api/v1/owner/subscription/renew
 export async function renewSubscription(req, res) {
-  try {
-    const { plan, planId, paymentAmount, billingCycle } = req.body
-    if (!plan && !planId) {
-      return res.status(400).json({ error: 'Plan type is required.' })
-    }
-
-    const now = new Date()
-
-    let selectedPlan = null
-    if (planId) {
-      const { rows } = await query('SELECT * FROM subscription_plans WHERE id = $1 AND is_active = TRUE', [planId])
-      selectedPlan = rows[0]
-    } else if (plan) {
-      const normalized = String(plan).toLowerCase()
-      if (['monthly', 'quarterly', 'annually', 'yearly'].includes(normalized)) {
-        const { rows: current } = await query(
-          `SELECT s.plan_id, sp.name AS plan_name
-           FROM subscriptions s
-           LEFT JOIN subscription_plans sp ON sp.id = s.plan_id
-           WHERE s.business_id = $1 AND s.is_active = TRUE AND s.payment_status = 'verified'
-           ORDER BY s.created_at DESC
-           LIMIT 1`,
-          [businessId]
-        )
-        if (current.length) {
-          selectedPlan = current[0].plan_id ? { id: current[0].plan_id, name: current[0].plan_name } : null
-        }
-      } else {
-        const { rows } = await query('SELECT * FROM subscription_plans WHERE LOWER(name) = $1 AND is_active = TRUE', [normalized])
-        selectedPlan = rows[0]
-      }
-    }
-
-    let amount, monthsToAdd, cycle, discountPercent
-    if (selectedPlan) {
-      cycle = String(billingCycle || 'annually').toLowerCase()
-      const monthlyPrice = Number(selectedPlan.price_monthly) || 0
-      if (cycle === 'quarterly') {
-        monthsToAdd = 3
-        discountPercent = Number(selectedPlan.discount_quarterly ?? 8)
-        amount = Math.round(monthlyPrice * 3 * (1 - discountPercent / 100))
-      } else if (cycle === 'annually' || cycle === 'yearly') {
-        monthsToAdd = 12
-        discountPercent = Number(selectedPlan.discount_annually ?? 14)
-        amount = Number(selectedPlan.price_yearly) || Math.round(monthlyPrice * 12 * (1 - discountPercent / 100))
-      } else {
-        monthsToAdd = 1
-        discountPercent = 0
-        amount = monthlyPrice
-      }
-    } else {
-      amount = Number(paymentAmount) || 0
-      monthsToAdd = 1
-      cycle = 'monthly'
-      discountPercent = 0
-    }
-    const planName = selectedPlan ? selectedPlan.name : plan
-
-    const businessId = req.user?.businessId
-    if (!businessId) {
-      return res.status(400).json({ error: 'No business associated with this account.' })
-    }
-
-    const { rows: activeRows } = await query(
-      `SELECT current_period_end
-       FROM subscriptions
-       WHERE business_id = $1 AND is_active = TRUE AND payment_status = 'verified'
-       ORDER BY current_period_end DESC NULLS LAST
-       LIMIT 1`,
-      [businessId]
-    )
-    const renewalStart = activeRows[0]?.current_period_end && new Date(activeRows[0].current_period_end) > now
-      ? new Date(activeRows[0].current_period_end)
-      : now
-    const periodEnd = new Date(renewalStart)
-    periodEnd.setMonth(periodEnd.getMonth() + monthsToAdd)
-
-    // Keep the verified subscription live until the pending renewal is approved.
-    const { rows } = await query(
-      `INSERT INTO subscriptions (business_id, plan_id, plan, billing_cycle, discount_percent, amount_paid,
-                                  status, is_active, payment_status, start_date, current_period_end,
-                                  expiration_date, next_renewal_date, remaining_days)
-       VALUES ($1, $2, $3, $4, $5, $6, 'pending', FALSE, 'pending', $7, $8, $8, $8, $9)
-       RETURNING id, plan, billing_cycle, discount_percent, amount_paid, status, current_period_end, next_renewal_date`,
-      [businessId, selectedPlan?.id || null, planName, cycle, discountPercent, amount, renewalStart, periodEnd, monthsToAdd * 30]
-    )
-
-    await logAudit({
-      userId: req.user.id,
-      actorName: req.user.full_name || req.user.email,
-      action: `Renewed subscription to ${plan} plan for ${amount} (${discountPercent}% off)`,
-      targetModule: 'Subscription',
-      ipAddress: getClientIp(req),
-      businessId: req.user?.businessId,
-    })
-
-    res.status(201).json(rows[0])
-  } catch (error) {
-    res.status(500).json({ error: error.message })
-  }
+  return selectSubscriptionPlan(req, res)
 }
 
 export async function getAvailableSubscriptionPlans(_req, res) {
   try {
-    const { rows } = await query(
-      `SELECT id, name, description, price_monthly, price_yearly, discount_quarterly,
-              discount_annually, features
-       FROM subscription_plans
-       WHERE is_active = TRUE
-       ORDER BY created_at DESC`
-    )
-    res.json(rows.map((p) => ({
-      id: p.id, name: p.name, description: p.description || '',
-      priceMonthly: Number(p.price_monthly) || 0, priceYearly: Number(p.price_yearly) || 0,
-      discountQuarterly: Number(p.discount_quarterly ?? 8), discountAnnually: Number(p.discount_annually ?? 14),
-      features: p.features || [],
-    })))
+    const [{ rows }, { rows: settings }] = await Promise.all([
+      query(
+        `SELECT id, name, description, price_monthly, price_yearly, discount_quarterly,
+                discount_annually, features
+         FROM subscription_plans
+         WHERE is_active = TRUE
+         ORDER BY created_at DESC`
+      ),
+      query(
+        `SELECT setting_key, setting_value FROM platform_settings
+         WHERE setting_key IN (
+           'subscription_monthly_price', 'subscription_annually_price',
+           'subscription_quarterly_discount', 'subscription_annually_discount'
+         )`
+      ),
+    ])
+    const priceSettings = Object.fromEntries(settings.map((row) => [row.setting_key, Number(row.setting_value)]))
+    res.json(rows.map((p) => {
+      const priceMonthly = Number(p.price_monthly) || priceSettings.subscription_monthly_price || 50000
+      const discountQuarterly = Number(p.discount_quarterly ?? priceSettings.subscription_quarterly_discount ?? 8)
+      const discountAnnually = Number(p.discount_annually ?? priceSettings.subscription_annually_discount ?? 14)
+      return {
+        id: p.id,
+        name: p.name,
+        description: p.description || '',
+        priceMonthly,
+        priceQuarterly: Math.round(priceMonthly * 3 * (1 - discountQuarterly / 100)),
+        priceAnnually: Number(p.price_yearly) || priceSettings.subscription_annually_price || Math.round(priceMonthly * 12 * (1 - discountAnnually / 100)),
+        priceYearly: Number(p.price_yearly) || priceSettings.subscription_annually_price || 0,
+        discountQuarterly,
+        discountAnnually,
+        features: p.features || [],
+      }
+    }))
   } catch (error) { res.status(500).json({ error: error.message }) }
 }
 
@@ -2648,12 +2812,16 @@ export async function generateQRPayment(req, res) {
     }
 
     const businessId = req.user?.businessId
+    const waiterBranchId = String(req.user?.role || '').toLowerCase() === 'waiter'
+      ? req.user?.branchId || null
+      : null
     const { rows: orderRows } = await query(
       `SELECT o.id, o.order_number, o.total_amount, o.table_number, b.name AS business_name
        FROM orders o
        JOIN businesses b ON b.id = o.business_id
-       WHERE o.id = $1 AND o.business_id = $2`,
-      [orderId, businessId]
+       WHERE o.id = $1 AND o.business_id = $2
+         AND ($3::uuid IS NULL OR o.branch_id = $3::uuid)`,
+      [orderId, businessId, waiterBranchId]
     )
     if (!orderRows.length) {
       return res.status(404).json({ error: 'Order not found.' })
@@ -2672,19 +2840,25 @@ export async function generateQRPayment(req, res) {
       return res.status(403).json({ error: 'QR payments are not enabled. Please enable them in Payment Settings.' })
     }
 
-    const qrPayload = JSON.stringify({
-      type: 'barflow_payment',
-      merchant: ps.merchant_name || 'BarFlow Business',
-      merchantCode: ps.merchant_code || '',
-      mtnMomo: ps.mtn_momo_number || '',
-      airtelMoney: ps.airtel_money_number || '',
-      bankAccount: ps.bank_account || '',
-      orderId: order.id,
-      orderNumber: order.order_number,
-      table: order.table_number,
-      amount: Number(order.total_amount) || 0,
-      currency: 'RWF',
-    })
+    const availableProviders = []
+    if (process.env.MTN_MOMO_SUBSCRIPTION_KEY && process.env.MTN_MOMO_API_USER && process.env.MTN_MOMO_API_KEY) {
+      availableProviders.push('mtn_momo')
+    }
+    if (process.env.AIRTEL_MONEY_CLIENT_ID && process.env.AIRTEL_MONEY_CLIENT_SECRET) {
+      availableProviders.push('airtel_money')
+    }
+    if (!availableProviders.length) {
+      return res.status(503).json({ error: 'Automatic QR payments need MTN MoMo or Airtel Money credentials configured on the server.' })
+    }
+
+    const frontendUrl = String(process.env.FRONTEND_URL || '').trim()
+    if (!frontendUrl) {
+      return res.status(503).json({ error: 'Set FRONTEND_URL to the public address of this app before generating a payment QR code.' })
+    }
+    const paymentUrl = new URL('/payment', frontendUrl)
+    paymentUrl.searchParams.set('orderId', order.id)
+    paymentUrl.searchParams.set('providers', availableProviders.join(','))
+    const qrPayload = paymentUrl.toString()
 
     const qrImage = await QRCode.toDataURL(qrPayload, {
       width: 600,
@@ -2703,43 +2877,6 @@ export async function generateQRPayment(req, res) {
         merchantName: ps.merchant_name || 'BarFlow Business',
       },
     })
-  } catch (error) {
-    res.status(500).json({ error: error.message })
-  }
-}
-
-// POST /api/v1/owner/qr-payment/verify
-export async function verifyQRPayment(req, res) {
-  const { orderId, method, amount, reference } = req.body
-  if (!orderId) {
-    return res.status(400).json({ error: 'Order ID is required.' })
-  }
-  try {
-    const businessId = req.user?.businessId
-    const branchId = req.user?.branchId || null
-    const { rows: orderRows } = await query(
-      `SELECT id, branch_id, total_amount FROM orders
-       WHERE id = $1 AND business_id = $2 AND ($3::uuid IS NULL OR branch_id = $3)`,
-      [orderId, businessId, branchId]
-    )
-    if (!orderRows.length) return res.status(404).json({ error: 'Order not found in your business branch.' })
-
-    const paymentMethod = String(method || 'qr').trim().toLowerCase()
-    const { rows } = await query(
-      `INSERT INTO payments (order_id, business_id, branch_id, received_by, method, amount, reference, paid_at, provider_status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), 'SUCCESS') RETURNING id`,
-      [orderId, businessId, orderRows[0].branch_id, req.user?.id || null, paymentMethod, amount ?? orderRows[0].total_amount, reference || `QR-${Date.now()}`]
-    )
-    await query(
-      `UPDATE orders SET status = 'Paid', payment_method = $3, completed_at = NOW() WHERE id = $1 AND business_id = $2`,
-      [orderId, businessId, paymentMethod]
-    )
-    await query(
-      `INSERT INTO order_status_history (order_id, status, changed_by, note)
-       VALUES ($1, 'Paid', 'system', 'Payment completed via QR')`,
-      [orderId]
-    )
-    res.status(201).json({ success: true, paymentId: rows[0].id })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

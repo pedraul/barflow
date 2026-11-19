@@ -108,6 +108,25 @@ export function OwnerProvider({ children }) {
     })
   }, [withLoading, activeBranchId])
 
+  const checkPayrollPayout = useCallback(async (id) => {
+    return withLoading(async () => {
+      const { data } = await api.post(`/manager/payrolls/${id}/status`, {
+        ...(activeBranchId !== 'all' ? { branchId: activeBranchId } : {}),
+      })
+      return data
+    })
+  }, [withLoading, activeBranchId])
+
+  const startPayrollPayout = useCallback(async (id) => {
+    return withLoading(async () => {
+      const { data } = await api.post(`/manager/payrolls/${id}/approve`, {
+        action: 'approved',
+        ...(activeBranchId !== 'all' ? { branchId: activeBranchId } : {}),
+      })
+      return data
+    })
+  }, [withLoading, activeBranchId])
+
   // ── Withdrawals ──
   const createWithdrawal = useCallback(async (data) => {
     return withLoading(async () => {
@@ -272,12 +291,10 @@ export function OwnerProvider({ children }) {
     })
   }, [withLoading])
 
-  const verifySubscriptionPayment = useCallback(async (ussdCode) => {
-    return withLoading(async () => {
-      const { data } = await api.post('/v1/owner/subscription/verify-payment', { ussdCode })
-      return data
-    })
-  }, [withLoading])
+  const checkSubscriptionPayment = useCallback(async (paymentId) => {
+    const { data } = await api.get(`/v1/owner/subscription/payment/${paymentId}/status`)
+    return data
+  }, [])
 
   const fetchReceipt = useCallback(async () => {
     return withLoading(async () => {
@@ -415,27 +432,20 @@ export function OwnerProvider({ children }) {
     })
   }, [withLoading])
 
-  const verifyQRPayment = useCallback(async (payload) => {
-    return withLoading(async () => {
-      const { data } = await api.post('/v1/owner/qr-payment/verify', payload)
-      return data
-    })
-  }, [withLoading])
-
   const value = {
     loading, error, branches, activeBranchId, setActiveBranchId,
     fetchUsers, createUser, updateUser, deleteUser, resetUserPassword,
-    fetchSalaries, processPayout,
+    fetchSalaries, processPayout, checkPayrollPayout, startPayrollPayout,
     createWithdrawal, fetchWithdrawalLogs,
     createTransfer, approveTransfer, fetchTransferLogs,
     fetchRevenue, fetchRevenueLogs,
     fetchReportSummary, exportReport,
     fetchQROrders, fetchWaiters, fetchWaiterOrders, fetchOrderHistory,
     fetchAuditLogs, fetchAuditLogsExport,
-    fetchSubscription, fetchAvailableSubscriptionPlans, selectSubscriptionPlan, verifySubscriptionPayment, fetchReceipt, renewSubscription,
+    fetchSubscription, fetchAvailableSubscriptionPlans, selectSubscriptionPlan, checkSubscriptionPayment, fetchReceipt, renewSubscription,
     fetchGlobalInventory, fetchStockMovements,
     fetchSystemSettings, updateSystemSettings, fetchBranches, createBranch, updateBranch, triggerBackup, fetchBackups, restoreBackup, updatePermissions,
-    fetchPaymentSettings, updatePaymentSettings, generateQRPayment, generateMerchantQRPayment, verifyQRPayment,
+    fetchPaymentSettings, updatePaymentSettings, generateQRPayment, generateMerchantQRPayment,
   }
 
   return (

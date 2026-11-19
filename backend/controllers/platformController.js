@@ -2,7 +2,6 @@ import { query, pool as dbPool } from '../config/database.js'
 import { sign } from '../config/jwt.js'
 import bcrypt from 'bcryptjs'
 import os from 'os'
-import crypto from 'crypto'
 import { sendVerificationEmail } from '../services/emailService.js'
 import { logAudit, getClientIp } from '../utils/audit.js'
 import { createBackup as createBackupFile } from '../utils/backup.js'
@@ -293,7 +292,7 @@ export async function toggleBusinessStatus(req, res) {
   try {
     let updateQuery
     if (action === 'verify') {
-      updateQuery = query('UPDATE businesses SET is_verified = TRUE, unpaid_access_granted = FALSE WHERE id = $1 RETURNING id, name', [id])
+      updateQuery = query('UPDATE businesses SET is_verified = TRUE WHERE id = $1 RETURNING id, name', [id])
     } else if (action === 'suspend') {
       updateQuery = query('UPDATE businesses SET is_suspended = TRUE WHERE id = $1 RETURNING id, name', [id])
     } else if (action === 'activate') {
@@ -317,61 +316,6 @@ export async function toggleBusinessStatus(req, res) {
          LIMIT 1`,
         [id]
       )
-
-      if (action === 'verify' && bizData.length) {
-        const { rows: subRows } = await query(
-          `WITH pending_subscription AS (
-             SELECT id
-             FROM subscriptions
-             WHERE business_id = $1 AND is_active = FALSE AND payment_status = 'pending'
-             ORDER BY created_at DESC
-             LIMIT 1
-           ), deactivate_previous AS (
-             UPDATE subscriptions
-             SET is_active = FALSE
-             WHERE business_id = $1 AND is_active = TRUE
-               AND id <> (SELECT id FROM pending_subscription)
-           )
-           UPDATE subscriptions SET status = 'active', is_active = TRUE, payment_status = 'verified',
-             receipt_number = 'ADMIN-' || UPPER(SUBSTR(MD5(RANDOM()::text), 1, 8)),
-             receipt_generated = 1
-           WHERE id = (SELECT id FROM pending_subscription)
-           RETURNING id, plan, billing_cycle, amount_paid, payment_method`,
-          [id]
-        )
-
-        // Record the payment in platform_payments for platform admin control
-        if (subRows.length) {
-          const sub = subRows[0]
-          const transactionId = 'ADMIN-' + Date.now().toString(36).toUpperCase() + '-' + crypto.randomBytes(3).toString('hex').toUpperCase()
-          await query(
-            `INSERT INTO platform_payments (business_id, subscription_id, plan, billing_cycle, amount, payment_method, transaction_id, status, paid_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, 'paid', NOW())`,
-            [id, sub.id, sub.plan, sub.billing_cycle, sub.amount_paid, sub.payment_method || 'admin', transactionId]
-          )
-        }
-
-        const b = bizData[0]
-        sendSubscriptionActivation({
-          businessName: b.business_name,
-          ownerName: b.owner_name || 'Business Owner',
-          ownerEmail: b.owner_email || b.contact_email,
-          planName: b.plan || 'N/A',
-          activationDate: new Date().toLocaleDateString(),
-          expiryDate: b.current_period_end ? new Date(b.current_period_end).toLocaleDateString() : 'N/A',
-          amount: b.amount_paid,
-          businessId: id,
-        }).catch(err => console.error('Failed to send subscription activation email:', err.message))
-
-        sendAdminSubscriptionActivation({
-          businessName: b.business_name,
-          ownerName: b.owner_name || 'Business Owner',
-          ownerEmail: b.owner_email || b.contact_email,
-          planName: b.plan || 'N/A',
-          amount: b.amount_paid,
-          businessId: id,
-        }).catch(err => console.error('Failed to send admin subscription activation email:', err.message))
-      }
 
       if (action === 'suspend' && bizData.length) {
         const b = bizData[0]
@@ -763,26 +707,20 @@ export async function subscriptionSummary(req, res) {
 
 export async function updateSubscriptionAdmin(req, res) {
   const { id } = req.params
-  const { action, plan, billingCycle } = req.body // action: cancel | reactivate | change
+  const { action, plan, billingCycle } = req.body
   try {
     let sql, params
     if (action === 'cancel') {
       sql = `UPDATE subscriptions SET status = 'cancelled', is_active = FALSE, cancelled_at = NOW() WHERE id = $1 RETURNING id`
       params = [id]
-    } else if (action === 'reactivate') {
-      sql = `UPDATE subscriptions SET status = 'active', is_active = TRUE, payment_status = 'verified', cancelled_at = NULL WHERE id = $1 RETURNING id, business_id`
-      params = [id]
     } else if (action === 'change') {
       sql = `UPDATE subscriptions SET plan = COALESCE($2, plan), billing_cycle = COALESCE($3, billing_cycle) WHERE id = $1 RETURNING id`
       params = [id, plan || null, billingCycle || null]
     } else {
-      return res.status(400).json({ error: 'Invalid action. Use cancel, reactivate, or change.' })
+      return res.status(400).json({ error: 'Invalid action. Use cancel or change. Grant unpaid access from the business access controls.' })
     }
     const { rows } = await query(sql, params)
     if (!rows.length) return res.status(404).json({ error: 'Subscription not found.' })
-    if (action === 'reactivate' && rows[0].business_id) {
-      await query('UPDATE businesses SET is_verified = TRUE, unpaid_access_granted = FALSE WHERE id = $1', [rows[0].business_id])
-    }
     await logPlatformActivity({ req, actorName: req.user?.name, action: `Subscription ${action}`, module: 'Subscriptions' })
     res.json({ success: true })
   } catch (error) {

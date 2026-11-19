@@ -11,6 +11,7 @@ import { AuditLogProvider } from './context/AuditLogContext'
 import { AuthProvider } from './context/AuthContext'
 import { ToastProvider } from './context/ToastContext'
 import './styles.css'
+import './styles/mobile.css'
 
 const openExternalLinkInEdge = (href) => {
   const normalizedHref = href.startsWith('http://') || href.startsWith('https://') ? href : `https://${href}`

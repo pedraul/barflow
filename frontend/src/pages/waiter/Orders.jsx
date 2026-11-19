@@ -1,14 +1,19 @@
+import { usePreferences } from '../../context/PreferencesContext'
 import React, { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import * as api from '../../api/endpoints'
 import { useOrders } from '../../context/OrdersContext'
 import { useAuth } from '../../context/AuthContext'
 import OrderRestockModal from '../../components/OrderRestockModal'
 import AddItemsToOrderModal from '../../components/AddItemsToOrderModal'
+import { getOrderLocation } from '../../utils/orderDisplay'
 
 export default function WaiterOrders() {
+  const { t } = usePreferences()
   const [orders, setOrders] = useState([])
+  const [readyOrders, setReadyOrders] = useState([])
   const navigate = useNavigate()
+  const location = useLocation()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [delivering, setDelivering] = useState(null)
@@ -16,7 +21,7 @@ export default function WaiterOrders() {
   const [addItemsOrder, setAddItemsOrder] = useState(null)
   const [refunding, setRefunding] = useState(null)
   const [refundMsg, setRefundMsg] = useState(null)
-  const [activeTab, setActiveTab] = useState('all')
+  const [activeTab, setActiveTab] = useState(location.state?.orderFilter || 'my')
   const { trackOrder } = useOrders()
   const { user } = useAuth()
   const currentWaiterId = user?.id
@@ -36,6 +41,14 @@ export default function WaiterOrders() {
       const allOrders = Array.from(seen.values()).filter((o) => o.status !== 'Cancelled')
       allOrders.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
       setOrders(allOrders)
+
+      const readyFromStations = new Map()
+      for (const order of [...kitchen, ...bar]) {
+        if (String(order.status || '').trim().toLowerCase() === 'ready') {
+          readyFromStations.set(order.id, order)
+        }
+      }
+      setReadyOrders(Array.from(readyFromStations.values()).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)))
       setError(null)
     } catch (err) {
       setError(err.message)
@@ -52,10 +65,12 @@ export default function WaiterOrders() {
   const myOrders = orders.filter((o) => o.waiterId === currentWaiterId)
   const myPaidOrders = myOrders.filter((o) => o.status === 'Paid')
   const myActiveOrders = myOrders.filter((o) => isUnpaidStatus(o.status))
-
-  const displayOrders = activeTab === 'paid' ? myPaidOrders
+  const displayOrders = activeTab === 'ready' ? readyOrders
+    : activeTab === 'paid' ? myPaidOrders
     : activeTab === 'my' ? myOrders
-    : orders
+    : activeTab === 'open' ? myOrders.filter((order) => String(order.status || '').trim().toLowerCase() === 'open')
+    : activeTab === 'served' ? myOrders.filter((order) => String(order.status || '').trim().toLowerCase() === 'served')
+    : myOrders
 
   useEffect(() => {
     loadOrders()
@@ -80,14 +95,14 @@ export default function WaiterOrders() {
       }
       loadOrders()
     } catch (err) {
-      alert('Error delivering order: ' + err.message)
+      alert(t("Error delivering order:") + ' ' + t(err.message))
     } finally {
       setDelivering(null)
     }
   }
 
   const handleRefund = async (order) => {
-    if (!window.confirm(`Refund ${formatCurrency(order.total)} for order ${formatOrderNumber(order.orderNumber)} back to the client's phone?`)) return
+    if (!window.confirm(t("Refund") + " " + formatCurrency(order.total) + " " + t("for order") + " " + formatOrderNumber(order.orderNumber) + " " + t("back to the client's phone?"))) return
     setRefunding(order.id)
     setRefundMsg(null)
     try {
@@ -96,10 +111,10 @@ export default function WaiterOrders() {
         amount: order.total,
         reason: 'Refunded by waiter',
       })
-      setRefundMsg(`Refund of ${formatCurrency(order.total)} for order ${formatOrderNumber(order.orderNumber)} sent back to the client's phone.`)
+      setRefundMsg(t("Refund of") + " " + formatCurrency(order.total) + " " + t("for order") + " " + formatOrderNumber(order.orderNumber) + " " + t("sent back to the client's phone."))
       loadOrders()
     } catch (err) {
-      alert('Error refunding order: ' + err.message)
+      alert(t("Error refunding order:") + ' ' + t(err.message))
     } finally {
       setRefunding(null)
     }
@@ -109,31 +124,31 @@ export default function WaiterOrders() {
     <div className="page waiter-orders">
       <div className="user-page-heading">
         <div>
-          <p className="eyebrow">Waiter workspace</p>
-          <h1>My Orders</h1>
-          <p>View and manage your open orders, or pick up ready orders for delivery.</p>
+          <p className="eyebrow">{t("Waiter workspace")}</p>
+          <h1>{t("My Orders")}</h1>
+          <p>{t("View and manage your open orders, or pick up ready orders for delivery.")}</p>
         </div>
       </div>
 
-      {error && <div className="subscription-lock" style={{ padding: '12px' }}>Error: {error}</div>}
+      {error && <div className="subscription-lock" style={{ padding: '12px' }}>{t("Error:")}{' '}{t(error)}</div>}
       {refundMsg && <div className="subscription-lock" style={{ padding: '12px', background: '#e7f5ff', color: '#004085' }}>{refundMsg}</div>}
 
       {loading && orders.length === 0 ? (
-        <div className="emptyState" style={{ padding: '60px', textAlign: 'center', color: '#6c757d' }}>
-          Loading orders...
-        </div>
+        <div className="emptyState" style={{ padding: '60px', textAlign: 'center', color: '#6c757d' }}>{t("Loading orders...")}</div>
       ) : orders.length === 0 ? (
         <div className="emptyState" style={{ padding: '60px', textAlign: 'center', color: '#6c757d' }}>
           <div style={{ fontSize: '48px', marginBottom: '12px' }}>📋</div>
-          <h2 style={{ margin: '0 0 8px' }}>No orders yet</h2>
-          <p>Create a new order from the New Order page.</p>
+          <h2 style={{ margin: '0 0 8px' }}>{t("No orders yet")}</h2>
+          <p>{t("Create a new order from the New Order page.")}</p>
         </div>
       ) : (
         <>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-            <button onClick={() => setActiveTab('all')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${activeTab === 'all' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}>All Orders</button>
-            <button onClick={() => setActiveTab('my')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${activeTab === 'my' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}>My Orders ({myOrders.length})</button>
-            <button onClick={() => setActiveTab('paid')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${activeTab === 'paid' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}>Paid by Operator ({myPaidOrders.length})</button>
+            <button onClick={() => setActiveTab('my')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${activeTab === 'my' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}>{t("My Orders (")}{myOrders.length})</button>
+            <button onClick={() => setActiveTab('ready')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${activeTab === 'ready' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700'}`}>{t("Ready order pickup (")}{readyOrders.length})</button>
+            <button onClick={() => setActiveTab('open')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${activeTab === 'open' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}>{t("Open / pending")}</button>
+            <button onClick={() => setActiveTab('served')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${activeTab === 'served' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}>{t("Served")}</button>
+            <button onClick={() => setActiveTab('paid')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${activeTab === 'paid' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}>{t("Paid by Operator (")}{myPaidOrders.length})</button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
           {displayOrders.map((order) => {
@@ -157,12 +172,10 @@ export default function WaiterOrders() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                   <span style={{ fontSize: '24px', fontWeight: '700', color: '#1a1a2e' }}>{formatOrderNumber(order.orderNumber)}</span>
                   <span style={{ backgroundColor: '#e9ecef', padding: '6px 12px', borderRadius: '6px', fontSize: '14px', fontWeight: '600' }}>
-                    Table {order.tableNumber}
+                    {getOrderLocation(order)}
                   </span>
                   {isPaidByOperator && (
-                    <span style={{ backgroundColor: '#dbeafe', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', color: '#1e40af' }}>
-                      Paid by Operator
-                    </span>
+                    <span style={{ backgroundColor: '#dbeafe', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', color: '#1e40af' }}>{t("Paid by Operator")}</span>
                   )}
                 </div>
 
@@ -180,7 +193,7 @@ export default function WaiterOrders() {
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', fontSize: '14px', fontWeight: 600 }}>
-                  <span>Total: {formatCurrency(order.total)}</span>
+                  <span>{t("Total:")}{' '}{formatCurrency(order.total)}</span>
                   <span style={{ color: statusColor }}>{order.status}</span>
                 </div>
 
@@ -200,9 +213,7 @@ export default function WaiterOrders() {
                         cursor: 'pointer',
                       }}
                       onClick={() => setRestockOrder(order)}
-                    >
-                      Return Items
-                    </button>
+                    >{t("Return Items")}</button>
                   )}
                   {canAddItems && (
                     <button
@@ -219,9 +230,7 @@ export default function WaiterOrders() {
                         cursor: 'pointer',
                       }}
                       onClick={() => setAddItemsOrder(order)}
-                    >
-                      Add Items
-                    </button>
+                    >{t("Add Items")}</button>
                   )}
                   {canDeliver && (
                     <button
@@ -240,7 +249,7 @@ export default function WaiterOrders() {
                       onClick={() => handleDeliver(order.id)}
                       disabled={delivering === order.id}
                     >
-                      {delivering === order.id ? 'Delivering...' : '✓ Pick up & deliver'}
+                      {delivering === order.id ? t("Delivering...") : t("✓ Pick up & deliver")}
                     </button>
                   )}
                   {order.status === 'Served' && (
@@ -270,9 +279,7 @@ export default function WaiterOrders() {
                           returnTo: '/waiter/orders',
                         },
                       })}
-                    >
-                      Pay
-                    </button>
+                    >{t("Pay")}</button>
                   )}
                   {order.status === 'Paid' && (
                     <button
@@ -291,7 +298,7 @@ export default function WaiterOrders() {
                       onClick={() => handleRefund(order)}
                       disabled={refunding === order.id}
                     >
-                      {refunding === order.id ? 'Refunding...' : '↩ Refund'}
+                      {refunding === order.id ? t("Refunding...") : t("↩ Refund")}
                     </button>
                   )}
                 </div>

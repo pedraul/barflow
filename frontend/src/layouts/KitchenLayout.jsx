@@ -2,14 +2,17 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../components/Layout'
 import {
-  ChefHat, User, MessageSquare, LogOut
+  ChefHat, User, MessageSquare, LogOut, ListOrdered
 } from 'lucide-react'
 import { SidebarLink } from '../components/ui/SharedComponents'
 import { useAuth } from '../context/AuthContext'
+import { usePreferences } from '../context/PreferencesContext'
+import GrantedStaffLinks from '../components/GrantedStaffLinks'
 
 const KITCHEN_LINKS = [
   { section: 'Kitchen', items: [
     { path: '/kitchen', label: 'Kitchen display', icon: <ChefHat size={18} /> },
+    { path: '/kitchen/orders', label: 'All orders', icon: <ListOrdered size={18} /> },
   ]},
   { section: 'Other', items: [
     { path: '/account', label: 'My account', icon: <User size={18} /> },
@@ -19,6 +22,7 @@ const KITCHEN_LINKS = [
 export default function KitchenLayout({ children }) {
   const navigate = useNavigate()
   const { logout } = useAuth()
+  const { t } = usePreferences()
 
   const handleLogout = async () => {
     await logout()
@@ -30,7 +34,7 @@ export default function KitchenLayout({ children }) {
       <nav className="flex-1 overflow-y-auto p-4 space-y-6 text-sm">
         {KITCHEN_LINKS.map((section) => (
           <div key={section.section}>
-            <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">{section.section}</p>
+            <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">{t(section.section)}</p>
             <div className="space-y-1">
               {section.items.map((item) => (
                 <SidebarLink key={item.path} icon={item.icon} label={item.label} onClick={() => navigate(item.path)} />
@@ -38,17 +42,18 @@ export default function KitchenLayout({ children }) {
             </div>
           </div>
         ))}
+        <GrantedStaffLinks />
       </nav>
       <div className="p-4 mt-auto">
         <button type="button" className="sidebar-link sidebar-logout" onClick={handleLogout}>
-          <LogOut size={18} /> Logout
+          <LogOut size={18} /> {t('Logout')}
         </button>
       </div>
     </div>
   )
 
   return <Layout sidebar={sidebar} logoutButton={
-    <button type="button" className="mobile-logout-btn" onClick={handleLogout} title="Logout">
+    <button type="button" className="mobile-logout-btn" onClick={handleLogout} title={t('Logout')}>
       <LogOut size={20} />
     </button>
   }>{children}</Layout>

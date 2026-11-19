@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import * as api from '../api/endpoints'
+import { usePreferences } from '../context/PreferencesContext'
 
 const REASONS = [
   'Customer changed mind',
@@ -11,6 +12,7 @@ const REASONS = [
 ]
 
 export default function OrderRestockModal({ order, onClose, onSuccess }) {
+  const { t } = usePreferences()
   const [restocks, setRestocks] = useState(
     (order.items || []).map((item) => ({
       productId: item.productId,
@@ -43,11 +45,11 @@ export default function OrderRestockModal({ order, onClose, onSuccess }) {
     e.preventDefault()
     setFeedback(null)
     if (!hasRestock) {
-      setFeedback({ type: 'error', text: 'Select at least one item quantity to restock.' })
+      setFeedback({ type: 'error', text: t('Select at least one item quantity to restock.') })
       return
     }
     if (!selectedReason || !selectedReason.trim()) {
-      setFeedback({ type: 'error', text: 'Reason for restocking is required.' })
+      setFeedback({ type: 'error', text: t('Reason for restocking is required.') })
       return
     }
 
@@ -65,13 +67,13 @@ export default function OrderRestockModal({ order, onClose, onSuccess }) {
         reason: selectedReason.trim(),
       })
 
-      setFeedback({ type: 'success', text: 'Restock processed successfully.' })
+      setFeedback({ type: 'success', text: t('Restock processed successfully.') })
       setTimeout(() => {
         onSuccess?.()
         onClose()
       }, 800)
     } catch (err) {
-      setFeedback({ type: 'error', text: err.message || 'Failed to restock.' })
+      setFeedback({ type: 'error', text: err.message || t('Failed to restock.') })
     } finally {
       setSubmitting(false)
     }
@@ -79,8 +81,8 @@ export default function OrderRestockModal({ order, onClose, onSuccess }) {
 
   return (
     <div className="modal-backdrop" role="presentation" onClick={onClose}>
-      <div className="confirm-dialog" role="dialog" aria-modal="true" aria-label="Restock order items" onClick={(event) => event.stopPropagation()}>
-        <h2>Restock Items — Order {order.orderNumber ?? order.id}</h2>
+      <div className="confirm-dialog" role="dialog" aria-modal="true" aria-label={t('Restock order items')} onClick={(event) => event.stopPropagation()}>
+        <h2>{t('Restock Items — Order')} {order.orderNumber ?? order.id}</h2>
 
         {feedback && (
           <div style={{
@@ -99,19 +101,19 @@ export default function OrderRestockModal({ order, onClose, onSuccess }) {
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: 12 }}>
             <p style={{ fontSize: 13, color: '#4a5568', marginBottom: 8 }}>
-              Select the quantity to return to stock for each item. Only orders in Open or Preparing status can be modified.
+              {t('Select the quantity to return to stock for each item. Only orders in')} {t('Open')} {t('or')} {t('Preparing')} {t('status can be modified.')}
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {restocks.map((item) => (
                 <div key={item.productId} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid #e2e8f0' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <strong style={{ display: 'block', fontSize: 14 }}>{item.name}</strong>
-                    <span style={{ fontSize: 12, color: '#718096' }}>Ordered: {item.currentQty}</span>
+                    <span style={{ fontSize: 12, color: '#718096' }}>{t('Ordered:')} {item.currentQty}</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <button type="button" onClick={() => changeRestockQty(item.productId, -1)} style={qtyBtn}>−</button>
+                    <button type="button" aria-label={t('Decrease quantity')} onClick={() => changeRestockQty(item.productId, -1)} style={qtyBtn}>−</button>
                     <span style={{ minWidth: 20, textAlign: 'center', fontWeight: 600 }}>{item.quantityToRestock}</span>
-                    <button type="button" onClick={() => changeRestockQty(item.productId, 1)} style={qtyBtn}>+</button>
+                    <button type="button" aria-label={t('Increase quantity')} onClick={() => changeRestockQty(item.productId, 1)} style={qtyBtn}>+</button>
                   </div>
                 </div>
               ))}
@@ -119,11 +121,11 @@ export default function OrderRestockModal({ order, onClose, onSuccess }) {
           </div>
 
           <div style={{ marginBottom: 12 }}>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Reason for restocking</label>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{t('Reason for restocking')}</label>
             <select value={reason} onChange={(e) => setReason(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #cbd5e0', fontSize: 14 }}>
-              <option value="">Select a reason</option>
+              <option value="">{t('Select a reason')}</option>
               {REASONS.map((r) => (
-                <option key={r} value={r}>{r}</option>
+                <option key={r} value={r}>{t(r)}</option>
               ))}
             </select>
             {reason === 'Other' && (
@@ -131,7 +133,7 @@ export default function OrderRestockModal({ order, onClose, onSuccess }) {
                 type="text"
                 value={customReason}
                 onChange={(e) => setCustomReason(e.target.value)}
-                placeholder="Enter reason"
+                placeholder={t('Enter reason')}
                 style={{ width: '100%', marginTop: 6, padding: '8px 10px', borderRadius: 6, border: '1px solid #cbd5e0', fontSize: 14 }}
                 required
               />
@@ -140,10 +142,10 @@ export default function OrderRestockModal({ order, onClose, onSuccess }) {
 
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button type="button" className="secondary-action" style={{ padding: '8px 14px' }} onClick={onClose} disabled={submitting}>
-              Cancel
+              {t('Cancel')}
             </button>
             <button type="submit" className="pay-action" style={{ padding: '8px 14px' }} disabled={submitting || !hasRestock}>
-              {submitting ? 'Processing...' : 'Confirm Restock'}
+              {submitting ? t('Processing...') : t('Confirm Restock')}
             </button>
           </div>
         </form>

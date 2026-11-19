@@ -2,12 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { fetchMenu } from '../api/endpoints'
 import { addItemsToExistingOrder } from '../api/endpoints'
 import { useAuth } from '../context/AuthContext'
+import { usePreferences } from '../context/PreferencesContext'
 import { ArrowLeft, Search, ShoppingCart } from 'lucide-react'
 
 const money = (value) => `${Number(value || 0).toLocaleString('en-RW')} RWF`
 
 export default function AddItemsToOrderModal({ order, onClose, onSuccess }) {
   const { user } = useAuth()
+  const { t } = usePreferences()
   const [menu, setMenu] = useState(null)
   const [selectedCategory, setSelectedCategory] = useState(null)
   const [search, setSearch] = useState('')
@@ -68,7 +70,7 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
     setFeedback(null)
 
     if (!hasAdditions) {
-      setFeedback({ type: 'error', text: 'Select at least one item to add.' })
+      setFeedback({ type: 'error', text: t('Select at least one item to add.') })
       return
     }
 
@@ -88,13 +90,13 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
 
       await addItemsToExistingOrder(order.id, { items: itemsToAdd })
 
-      setFeedback({ type: 'success', text: 'Items added to order successfully.' })
+      setFeedback({ type: 'success', text: t('Items added to order successfully.') })
       setTimeout(() => {
         onSuccess?.()
         onClose()
       }, 800)
     } catch (err) {
-      setFeedback({ type: 'error', text: err.response?.data?.error || err.message || 'Failed to add items.' })
+      setFeedback({ type: 'error', text: err.response?.data?.error || err.message || t('Failed to add items.') })
     } finally {
       setSubmitting(false)
     }
@@ -102,8 +104,8 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
 
   return (
     <div className="modal-backdrop" role="presentation" onClick={onClose}>
-      <div className="confirm-dialog" role="dialog" aria-modal="true" aria-label="Add items to order" onClick={(event) => event.stopPropagation()} style={{ maxWidth: '700px', width: '95%', maxHeight: '90vh', overflowY: 'auto' }}>
-        <h2>Add Items — Order {order.orderNumber ?? order.id}</h2>
+      <div className="confirm-dialog" role="dialog" aria-modal="true" aria-label={t('Add items to order')} onClick={(event) => event.stopPropagation()} style={{ maxWidth: '700px', width: '95%', maxHeight: '90vh', overflowY: 'auto' }}>
+        <h2>{t('Add Items — Order')} {order.orderNumber ?? order.id}</h2>
 
         {feedback && (
           <div style={{
@@ -126,7 +128,7 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={selectedCategory ? `Search in ${selectedCategory}...` : 'Search all items...'}
+              placeholder={selectedCategory ? `${t('Search in')} ${selectedCategory}...` : t('Search all items...')}
               style={{ width: '100%', padding: '8px 10px 8px 34px', borderRadius: 6, border: '1px solid #cbd5e0', fontSize: 14, boxSizing: 'border-box' }}
             />
           </div>
@@ -141,15 +143,15 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
                   fontSize: 13, fontWeight: 600, cursor: 'pointer', marginBottom: 10,
                 }}
               >
-                <ArrowLeft size={16} /> Back to categories
+                <ArrowLeft size={16} /> {t('Back to categories')}
               </button>
               <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 4px' }}>{selectedCategory}</h3>
-              <p style={{ fontSize: 12, color: '#64748b', marginBottom: 10 }}>Select the items to add to this order</p>
+              <p style={{ fontSize: 12, color: '#64748b', marginBottom: 10 }}>{t('Select the items to add to this order')}</p>
 
               <div style={{ maxHeight: 300, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8, marginBottom: 12 }}>
                 {(search ? searchItems : categoryItems).length === 0 ? (
                   <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#94a3b8', padding: 20, fontSize: 13 }}>
-                    {search ? `No items found matching "${search}"` : 'No items in this category.'}
+                    {search ? `${t('No items found matching')} "${search}"` : t('No items in this category.')}
                   </p>
                 ) : (search ? searchItems : categoryItems).map((item) => {
                   const qty = additions[item.id] || 0
@@ -164,17 +166,17 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
                           <img src={item.imageUrl} alt={item.name} style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
                         </div>
                       ) : (
-                        <div style={{ height: 80, marginBottom: 6, borderRadius: 4, backgroundColor: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#94a3b8' }}>No image</div>
+                        <div style={{ height: 80, marginBottom: 6, borderRadius: 4, backgroundColor: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#94a3b8' }}>{t('No image')}</div>
                       )}
                       <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>{item.name}</div>
                       <div style={{ fontSize: 12, fontWeight: 600, color: '#1e293b', marginBottom: 6 }}>{money(item.price)}</div>
                       {soldOut ? (
-                        <div style={{ fontSize: 11, color: '#ef4444', fontWeight: 600 }}>Sold out</div>
+                        <div style={{ fontSize: 11, color: '#ef4444', fontWeight: 600 }}>{t('Sold out')}</div>
                       ) : (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <button type="button" onClick={() => changeQty(item.id, -1)} style={qtyBtnStyle}>−</button>
+                          <button type="button" aria-label={t('Decrease quantity')} onClick={() => changeQty(item.id, -1)} style={qtyBtnStyle}>−</button>
                           <span style={{ minWidth: 18, textAlign: 'center', fontWeight: 600, fontSize: 13 }}>{qty}</span>
-                          <button type="button" onClick={() => changeQty(item.id, 1)} style={qtyBtnStyle}>+</button>
+                          <button type="button" aria-label={t('Increase quantity')} onClick={() => changeQty(item.id, 1)} style={qtyBtnStyle}>+</button>
                         </div>
                       )}
                     </div>
@@ -185,10 +187,10 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
           ) : search ? (
             /* Search results view */
             <>
-              <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 10 }}>Search Results</h3>
+              <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 10 }}>{t('Search Results')}</h3>
               <div style={{ maxHeight: 300, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8, marginBottom: 12 }}>
                 {searchItems.length === 0 ? (
-                  <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#94a3b8', padding: 20, fontSize: 13 }}>No items found.</p>
+                  <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#94a3b8', padding: 20, fontSize: 13 }}>{t('No items found.')}</p>
 ) : searchItems.map((item) => {
                    const qty = additions[item.id] || 0
                    const soldOut = Number(item.quantity) <= 0
@@ -202,17 +204,17 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
                            <img src={item.imageUrl} alt={item.name} style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
                          </div>
                        ) : (
-                         <div style={{ height: 80, marginBottom: 6, borderRadius: 4, backgroundColor: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#94a3b8' }}>No image</div>
+                         <div style={{ height: 80, marginBottom: 6, borderRadius: 4, backgroundColor: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#94a3b8' }}>{t('No image')}</div>
                        )}
                        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>{item.name}</div>
                       <div style={{ fontSize: 12, fontWeight: 600, color: '#1e293b', marginBottom: 6 }}>{money(item.price)}</div>
                       {soldOut ? (
-                        <div style={{ fontSize: 11, color: '#ef4444', fontWeight: 600 }}>Sold out</div>
+                        <div style={{ fontSize: 11, color: '#ef4444', fontWeight: 600 }}>{t('Sold out')}</div>
                       ) : (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <button type="button" onClick={() => changeQty(item.id, -1)} style={qtyBtnStyle}>−</button>
+                          <button type="button" aria-label={t('Decrease quantity')} onClick={() => changeQty(item.id, -1)} style={qtyBtnStyle}>−</button>
                           <span style={{ minWidth: 18, textAlign: 'center', fontWeight: 600, fontSize: 13 }}>{qty}</span>
-                          <button type="button" onClick={() => changeQty(item.id, 1)} style={qtyBtnStyle}>+</button>
+                          <button type="button" aria-label={t('Increase quantity')} onClick={() => changeQty(item.id, 1)} style={qtyBtnStyle}>+</button>
                         </div>
                       )}
                     </div>
@@ -223,8 +225,8 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
           ) : (
             /* Category grid view */
             <>
-              <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Categories</h3>
-              <p style={{ fontSize: 12, color: '#64748b', marginBottom: 10 }}>Select a category to browse items</p>
+              <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>{t('Categories')}</h3>
+              <p style={{ fontSize: 12, color: '#64748b', marginBottom: 10 }}>{t('Select a category to browse items')}</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 8, marginBottom: 12 }}>
                 {categories.map((group) => (
                   <button
@@ -244,11 +246,11 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
                     onMouseOut={(e) => e.currentTarget.style.borderColor = '#e2e8f0'}
                   >
                     <div style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>{group.name}</div>
-                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{group.items?.length || 0} items</div>
+                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{group.items?.length || 0} {t('items')}</div>
                   </button>
                 ))}
                 {categories.length === 0 && (
-                  <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#94a3b8', padding: 20, fontSize: 13 }}>No categories available.</p>
+                  <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#94a3b8', padding: 20, fontSize: 13 }}>{t('No categories available.')}</p>
                 )}
               </div>
             </>
@@ -262,7 +264,7 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
               fontSize: 14, fontWeight: 700,
             }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <ShoppingCart size={16} /> {additionsCount} item(s) to add
+                <ShoppingCart size={16} /> {additionsCount} {t('item(s) to add')}
               </span>
               <span style={{ color: '#d97706' }}>{money(totalAdditions)}</span>
             </div>
@@ -271,10 +273,10 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
           {/* Actions */}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', borderTop: '1px solid #e2e8f0', paddingTop: 12 }}>
             <button type="button" className="secondary-action" style={{ padding: '8px 14px' }} onClick={onClose} disabled={submitting}>
-              Cancel
+              {t('Cancel')}
             </button>
             <button type="submit" className="pay-action" style={{ padding: '8px 14px' }} disabled={submitting || !hasAdditions}>
-              {submitting ? 'Adding...' : `Add to Order${hasAdditions ? ` (${additionsCount})` : ''}`}
+              {submitting ? t('Adding...') : `${t('Add to Order')}${hasAdditions ? ` (${additionsCount})` : ''}`}
             </button>
           </div>
         </form>

@@ -5,6 +5,7 @@ import roleMiddleware from '../middleware/roleMiddleware.js'
 import { logAudit, getClientIp } from '../utils/audit.js'
 import { getBranchContext } from '../middleware/branchContext.js'
 import { getFinancialSummary } from '../services/financialSummaryService.js'
+import { createOutboundPayoutRequest } from '../services/outboundPayoutService.js'
 
 const router = Router()
 
@@ -111,6 +112,7 @@ router.get('/summary', ...accountantOnly, async (req, res) => {
 
     res.json({
       revenue,
+      refunds: financialSummary.refunds,
       expenses,
       profit,
       cashInHand,
@@ -155,10 +157,11 @@ router.get('/transfers', ...accountantOnly, async (req, res) => {
   try {
     const { businessId, branchId } = await getBranchContext(req)
     const { rows } = await query(
-      `SELECT id, to_phone AS phone, amount, description AS purpose, status, created_at
+      `SELECT id, to_phone AS phone, amount, description AS purpose, status, created_at,
+              payout_method, payout_reference, provider_status
        FROM transfers
        WHERE business_id = $1 AND branch_id = $2
-       ORDER BY created_at DESC`,
+       ORDER BY o.created_at DESC`,
       [businessId, branchId]
     )
     res.json(
@@ -169,6 +172,9 @@ router.get('/transfers', ...accountantOnly, async (req, res) => {
         amount: Number(r.amount),
         purpose: r.purpose,
         status: r.status,
+        method: r.payout_method,
+        payoutReference: r.payout_reference || null,
+        providerStatus: r.provider_status || null,
         date: new Date(r.created_at).toLocaleString(),
       }))
     )
@@ -179,21 +185,22 @@ router.get('/transfers', ...accountantOnly, async (req, res) => {
 
 // POST /api/accountant/transfers
 router.post('/transfers', ...accountantOnly, async (req, res) => {
-  const { name, phone, amount, purpose } = req.body
+  const { name, phone, amount, purpose, method } = req.body
   if (!name || !phone || !amount || !purpose) {
     return res.status(400).json({ error: 'All fields are required.' })
   }
   try {
+    const payout = createOutboundPayoutRequest({ phone, amount, method })
     const scope = await getBranchContext(req, { requestedBranchId: req.body.branchId, allowOwnerAll: false })
     const { rows } = await query(
-      `INSERT INTO transfers (business_id, branch_id, from_user, to_phone, amount, description, status)
-       VALUES ($1, $2, $3, $4, $5, $6, 'pending') RETURNING id`,
-      [scope.businessId, scope.branchId, req.user?.id, phone, amount, `${name}: ${purpose}`]
+      `INSERT INTO transfers (business_id, branch_id, from_user, to_phone, amount, description, status, payout_method)
+       VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7) RETURNING id`,
+      [scope.businessId, scope.branchId, req.user?.id, payout.phone, payout.amount, `${name}: ${purpose}`, payout.method]
     )
 await logAudit({
        userId: req.user?.id,
        actorName: req.user?.full_name || req.user?.email || 'Accountant',
-       action: `Created transfer of ${amount} to ${name} (${phone})`,
+       action: `Created ${payout.method} transfer of ${payout.amount} to ${name} (${payout.phone})`,
        targetModule: 'Transfers',
        ipAddress: getClientIp(req),
        businessId: req.user?.businessId,
@@ -352,9 +359,11 @@ router.get('/sales', ...accountantOnly, async (req, res) => {
       where += ` AND created_at <= $${params.length}`
     }
     const { rows } = await query(
-      `SELECT id, order_number, table_name, total_amount, status, source, created_at
-       FROM orders
-       ${where}
+      `SELECT o.id, o.order_number, o.table_number, o.table_name, o.total_amount, o.status, o.source, o.created_at,
+              u.full_name AS waiter_name
+       FROM orders o
+       LEFT JOIN users u ON u.id = o.user_id
+       ${where.replace(/\b(status|business_id|branch_id|created_at)\b/g, 'o.$1')}
        ORDER BY created_at DESC`,
       params
     )
@@ -362,7 +371,12 @@ router.get('/sales', ...accountantOnly, async (req, res) => {
       rows.map((r) => ({
         id: r.id,
         orderNumber: r.order_number,
-        table: r.table_name,
+        tableNumber: r.table_number,
+        table: r.table_number != null
+          ? `Table ${r.table_number}`
+          : r.source === 'waiter' && /^(walk[ -]?in)( customer)?$/i.test(String(r.table_name || '').trim()) && r.waiter_name
+            ? `Waiter: ${r.waiter_name}`
+            : r.table_name || 'Walk-in',
         total: Number(r.total_amount),
         status: r.status,
         source: r.source,
@@ -404,11 +418,12 @@ router.get('/purchases', ...accountantOnly, async (req, res) => {
 router.get('/taxes', ...accountantOnly, async (req, res) => {
   try {
     const { businessId, branchId } = await getBranchContext(req)
+    const financialSummary = await getFinancialSummary(businessId, branchId)
     const { rows: vatRows } = await query(
-      `SELECT COALESCE(SUM(total_amount), 0) AS total_sales,
-              COALESCE(SUM(tax_amount), 0) AS vat_output,
-              COUNT(*) FILTER (WHERE status IN ('Paid', 'Served')) AS reconciled_count
-       FROM orders WHERE business_id = $1 AND branch_id = $2`,
+      `SELECT COUNT(*) AS completed_count
+       FROM orders
+       WHERE business_id = $1 AND branch_id = $2
+         AND LOWER(BTRIM(status::text)) IN ('paid', 'served')`,
       [businessId, branchId]
     )
     const { rows: expenseRows } = await query(
@@ -419,31 +434,33 @@ router.get('/taxes', ...accountantOnly, async (req, res) => {
     const { rows: vatOrderRows } = await query(
       `SELECT id, order_number, table_name, total_amount, tax_amount, status, created_at
        FROM orders
-       WHERE tax_amount > 0 AND business_id = $1 AND branch_id = $2
+       WHERE business_id = $1 AND branch_id = $2
+         AND LOWER(BTRIM(status::text)) IN ('paid', 'served')
+         AND COALESCE(tax_amount, total_amount * 0.18) > 0
        ORDER BY created_at DESC
        LIMIT 50`,
       [businessId, branchId]
     )
 
-    const totalSales = Number(vatRows[0]?.total_sales || 0)
-    const vatOutput = Number(vatRows[0]?.vat_output || 0)
+    const totalSales = financialSummary.totalSales
+    const vatOutput = financialSummary.vatTotal
     const totalExpenses = Number(expenseRows[0]?.total_expenses || 0)
-    const vatInput = totalExpenses * 0.18
-    const vatPayable = vatOutput - vatInput
 
     res.json({
       vatCollected: vatOutput,
-      vatPaid: vatInput,
-      vatPayable: vatPayable > 0 ? vatPayable : 0,
+      // No purchase/input VAT is recorded in the current database schema.
+      vatPaid: null,
+      vatPayable: null,
+      vatInputTracked: false,
       totalSales,
       totalExpenses,
-      reconciledOrders: Number(vatRows[0]?.reconciled_count || 0),
+      reconciledOrders: Number(vatRows[0]?.completed_count || 0),
       transactions: vatOrderRows.map((r) => ({
         id: r.id,
         orderNumber: r.order_number,
         table: r.table_name,
         total: Number(r.total_amount),
-        vat: Number(r.tax_amount),
+        vat: Number(r.tax_amount ?? Number(r.total_amount) * 0.18),
         status: r.status,
         date: new Date(r.created_at).toLocaleString(),
       })),

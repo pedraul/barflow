@@ -4,10 +4,12 @@ import { useOwner } from '../context/OwnerContext'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, CreditCard, Smartphone, ArrowLeftRight, Users,
-  TrendingUp, QrCode, UserCheck, FileText, Settings, LogOut, ArrowLeft
+  TrendingUp, QrCode, UserCheck, FileText, Settings, LogOut, ArrowLeft, Clock, ShieldCheck
 } from 'lucide-react'
 import { SidebarLink } from '../components/ui/SharedComponents'
 import BranchBadge from '../components/BranchBadge'
+import BackButton from '../components/BackButton'
+import { usePreferences } from '../context/PreferencesContext'
 
 const OWNER_LINKS = [
   { section: 'Overview', items: [
@@ -15,6 +17,7 @@ const OWNER_LINKS = [
   ]},
   { section: 'Orders', items: [
     { path: '/owner/qr-orders', label: 'QR Orders', icon: <QrCode size={18} />, perm: null },
+    { path: '/owner/table-qr', label: 'Tables & QR Codes', icon: <QrCode size={18} />, perm: null },
     { path: '/owner/waiter-orders', label: 'Waiter Orders', icon: <UserCheck size={18} />, perm: null },
   ]},
   { section: 'Finance', items: [
@@ -24,6 +27,8 @@ const OWNER_LINKS = [
   ]},
   { section: 'Users & Access', items: [
     { path: '/owner/users', label: 'Users', icon: <Users size={18} />, perm: 'canManageUsers' },
+    { path: '/owner/shifts', label: 'Shifts & performance', icon: <Clock size={18} />, perm: null },
+    { path: '/owner/access', label: 'Staff access', icon: <ShieldCheck size={18} />, perm: null },
   ]},
   { section: 'Reports & Logs', items: [
     // Audit logs moved into System Settings
@@ -38,10 +43,38 @@ const ALLOWED_WITHOUT_SUBSCRIPTION = ['/owner/subscription', '/owner/renew', '/s
 
 export default function OwnerLayout({ children }) {
   const { user, logout, permissions, updateUser } = useAuth()
-  const { fetchSubscription } = useOwner()
+  const { fetchSubscription, fetchBranches, setActiveBranchId } = useOwner()
+  const { t } = usePreferences()
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  // Navigating anywhere collapses the menu so only the chosen page is shown.
+  useEffect(() => { setMobileMenuOpen(false) }, [pathname])
+  const [branchError, setBranchError] = useState('')
+
+  useEffect(() => {
+    if (String(user?.role || '').toLowerCase() !== 'owner') return undefined
+    let active = true
+    fetchBranches()
+      .then((loadedBranches) => {
+        if (!active) return
+        const selectedBranchId = localStorage.getItem('barflow.activeBranchId')
+        if (
+          selectedBranchId &&
+          selectedBranchId !== 'all' &&
+          !loadedBranches.some((branch) => String(branch.id) === selectedBranchId && branch.isActive !== false)
+        ) {
+          setActiveBranchId('all')
+        }
+        setBranchError('')
+      })
+      .catch((error) => {
+        if (!active) return
+        console.error('Failed to load owner branches:', error)
+        setBranchError('Unable to load branch options. Refresh the page or try again later.')
+      })
+    return () => { active = false }
+  }, [user?.role, fetchBranches, setActiveBranchId])
 
   useEffect(() => {
     setMobileMenuOpen(false)
@@ -95,7 +128,7 @@ export default function OwnerLayout({ children }) {
   })
 
   const navLinks = (
-    <nav className="p-4 space-y-6 text-sm" aria-label="Owner navigation">
+    <nav className="p-4 space-y-6 text-sm" aria-label={t('Owner navigation')}>
       {OWNER_LINKS.map((section) => {
         const visibleItems = section.items.filter((item) => {
           if (user?.role === 'owner') return true
@@ -107,7 +140,7 @@ export default function OwnerLayout({ children }) {
         if (!visibleItems.length) return null
         return (
           <div key={section.section}>
-            <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">{section.section}</p>
+            <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">{t(section.section)}</p>
             <div className="space-y-1">
               {visibleItems.map((item) => {
                 const allowed = ALLOWED_WITHOUT_SUBSCRIPTION.includes(item.path) || hasActiveSubscription
@@ -116,7 +149,7 @@ export default function OwnerLayout({ children }) {
                   <SidebarLink
                     key={item.path || item.label}
                     icon={item.icon}
-                    label={item.label}
+                    label={t(item.label)}
                     active={isActive}
                     onClick={() => {
                       if (item.onClick) {
@@ -141,7 +174,7 @@ export default function OwnerLayout({ children }) {
   if (checking) {
     return (
       <div className="flex flex-col min-h-screen">
-        <main className="flex-1 flex items-center justify-center" style={{ color: 'var(--text-4)' }}>Checking subscription status…</main>
+        <main className="flex-1 flex items-center justify-center" style={{ color: 'var(--text-4)' }}>{t('Checking subscription status…')}</main>
       </div>
     )
   }
@@ -163,19 +196,20 @@ export default function OwnerLayout({ children }) {
             />
           )}
 
-          {/* Mobile top bar */}
-          <header className="mobile-topbar">
+          {/* Top bar (phone and computer): menu toggle + back button */}
+          <header className="mobile-topbar app-topbar">
             <button
               type="button"
               className="mobile-menu-button"
               onClick={() => setMobileMenuOpen((prev) => !prev)}
-              aria-label="Toggle navigation"
+              aria-label={t('Toggle navigation')}
             >
               {mobileMenuOpen ? '✕' : '☰'}
             </button>
-            <div className="mobile-brand">BarFlow</div>
+            <BackButton fallback="/owner" />
+            <div className="mobile-brand">{t('BarFlow')}</div>
             <BranchBadge />
-            <button type="button" className="mobile-logout-btn" onClick={handleLogout} title="Logout" style={{ marginLeft: 'auto' }}>
+            <button type="button" className="mobile-logout-btn" onClick={handleLogout} title={t('Logout')} style={{ marginLeft: 'auto' }}>
               <LogOut size={20} />
             </button>
           </header>
@@ -183,58 +217,47 @@ export default function OwnerLayout({ children }) {
       )}
 
       <div className="flex flex-1">
-        {/* Desktop sidebar */}
-        {showSidebar && (
-          <aside className="w-64 bg-[#0B132B] text-slate-400 flex flex-col shrink-0 h-screen sidebar-desktop owner-desktop-sidebar">
-            <div className="flex-1">
-              <div className="p-4 flex items-center justify-between gap-2">
-                <span className="text-sm font-bold text-white">BarFlow</span>
-                <BranchBadge />
-              </div>
-              {navLinks}
-            </div>
-            <div className="p-4 border-t border-slate-800">
-              <button type="button" className="sidebar-link sidebar-logout w-full" onClick={handleLogout}>
-                <LogOut size={18} /> Logout
-              </button>
-            </div>
-          </aside>
-        )}
-
-        {/* Mobile sidebar drawer */}
+        {/* Collapsible navigation drawer (all screen sizes) */}
         {showSidebar && (
           <aside
             className={`owner-sidebar-mobile ${mobileMenuOpen ? 'owner-sidebar-open' : ''}`}
-            onClick={() => setMobileMenuOpen(false)}
+            onClick={(event) => {
+              if (event.target.closest('button, a')) setMobileMenuOpen(false)
+            }}
           >
             <div className="flex-1">
               <div className="p-4 flex items-center justify-between gap-2">
-                <span className="text-sm font-bold text-white">BarFlow</span>
+                <span className="text-sm font-bold text-white">{t('BarFlow')}</span>
                 <BranchBadge />
               </div>
               {navLinks}
             </div>
             <div className="p-4 border-t border-slate-800">
               <button type="button" className="sidebar-link sidebar-logout w-full" onClick={handleLogout}>
-                <LogOut size={18} /> Logout
+                <LogOut size={18} /> {t('Logout')}
               </button>
             </div>
           </aside>
         )}
 
-        <div className={`flex-1 flex flex-col ${showSidebar ? 'owner-main-content' : ''}`}>
+        <div className="flex-1 flex flex-col min-w-0">
+          {branchError && (
+            <div className="px-4 py-2 text-sm text-red-800 bg-red-50 border-b border-red-200" role="alert">
+              {branchError}
+            </div>
+          )}
           {!hasActiveSubscription && user?.unpaidAccessGranted !== true && (
             <div className="subscription-notice" style={{ borderRadius: 0, color: 'var(--warning-text)', background: 'var(--warning-bg)', borderColor: '#fde68a' }}>
-              ⚠ Your subscription is inactive. System features are locked. Please renew your plan to continue.
+              {t('⚠ Your subscription is inactive. System features are locked. Please renew your plan to continue.')}
             </div>
           )}
 
           <main className="flex-1">
             {blocked ? (
               <div className="subscription-lock">
-                <h1>🔒 Feature locked</h1>
-                <p>This section requires an active subscription. Renew your plan to unlock it.</p>
-                <Link to="/login">Back to Login</Link>
+                <h1>{t('🔒 Feature locked')}</h1>
+                <p>{t('This section requires an active subscription. Renew your plan to unlock it.')}</p>
+                <Link to="/login">{t('Back to Login')}</Link>
               </div>
             ) : (
               children

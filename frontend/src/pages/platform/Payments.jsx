@@ -2,13 +2,16 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { CircleDollarSign, Search, Download, RefreshCw, Receipt, Undo2 } from 'lucide-react'
 import { fetchPlatformPayments, fetchPaymentStats, refundPayment, settlePayment } from '../../api/endpoints'
 import { useToast } from '../../context/ToastContext'
+import { usePreferences } from '../../context/PreferencesContext'
 
 const CURRENCY = 'RWF'
 const formatCurr = (v) => new Intl.NumberFormat('en-RW', { style: 'currency', currency: CURRENCY, minimumFractionDigits: 0 }).format(v || 0)
 const METHOD_LABEL = { mtn_momo: 'MTN MoMo', airtel_money: 'Airtel Money', bank: 'Bank Transfer', cash: 'Cash', pos: 'POS' }
+const PAYMENT_STATUS_LABEL = { paid: 'Paid', settled: 'Settled', pending: 'Pending', failed: 'Failed', refunded: 'Refunded' }
 
 export default function Payments() {
   const { showSuccess } = useToast()
+  const { t } = usePreferences()
   const [payments, setPayments] = useState([])
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -33,29 +36,29 @@ export default function Payments() {
   }
 
   const handleRefund = async (p) => {
-    const reason = window.prompt(`Refund ${formatCurr(p.amount)} to ${p.business}?\nOptional reason:`)
+    const reason = window.prompt([`${t('Refund')} ${formatCurr(p.amount)} ${t('to')} ${p.business}?`, t('Optional reason:')].join(String.fromCharCode(10)))
     if (reason === null) return
     setBusy(`${p.id}-refund`)
     try {
       await refundPayment(p.id, reason)
       await load()
-      showSuccess('Payment updated successfully.')
+      showSuccess(t('Payment updated successfully.'))
     } catch (e) {
-      alert(e.response?.data?.error || 'Refund failed.')
+      alert(e.response?.data?.error || t('Refund failed.'))
     } finally {
       setBusy(null)
     }
   }
 
   const handleSettle = async (p) => {
-    if (!window.confirm(`Settle payment of ${formatCurr(p.amount)} from ${p.business}?`)) return
+    if (!window.confirm(`${t('Settle payment of')} ${formatCurr(p.amount)} ${t('from')} ${p.business}?`)) return
     setBusy(`${p.id}-settle`)
     try {
       await settlePayment(p.id)
       await load()
-      showSuccess('Payment updated successfully.')
+      showSuccess(t('Payment updated successfully.'))
     } catch (e) {
-      alert(e.response?.data?.error || 'Settle failed.')
+      alert(e.response?.data?.error || t('Settle failed.'))
     } finally {
       setBusy(null)
     }
@@ -69,12 +72,12 @@ export default function Payments() {
 
   const badge = (status) => {
     const map = { paid: 'bg-emerald-100 text-emerald-700', settled: 'bg-blue-100 text-blue-700', pending: 'bg-amber-100 text-amber-700', failed: 'bg-red-100 text-red-700', refunded: 'bg-slate-200 text-slate-600' }
-    return <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full capitalize ${map[status] || 'bg-slate-100 text-slate-600'}`}>{status}</span>
+    return <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full capitalize ${map[status] || 'bg-slate-100 text-slate-600'}`}>{typeof PAYMENT_STATUS_LABEL[status] === 'string' ? t(PAYMENT_STATUS_LABEL[status]) : status}</span>
   }
 
   const exportCsv = () => {
-    const header = 'Payment ID,Business,Plan,Amount,Method,Transaction ID,Status,Date\n'
-    const rows = filtered.map((p) => `"${p.id}","${p.business}","${p.plan}",${p.amount},"${METHOD_LABEL[p.method] || p.method}","${p.transactionId || ''}","${p.status}","${p.date ? new Date(p.date).toLocaleString() : ''}"`).join('\n')
+    const header = [t('Payment ID'), t('Business'), t('Plan'), t('Amount'), t('Method'), t('Transaction ID'), t('Status'), t('Date')].join(',') + '\n'
+    const rows = filtered.map((p) => `"${p.id}","${p.business}","${p.plan}",${p.amount},"${typeof METHOD_LABEL[p.method] === 'string' ? t(METHOD_LABEL[p.method]) : p.method}","${p.transactionId || ''}","${typeof PAYMENT_STATUS_LABEL[p.status] === 'string' ? t(PAYMENT_STATUS_LABEL[p.status]) : p.status}","${p.date ? new Date(p.date).toLocaleString() : ''}"`).join('\n')
     const blob = new Blob([header + rows], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -87,11 +90,11 @@ export default function Payments() {
   const downloadReceipt = (p) => {
     const lines = [
       'BARFLOW — PAYMENT RECEIPT', '--------------------------------',
-      `Payment ID:   ${p.id}`, `Business:     ${p.business}`, `Plan:         ${p.plan} (${p.billingCycle || ''})`,
-      `Amount:       ${formatCurr(p.amount)}`, `Method:       ${METHOD_LABEL[p.method] || p.method}`,
-      `Transaction:  ${p.transactionId || 'N/A'}`, `Status:       ${p.status}`,
-      `Date:         ${p.date ? new Date(p.date).toLocaleString() : 'N/A'}`, '--------------------------------',
-      `Generated:    ${new Date().toLocaleString()}`,
+      `${t('Payment ID')}:   ${p.id}`, `${t('Business')}:     ${p.business}`, `${t('Plan')}:         ${p.plan} (${p.billingCycle || ''})`,
+      `${t('Amount')}:       ${formatCurr(p.amount)}`, `${t('Method')}:       ${typeof METHOD_LABEL[p.method] === 'string' ? t(METHOD_LABEL[p.method]) : p.method}`,
+      `${t('Transaction')}:  ${p.transactionId || t('N/A')}`, `${t('Status')}:       ${typeof PAYMENT_STATUS_LABEL[p.status] === 'string' ? t(PAYMENT_STATUS_LABEL[p.status]) : p.status}`,
+      `${t('Date')}:         ${p.date ? new Date(p.date).toLocaleString() : t('N/A')}`, '--------------------------------',
+      `${t('Generated')}:    ${new Date().toLocaleString()}`,
     ].join('\n')
     const blob = new Blob([lines], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
@@ -110,35 +113,35 @@ export default function Payments() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Payments</h1>
-          <p className="text-sm text-slate-500 mt-1">Track subscription payments across all businesses</p>
+          <h1 className="text-2xl font-bold text-slate-900">{t('Payments')}</h1>
+          <p className="text-sm text-slate-500 mt-1">{t('Track subscription payments across all businesses')}</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={exportCsv} className="px-4 py-2 text-sm bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition inline-flex items-center gap-2"><Download size={16} /> Export</button>
-          <button onClick={load} className="px-4 py-2 text-sm bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition inline-flex items-center gap-2"><RefreshCw size={16} /> Refresh</button>
+          <button onClick={exportCsv} className="px-4 py-2 text-sm bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition inline-flex items-center gap-2"><Download size={16} /> {t('Export')}</button>
+          <button onClick={load} className="px-4 py-2 text-sm bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition inline-flex items-center gap-2"><RefreshCw size={16} /> {t('Refresh')}</button>
         </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <SummaryCard title="Total Collected" value={formatCurr(stats?.collected)} icon={<CircleDollarSign className="text-emerald-600" />} bg="bg-emerald-50" />
-        <SummaryCard title="Pending" value={String(stats?.pending ?? 0)} icon={<CircleDollarSign className="text-amber-600" />} bg="bg-amber-50" />
-        <SummaryCard title="Failed" value={String(stats?.failed ?? 0)} icon={<CircleDollarSign className="text-red-600" />} bg="bg-red-50" />
-        <SummaryCard title="Refunded" value={String(stats?.refunded ?? 0)} icon={<CircleDollarSign className="text-slate-500" />} bg="bg-slate-100" />
+        <SummaryCard title={t('Total Collected')} value={formatCurr(stats?.collected)} icon={<CircleDollarSign className="text-emerald-600" />} bg="bg-emerald-50" />
+        <SummaryCard title={t('Pending')} value={String(stats?.pending ?? 0)} icon={<CircleDollarSign className="text-amber-600" />} bg="bg-amber-50" />
+        <SummaryCard title={t('Failed')} value={String(stats?.failed ?? 0)} icon={<CircleDollarSign className="text-red-600" />} bg="bg-red-50" />
+        <SummaryCard title={t('Refunded')} value={String(stats?.refunded ?? 0)} icon={<CircleDollarSign className="text-slate-500" />} bg="bg-slate-100" />
       </div>
 
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[220px]">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search business, transaction, plan..."
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Search business, transaction, plan...')}
             className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
         </div>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white capitalize focus:ring-2 focus:ring-indigo-500 outline-none">
-          <option value="all">All statuses</option>
-          <option value="paid">Paid</option>
-          <option value="settled">Settled</option>
-          <option value="pending">Pending</option>
-          <option value="failed">Failed</option>
-          <option value="refunded">Refunded</option>
+          <option value="all">{t('All statuses')}</option>
+          <option value="paid">{t('Paid')}</option>
+          <option value="settled">{t('Settled')}</option>
+          <option value="pending">{t('Pending')}</option>
+          <option value="failed">{t('Failed')}</option>
+          <option value="refunded">{t('Refunded')}</option>
         </select>
       </div>
 
@@ -147,35 +150,35 @@ export default function Payments() {
           <table className="w-full text-xs">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-600">
-                <th className="text-left px-3 py-2 font-semibold">Business</th>
-                <th className="text-left px-3 py-2 font-semibold">Plan</th>
-                <th className="text-left px-3 py-2 font-semibold">Amount</th>
-                <th className="text-left px-3 py-2 font-semibold">Method</th>
-                <th className="text-left px-3 py-2 font-semibold">Transaction</th>
-                <th className="text-left px-3 py-2 font-semibold">Status</th>
-                <th className="text-left px-3 py-2 font-semibold">Date</th>
-                <th className="text-right px-3 py-2 font-semibold">Actions</th>
+                <th className="text-left px-3 py-2 font-semibold">{t('Business')}</th>
+                <th className="text-left px-3 py-2 font-semibold">{t('Plan')}</th>
+                <th className="text-left px-3 py-2 font-semibold">{t('Amount')}</th>
+                <th className="text-left px-3 py-2 font-semibold">{t('Method')}</th>
+                <th className="text-left px-3 py-2 font-semibold">{t('Transaction')}</th>
+                <th className="text-left px-3 py-2 font-semibold">{t('Status')}</th>
+                <th className="text-left px-3 py-2 font-semibold">{t('Date')}</th>
+                <th className="text-right px-3 py-2 font-semibold">{t('Actions')}</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 && <tr><td colSpan={8} className="px-3 py-3 text-center text-slate-400">No payments found.</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={8} className="px-3 py-3 text-center text-slate-400">{t('No payments found.')}</td></tr>}
               {filtered.map((p) => (
                 <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50">
                   <td className="px-3 py-2 font-semibold text-slate-900">{p.business}</td>
                   <td className="px-3 py-2 text-slate-700">{p.plan}</td>
                   <td className="px-3 py-2 font-medium text-slate-900">{formatCurr(p.amount)}</td>
-                  <td className="px-3 py-2 text-slate-700">{METHOD_LABEL[p.method] || p.method}</td>
+                  <td className="px-3 py-2 text-slate-700">{t(METHOD_LABEL[p.method] || p.method)}</td>
                   <td className="px-3 py-2 text-slate-500 font-mono text-xs">{p.transactionId || '—'}</td>
                   <td className="px-3 py-2">{badge(p.status)}</td>
                   <td className="px-3 py-2 text-slate-400">{p.date ? new Date(p.date).toLocaleDateString() : '—'}</td>
                   <td className="px-3 py-2">
                     <div className="flex justify-end gap-1.5">
-                      <button title="Receipt" onClick={() => downloadReceipt(p)} className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100"><Receipt size={15} /></button>
+                      <button title={t('Receipt')} onClick={() => downloadReceipt(p)} className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100"><Receipt size={15} /></button>
                       {p.status === 'paid' && (
-                        <button title="Settle" onClick={() => handleSettle(p)} disabled={busy === `${p.id}-settle`} className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 disabled:opacity-40"><CircleDollarSign size={15} /></button>
+                        <button title={t('Settle')} onClick={() => handleSettle(p)} disabled={busy === `${p.id}-settle`} className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 disabled:opacity-40"><CircleDollarSign size={15} /></button>
                       )}
                       {p.status === 'paid' && (
-                        <button title="Refund" onClick={() => handleRefund(p)} disabled={busy === `${p.id}-refund`} className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 disabled:opacity-40"><Undo2 size={15} /></button>
+                        <button title={t('Refund')} onClick={() => handleRefund(p)} disabled={busy === `${p.id}-refund`} className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 disabled:opacity-40"><Undo2 size={15} /></button>
                       )}
                     </div>
                   </td>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { usePreferences } from '../../context/PreferencesContext'
 
 // Country & Currency Configuration (drives both pricing conversion and the payment gateway)
 const COUNTRIES_CONFIG = {
@@ -75,6 +76,7 @@ const SUB_TABS = [
 ]
 
 export default function OwnerSubscriptionWorkspace() {
+  const { t } = usePreferences()
   const [subTab, setSubTab] = useState('plan')
   const [selectedPlan, setSelectedPlan] = useState('Pro')
   const [selectedCycle, setSelectedCycle] = useState('monthly')
@@ -103,7 +105,7 @@ export default function OwnerSubscriptionWorkspace() {
 
   const handleCheckout = () => {
     const method = activePaymentMethods.find((m) => m.id === selectedPaymentMethod)
-    alert(`Redirecting to ${method?.name || 'payment gateway'} to authorize ${priceLabel} for the ${selectedPlan} (${selectedCycle}) plan.`)
+    alert(`${t('Redirecting to')} ${method?.name || t('payment gateway')} ${t('to authorize')} ${priceLabel} ${t('for the')} ${t(selectedPlan)} (${t(selectedCycle)}) ${t('plan.')}`)
   }
 
   const cycles = ['monthly', 'quarterly', 'yearly']
@@ -112,13 +114,13 @@ export default function OwnerSubscriptionWorkspace() {
     <div className="obw">
       {/* Banner */}
       <div className="obw-banner">
-        <p className="obw-banner-eyebrow">Owner Workspace</p>
-        <h1>Owner Billing &amp; Subscription</h1>
-        <p>Manage your BarFlow plan, billing region, payment methods, usage limits, and invoices in one secure place.</p>
+        <p className="obw-banner-eyebrow">{t('Owner Workspace')}</p>
+        <h1>{t('Owner Billing & Subscription')}</h1>
+        <p>{t('Manage your BarFlow plan, billing region, payment methods, usage limits, and invoices in one secure place.')}</p>
       </div>
 
       {/* Sub navigation (links the billing sections together) */}
-      <nav className="obw-subnav" aria-label="Subscription sections">
+      <nav className="obw-subnav" aria-label={t('Subscription sections')}>
         {SUB_TABS.map((tab) => (
           <button
             key={tab.key}
@@ -126,7 +128,7 @@ export default function OwnerSubscriptionWorkspace() {
             className={`obw-subtab ${subTab === tab.key ? 'active' : ''}`}
             onClick={() => setSubTab(tab.key)}
           >
-            {tab.label}
+            {t(tab.label)}
           </button>
         ))}
       </nav>
@@ -137,11 +139,11 @@ export default function OwnerSubscriptionWorkspace() {
           {/* Shared country/region control */}
           <section className="billing-context">
             <div>
-              <h2 className="obw-context-title">Billing Region</h2>
-              <p className="obw-context-text">Your country sets the currency and unlocks the local payment channels used at checkout.</p>
+              <h2 className="obw-context-title">{t('Billing Region')}</h2>
+              <p className="obw-context-text">{t('Your country sets the currency and unlocks the local payment channels used at checkout.')}</p>
             </div>
             <div className="country-picker">
-              <label htmlFor="billing-country">Billing Country / Region</label>
+              <label htmlFor="billing-country">{t('Billing Country / Region')}</label>
               <div className="select-wrap">
                 <select
                   id="billing-country"
@@ -162,10 +164,10 @@ export default function OwnerSubscriptionWorkspace() {
           {/* PLAN & BILLING */}
           {subTab === 'plan' && (
             <section className="obw-card">
-              <h2>Plan &amp; Billing Cycle</h2>
-              <p>Select a plan, then choose its monthly, quarterly, or yearly price to proceed.</p>
+              <h2>{t('Plan & Billing Cycle')}</h2>
+              <p>{t('Select a plan, then choose its monthly, quarterly, or yearly price to proceed.')}</p>
 
-              <div className="obw-cycle" role="tablist" aria-label="Billing cycle">
+              <div className="obw-cycle" role="tablist" aria-label={t('Billing cycle')}>
                 {cycles.map((cycle) => (
                   <button
                     key={cycle}
@@ -175,7 +177,7 @@ export default function OwnerSubscriptionWorkspace() {
                     onClick={() => setSelectedCycle(cycle)}
                     className={`obw-cycle-btn ${selectedCycle === cycle ? 'active' : ''}`}
                   >
-                    {cycle}
+                    {t(cycle)}
                   </button>
                 ))}
               </div>
@@ -197,20 +199,20 @@ export default function OwnerSubscriptionWorkspace() {
                       }}
                       className={`obw-plan-card ${selectedPlan === plan ? 'selected' : ''}`}
                     >
-                      {plan === 'Pro' && <span className="obw-plan-badge">Popular</span>}
+                      {plan === 'Pro' && <span className="obw-plan-badge">{t('Popular')}</span>}
                       <div>
                         <h3>{plan}</h3>
                         <p className="obw-plan-tag">
-                          {plan === 'Basic' ? 'For single bar/restaurant settings.' : 'For growing hospitality groups.'}
+                          {plan === 'Basic' ? t('For single bar/restaurant settings.') : t('For growing hospitality groups.')}
                         </p>
                         <p className="obw-plan-price">{price}</p>
                         {selectedCycle !== 'monthly' && (
-                          <span className="obw-save-badge">{selectedCycle === 'quarterly' ? 'Save 6%' : 'Save 15%'}</span>
+                          <span className="obw-save-badge">{selectedCycle === 'quarterly' ? t('Save 6%') : t('Save 15%')}</span>
                         )}
                       </div>
                       <ul className="obw-plan-features">
                         {PLAN_FEATURES[plan].map((feature) => (
-                          <li key={feature}>{feature}</li>
+                          <li key={feature}>{t(feature)}</li>
                         ))}
                       </ul>
                     </div>
@@ -221,13 +223,13 @@ export default function OwnerSubscriptionWorkspace() {
               {/* Checkout callout links to the Payment Methods section */}
               <div className="obw-checkout-callout">
                 <div>
-                  <span className="obw-muted">Selected Plan: </span>
+                  <span className="obw-muted">{t('Selected Plan:')} </span>
                   <span className="obw-checkout-plan">
                     {selectedPlan} • {selectedCycle} ({priceLabel})
                   </span>
                 </div>
                 <button type="button" className="obw-btn-primary" onClick={() => setSubTab('payment')}>
-                  Proceed to Payment
+                  {t('Proceed to Payment')}
                 </button>
               </div>
             </section>
@@ -238,8 +240,8 @@ export default function OwnerSubscriptionWorkspace() {
             <section className="obw-card">
               <div className="obw-card-head-row">
                 <div>
-                  <h2>Online Payment Gateway</h2>
-                  <p>Select an online billing method available for checkout in <strong>{countryData.name}</strong>.</p>
+                  <h2>{t('Online Payment Gateway')}</h2>
+                  <p>{t('Select an online billing method available for checkout in')} <strong>{countryData.name}</strong>.</p>
                 </div>
               </div>
 
@@ -260,11 +262,11 @@ export default function OwnerSubscriptionWorkspace() {
                   >
                     <div className="payment-card-top">
                       <span className={`method-logo ${method.logoBg}`}>{method.provider}</span>
-                      <input type="radio" readOnly checked={selectedPaymentMethod === method.id} aria-label={method.name} />
+                      <input type="radio" readOnly checked={selectedPaymentMethod === method.id} aria-label={t(method.name)} />
                     </div>
                     <div>
                       <p className="method-name">{method.name}</p>
-                      <p className="method-meta">{method.type} • Fee: {method.fee}</p>
+                      <p className="method-meta">{method.type} {t('• Fee:')} {method.fee}</p>
                     </div>
                   </div>
                 ))}
@@ -272,16 +274,16 @@ export default function OwnerSubscriptionWorkspace() {
 
               <div className="obw-payment-current">
                 <div className="obw-payment-method">
-                  <span className="obw-momo-logo">MTN MoMo</span>
+                  <span className="obw-momo-logo">{t('MTN MoMo')}</span>
                   <div>
-                    <p className="obw-payment-name">MTN Mobile Money</p>
+                    <p className="obw-payment-name">{t('MTN Mobile Money')}</p>
                     <p className="obw-payment-meta">
-                      +250 78••• 4812 <span className="obw-default-badge">Default</span>
+                      {t('+250 78••• 4812')} <span className="obw-default-badge">{t('Default')}</span>
                     </p>
                   </div>
                 </div>
                 <button type="button" className="obw-btn-primary" onClick={handleCheckout}>
-                  Pay / Renew Now
+                  {t('Pay / Renew Now')}
                 </button>
               </div>
             </section>
@@ -290,18 +292,18 @@ export default function OwnerSubscriptionWorkspace() {
           {/* INVOICES */}
           {subTab === 'invoices' && (
             <section className="obw-card">
-              <h2>Invoice History</h2>
-              <p>View and retrieve invoices for your accounting records.</p>
+              <h2>{t('Invoice History')}</h2>
+              <p>{t('View and retrieve invoices for your accounting records.')}</p>
 
               <div className="obw-table-wrap">
                 <table className="obw-table">
                   <thead>
                     <tr>
-                      <th>Invoice Code</th>
-                      <th>Billing Date</th>
-                      <th>Amount</th>
-                      <th>Status</th>
-                      <th className="obw-right">Receipt</th>
+                      <th>{t('Invoice Code')}</th>
+                      <th>{t('Billing Date')}</th>
+                      <th>{t('Amount')}</th>
+                      <th>{t('Status')}</th>
+                      <th className="obw-right">{t('Receipt')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -310,8 +312,8 @@ export default function OwnerSubscriptionWorkspace() {
                         <td className="obw-strong">{invoice.code}</td>
                         <td className="obw-cell-muted">{invoice.date}</td>
                         <td>{invoice.amount}</td>
-                        <td><span className="obw-status-paid">Paid</span></td>
-                        <td className="obw-right"><button type="button" className="obw-link-btn">Download</button></td>
+                        <td><span className="obw-status-paid">{t('Paid')}</span></td>
+                        <td className="obw-right"><button type="button" className="obw-link-btn">{t('Download')}</button></td>
                       </tr>
                     ))}
                   </tbody>
@@ -324,37 +326,37 @@ export default function OwnerSubscriptionWorkspace() {
         {/* SIDEBAR (status + usage), linked to the selected plan */}
         <aside className="obw-aside">
           <section className="obw-card">
-            <h3 className="obw-section-label">Subscription Overview</h3>
+            <h3 className="obw-section-label">{t('Subscription Overview')}</h3>
             <div className="obw-status-top">
               <div>
-                <p className="obw-status-plan">{selectedPlan} Plan</p>
-                <p className="obw-muted">Billed {selectedCycle}</p>
+                <p className="obw-status-plan">{selectedPlan} {t('Plan')}</p>
+                <p className="obw-muted">{t('Billed')} {selectedCycle}</p>
               </div>
               <span className="obw-status-active">
                 <span className="obw-pulse-dot" />
-                Active
+                {t('Active')}
               </span>
             </div>
 
             <div className="obw-status-meta">
-              <div className="obw-status-row"><span className="obw-muted">Current Charge:</span><span className="obw-strong">{priceLabel}</span></div>
-              <div className="obw-status-row"><span className="obw-muted">Next Renewal Date:</span><span className="obw-semibold">31 Jul 2026</span></div>
-              <div className="obw-status-row"><span className="obw-muted">Auto-Renewal Status:</span><span className="obw-auto-badge">Enabled</span></div>
+              <div className="obw-status-row"><span className="obw-muted">{t('Current Charge:')}</span><span className="obw-strong">{priceLabel}</span></div>
+              <div className="obw-status-row"><span className="obw-muted">{t('Next Renewal Date:')}</span><span className="obw-semibold">{t('31 Jul 2026')}</span></div>
+              <div className="obw-status-row"><span className="obw-muted">{t('Auto-Renewal Status:')}</span><span className="obw-auto-badge">{t('Enabled')}</span></div>
             </div>
 
             <div className="obw-status-actions">
-              <button type="button" className="obw-btn-cancel" onClick={() => alert('Subscription cancellation requested.')}>Cancel Plan</button>
-              <button type="button" className="obw-btn-dark" onClick={() => setSubTab('payment')}>Manage Plan</button>
+              <button type="button" className="obw-btn-cancel" onClick={() => alert(t('Subscription cancellation requested.'))}>{t('Cancel Plan')}</button>
+              <button type="button" className="obw-btn-dark" onClick={() => setSubTab('payment')}>{t('Manage Plan')}</button>
             </div>
           </section>
 
           <section className="obw-card">
-            <h3 className="obw-section-label">Plan Resource Limits</h3>
+            <h3 className="obw-section-label">{t('Plan Resource Limits')}</h3>
             <div className="obw-usage">
               {USAGE.map((item) => (
                 <div key={item.label} className="obw-usage-item">
                   <div className="obw-usage-head">
-                    <span>{item.label}</span>
+                    <span>{t(item.label)}</span>
                     <span>{item.value}</span>
                   </div>
                   <div className="obw-progress">

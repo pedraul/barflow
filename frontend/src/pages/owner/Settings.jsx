@@ -10,6 +10,7 @@ import {
   Menu, Bell, ChevronDown, Save, Wallet, Printer, Mail, ArrowLeft
 } from 'lucide-react'
 import AuditLogViewer from './AuditLogViewer'
+import { usePreferences } from '../../context/PreferencesContext'
 
 const SETTINGS_GROUPS = [
   {
@@ -77,6 +78,7 @@ const PERMISSION_LABELS = [
 ]
 
 export default function SystemSettings() {
+  const { t } = usePreferences()
   const { fetchPermissions } = useAuth()
   const {
     fetchSystemSettings, updateSystemSettings, triggerBackup, fetchBackups,
@@ -173,7 +175,7 @@ export default function SystemSettings() {
   const handleSaveAccount = async () => {
     try {
       await updateSystemSettings(data.business)
-      flash('✅ Account settings saved successfully.')
+      flash(t('✅ Account settings saved successfully.'))
     } catch (e) { flash('❌ ' + e.message) }
   }
   const handleBusinessChange = (field, value) =>
@@ -186,7 +188,7 @@ export default function SystemSettings() {
       await createBranch({ name: newBranch.name.trim(), address: newBranch.address.trim() })
       setNewBranch({ name: '', address: '' })
       await loadBranches()
-      flash('✅ Branch created successfully.')
+      flash(t('✅ Branch created successfully.'))
     } catch (e) { flash('❌ ' + e.message) }
   }
 
@@ -194,7 +196,7 @@ export default function SystemSettings() {
     try {
       await updateBranch(branch.id, { isActive: !branch.isActive })
       await loadBranches()
-      flash(`✅ Branch ${branch.isActive ? 'deactivated' : 'activated'}.`)
+      flash(branch.isActive ? t('✅ Branch deactivated.') : t('✅ Branch activated.'))
     } catch (e) { flash('❌ ' + e.message) }
   }
 
@@ -206,7 +208,7 @@ export default function SystemSettings() {
   const handleTriggerBackup = async () => {
     try {
       const res = await triggerBackup({ backupName: backupName || undefined, backupType })
-      flash(`✅ Backup "${res.backup?.name || backupName}" completed.`)
+      flash(`${t('✅ Backup completed:')} ${res.backup?.name || backupName}`)
       setBackupName('')
       await loadBackups()
     } catch (e) { flash('❌ ' + e.message) }
@@ -214,7 +216,7 @@ export default function SystemSettings() {
 
   const handleRestore = async () => {
     setRestoreMsg('')
-    if (!restoreId) return setRestoreMsg('❌ Select a backup to restore.')
+    if (!restoreId) return setRestoreMsg(t('❌ Select a backup to restore.'))
     try {
       const res = await restoreBackup(restoreId)
       setRestoreMsg('✅ ' + res.message)
@@ -228,7 +230,7 @@ export default function SystemSettings() {
       const settings = {}
       keys.forEach((k) => { if (data.settings[k] !== undefined) settings[k] = data.settings[k] })
       await updateSystemSettings({ settings })
-      flash('✅ Subscription settings saved.')
+      flash(t('✅ Subscription settings saved.'))
     } catch (e) { flash('❌ ' + e.message) }
   }
   const setSetting = (key, value) =>
@@ -239,7 +241,7 @@ export default function SystemSettings() {
       for (const p of permDraft) {
         await updatePermissions(p.role, p)
       }
-      flash('✅ Permissions updated for all roles.')
+      flash(t('✅ Permissions updated for all roles.'))
       await load()
       await fetchPermissions()
     } catch (e) { flash('❌ ' + e.message) }
@@ -253,7 +255,7 @@ export default function SystemSettings() {
       const settings = {}
       keys.forEach((k) => { if (data.settings[k] !== undefined) settings[k] = data.settings[k] })
       await updateSystemSettings({ settings })
-      flash('✅ Security settings saved.')
+      flash(t('✅ Security settings saved.'))
     } catch (e) { flash('❌ ' + e.message) }
   }
 
@@ -293,7 +295,7 @@ export default function SystemSettings() {
         scope: twoFactor.scope,
         businessId: twoFactor.scope === 'business' ? twoFactor.businessId : null,
       })
-      flash('✅ Two-factor authentication settings saved.')
+      flash(t('✅ Two-factor authentication settings saved.'))
     } catch (e) { flash('❌ ' + e.message) }
   }
 
@@ -322,7 +324,7 @@ export default function SystemSettings() {
       if (paymentSettings.qrPaymentEnabled) {
         await loadMerchantQR()
       }
-      flash('✅ Payment settings saved.')
+      flash(t('✅ Payment settings saved.'))
     } catch (e) { flash('❌ ' + e.message) }
   }
 
@@ -351,7 +353,7 @@ export default function SystemSettings() {
         {/* 2. TOP BANNER HEADER */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-3 sm:px-6 shrink-0 shadow-xs">
           <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-            <button onClick={goBack} className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition" title="Back to Dashboard">
+            <button onClick={goBack} className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition" title={t('Back to Dashboard')}>
               <ArrowLeft size={22} />
             </button>
             <button className="text-slate-600 hover:text-slate-900 transition">
@@ -359,18 +361,18 @@ export default function SystemSettings() {
             </button>
             <div className="flex flex-col min-w-0">
               <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-bold text-slate-400 tracking-wider truncate">
-                <span className="text-[#0066FF]">OWNER WORKSPACE</span>
+                <span className="text-[#0066FF]">{t('OWNER WORKSPACE')}</span>
                 <span className="text-slate-300 font-normal">&gt;</span>
-                <span className="text-slate-800">SYSTEM SETTINGS</span>
+                <span className="text-slate-800">{t('SYSTEM SETTINGS')}</span>
               </div>
                <p className="hidden sm:block text-xs text-slate-500 mt-0.5 truncate">
-                 Configure account, backup, subscription, payments, permissions, security &amp; recovery.
+                 {t('Configure account, backup, subscription, payments, permissions, security & recovery.')}
                </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-            <button onClick={goBack} className="hidden sm:flex w-10 h-10 items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition" title="Back to Dashboard">
+            <button onClick={goBack} className="hidden sm:flex w-10 h-10 items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition" title={t('Back to Dashboard')}>
               <ArrowLeft size={22} />
             </button>
             <div className="relative cursor-pointer p-1.5 hover:bg-slate-100 rounded-full transition">
@@ -378,10 +380,10 @@ export default function SystemSettings() {
               <span className="absolute top-1.5 right-1.5 bg-red-500 w-2 h-2 rounded-full"></span>
             </div>
             <div className="flex items-center gap-2.5 border-l pl-4 border-slate-200 cursor-pointer group">
-              <div className="w-8 h-8 rounded-full bg-[#0066FF] text-white flex items-center justify-center font-bold text-xs shadow-sm">OL</div>
+              <div className="w-8 h-8 rounded-full bg-[#0066FF] text-white flex items-center justify-center font-bold text-xs shadow-sm">{t('OL')}</div>
               <div className="text-left hidden sm:block">
-                <p className="text-xs font-bold text-slate-900 leading-tight">Owner</p>
-                <p className="text-[10px] text-slate-400 font-medium">Super Admin</p>
+                <p className="text-xs font-bold text-slate-900 leading-tight">{t('Owner')}</p>
+                <p className="text-[10px] text-slate-400 font-medium">{t('Super Admin')}</p>
               </div>
               <ChevronDown size={14} className="text-slate-400 group-hover:text-slate-600 transition" />
             </div>
@@ -399,12 +401,12 @@ export default function SystemSettings() {
                 return (
                   <div key={group.id} className="flex-shrink-0 md:flex-shrink mb-1">
                     <div className={`hidden md:block px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider ${isGroupActive ? 'text-indigo-700 bg-indigo-50' : 'text-slate-500'}`}>
-                      {group.label}
+                      {t(group.label)}
                     </div>
-                    <div className="md:hidden text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2 py-1">{group.label}</div>
+                    <div className="md:hidden text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2 py-1">{t(group.label)}</div>
                     <div className="flex md:flex-col gap-0.5">
-                      {group.items.map((t) => (
-                        <SubTabButton key={t.id} id={t.id} label={t.label} icon={t.icon} active={activeSubTab === t.id} onClick={(id) => { navigate(`/settings/${id}`); }} showBar={t.id === 'account'} />
+                      {group.items.map((item) => (
+                        <SubTabButton key={item.id} id={item.id} label={t(item.label)} icon={item.icon} active={activeSubTab === item.id} onClick={(id) => { navigate(`/settings/${id}`); }} showBar={item.id === 'account'} />
                       ))}
                     </div>
                   </div>
@@ -421,14 +423,14 @@ export default function SystemSettings() {
 
             {activeSubTab === 'notifications' ? (
               <div className="p-8 space-y-6">
-                <SectionTitle title="EMAIL NOTIFICATION PREFERENCES" subtitle="Choose which email notifications you want to receive from the platform." />
+                <SectionTitle title={t('EMAIL NOTIFICATION PREFERENCES')} subtitle={t('Choose which email notifications you want to receive from the platform.')} />
                 <div className="border-t border-slate-100"></div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
                   {EMAIL_NOTIFICATION_OPTIONS.map(([key, label]) => {
                     const on = String(data.settings[key]) === 'true'
                     return (
                       <div key={key} className="flex items-center justify-between py-2">
-                        <label className="text-sm font-semibold text-slate-700">{label}</label>
+                        <label className="text-sm font-semibold text-slate-700">{t(label)}</label>
                         <button type="button" onClick={() => setSetting(key, on ? 'false' : 'true')}
                           className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${on ? 'bg-indigo-600' : 'bg-slate-300'}`}>
                           <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${on ? 'translate-x-6' : 'translate-x-1'}`} />
@@ -445,56 +447,56 @@ export default function SystemSettings() {
                       const settings = {}
                       keys.forEach((k) => { if (data.settings[k] !== undefined) settings[k] = data.settings[k] })
                       await updateSystemSettings({ settings })
-                      flash('✅ Email notification preferences saved.')
+                      flash(t('✅ Email notification preferences saved.'))
                     } catch (e) { flash('❌ ' + e.message) }
                   }} className="flex items-center gap-2 bg-[#0066FF] hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm transition shadow-sm">
-                    <Save size={16} /> Save Preferences
+                    <Save size={16} /> {t('Save Preferences')}
                   </button>
                 </div>
               </div>
             ) : activeSubTab === 'account' ? (
               <form onSubmit={(e) => { e.preventDefault(); handleSaveAccount() }} className="p-8 space-y-6">
                 <div className="space-y-1">
-                  <h2 className="text-lg font-bold text-[#0F172A] tracking-tight">BUSINESS ACCOUNT SETTINGS</h2>
-                  <p className="text-xs text-slate-500">Manage your core company profile and tax variables</p>
+                  <h2 className="text-lg font-bold text-[#0F172A] tracking-tight">{t('BUSINESS ACCOUNT SETTINGS')}</h2>
+                  <p className="text-xs text-slate-500">{t('Manage your core company profile and tax variables')}</p>
                 </div>
                 <div className="border-t border-slate-100"></div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-                  <Field label="Business Name" name="name" value={data.business.name} onChange={(v) => handleBusinessChange('name', v)} />
-                  <Field label="Email" name="email" value={data.business.email} onChange={(v) => handleBusinessChange('email', v)} />
-                  <Field label="Address" name="address" value={data.business.address} onChange={(v) => handleBusinessChange('address', v)} />
-                  <Field label="Phone" name="phone" value={data.business.phone} onChange={(v) => handleBusinessChange('phone', v)} />
-                  <Field label="Business Type" name="businessType" value={data.business.businessType} onChange={(v) => handleBusinessChange('businessType', v)} />
-                  <Field label="Registration Code" name="registrationCode" value={data.business.registrationCode} onChange={(v) => handleBusinessChange('registrationCode', v)} />
-                  <Field label="City" name="city" value={data.business.city} onChange={(v) => handleBusinessChange('city', v)} />
-                  <Field label="Country" name="country" value={data.business.country} onChange={(v) => handleBusinessChange('country', v)} />
-                  <Field label="Province" name="province" value={data.business.province} onChange={(v) => handleBusinessChange('province', v)} />
-                  <Field label="District" name="district" value={data.business.district} onChange={(v) => handleBusinessChange('district', v)} />
-                  <Field label="Sector" name="sector" value={data.business.sector} onChange={(v) => handleBusinessChange('sector', v)} />
-                  <Field label="Description" name="description" value={data.business.description} onChange={(v) => handleBusinessChange('description', v)} />
+                  <Field label={t('Business Name')} name="name" value={data.business.name} onChange={(v) => handleBusinessChange('name', v)} />
+                  <Field label={t('Email')} name="email" value={data.business.email} onChange={(v) => handleBusinessChange('email', v)} />
+                  <Field label={t('Address')} name="address" value={data.business.address} onChange={(v) => handleBusinessChange('address', v)} />
+                  <Field label={t('Phone')} name="phone" value={data.business.phone} onChange={(v) => handleBusinessChange('phone', v)} />
+                  <Field label={t('Business Type')} name="businessType" value={data.business.businessType} onChange={(v) => handleBusinessChange('businessType', v)} />
+                  <Field label={t('Registration Code')} name="registrationCode" value={data.business.registrationCode} onChange={(v) => handleBusinessChange('registrationCode', v)} />
+                  <Field label={t('City')} name="city" value={data.business.city} onChange={(v) => handleBusinessChange('city', v)} />
+                  <Field label={t('Country')} name="country" value={data.business.country} onChange={(v) => handleBusinessChange('country', v)} />
+                  <Field label={t('Province')} name="province" value={data.business.province} onChange={(v) => handleBusinessChange('province', v)} />
+                  <Field label={t('District')} name="district" value={data.business.district} onChange={(v) => handleBusinessChange('district', v)} />
+                  <Field label={t('Sector')} name="sector" value={data.business.sector} onChange={(v) => handleBusinessChange('sector', v)} />
+                  <Field label={t('Description')} name="description" value={data.business.description} onChange={(v) => handleBusinessChange('description', v)} />
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-800 tracking-wide">Currency</label>
+                    <label className="text-xs font-bold text-slate-800 tracking-wide">{t('Currency')}</label>
                     <div className="relative">
                       <select value={data.business.currency} onChange={(e) => handleBusinessChange('currency', e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg pl-4 pr-10 py-2.5 text-sm text-slate-900 appearance-none focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition font-medium">
-                        <option value="RWF">RWF (Rwandan F.)</option>
-                        <option value="USD">USD (US Dollar)</option>
-                        <option value="EUR">EUR (Euro)</option>
+                        <option value="RWF">{t('RWF (Rwandan F.)')}</option>
+                        <option value="USD">{t('USD (US Dollar)')}</option>
+                        <option value="EUR">{t('EUR (Euro)')}</option>
                       </select>
                       <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     </div>
                   </div>
-                  <Field label="Tax Rate (%)" name="taxRate" value={data.business.taxRate} onChange={(v) => handleBusinessChange('taxRate', parseFloat(v) || 0)} />
+                  <Field label={t('Tax Rate (%)')} name="taxRate" value={data.business.taxRate} onChange={(v) => handleBusinessChange('taxRate', parseFloat(v) || 0)} />
                 </div>
                 <div className="border-t border-slate-100 pt-5 space-y-4">
                   <div>
-                    <h3 className="text-sm font-bold text-slate-900">Business Branches</h3>
-                    <p className="text-xs text-slate-500 mt-1">Create branches first, then assign managers and staff to them.</p>
+                    <h3 className="text-sm font-bold text-slate-900">{t('Business Branches')}</h3>
+                    <p className="text-xs text-slate-500 mt-1">{t('Create branches first, then assign managers and staff to them.')}</p>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 items-end">
-                    <Field label="Branch Name" value={newBranch.name} onChange={(value) => setNewBranch({ ...newBranch, name: value })} placeholder="Downtown Branch" />
-                    <Field label="Address" value={newBranch.address} onChange={(value) => setNewBranch({ ...newBranch, address: value })} placeholder="Branch location" />
+                    <Field label={t('Branch Name')} value={newBranch.name} onChange={(value) => setNewBranch({ ...newBranch, name: value })} placeholder={t('Downtown Branch')} />
+                    <Field label={t('Address')} value={newBranch.address} onChange={(value) => setNewBranch({ ...newBranch, address: value })} placeholder={t('Branch location')} />
                     <button type="button" onClick={handleCreateBranch} className="flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-700 text-white font-bold px-4 py-2.5 rounded-lg text-sm transition">
-                      <Save size={16} /> Add Branch
+                      <Save size={16} /> {t('Add Branch')}
                     </button>
                   </div>
                   <div className="space-y-2">
@@ -502,14 +504,14 @@ export default function SystemSettings() {
                       <div key={branch.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2.5">
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-slate-900 truncate">{branch.name}</p>
-                          <p className="text-xs text-slate-500 truncate">{branch.address || 'No address'} · {branch.userCount || 0} users</p>
+                          <p className="text-xs text-slate-500 truncate">{branch.address || t('No address')} · {branch.userCount || 0} {t('users')}</p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <button type="button" onClick={() => handleOpenBranch(branch)} className="px-3 py-1.5 rounded-md text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100">
-                            Open dashboard
+                            {t('Open dashboard')}
                           </button>
                           <button type="button" onClick={() => handleToggleBranch(branch)} className={`px-3 py-1.5 rounded-md text-xs font-semibold ${branch.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
-                            {branch.isActive ? 'Active' : 'Inactive'}
+                            {branch.isActive ? t('Active') : t('Inactive')}
                           </button>
                         </div>
                       </div>
@@ -519,22 +521,22 @@ export default function SystemSettings() {
                 <div className="border-t border-slate-100 pt-4"></div>
                 <div className="flex justify-end pt-2">
                   <button type="submit" className="flex items-center gap-2 bg-[#0066FF] hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm transition shadow-sm">
-                    <Save size={16} /> Save Changes
+                    <Save size={16} /> {t('Save Changes')}
                   </button>
                 </div>
               </form>
             ) : activeSubTab === 'backup' ? (
               <div className="p-8 space-y-6">
-                <SectionTitle title="BACKUP & RESTORE" subtitle="Create and restore system backups." />
+                <SectionTitle title={t('BACKUP & RESTORE')} subtitle={t('Create and restore system backups.')} />
                 <div className="border-t border-slate-100"></div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-                  <Field label="Backup Name" value={backupName} onChange={setBackupName} placeholder="my_backup_01" />
+                  <Field label={t('Backup Name')} value={backupName} onChange={setBackupName} placeholder={t('my_backup_01')} />
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-800 tracking-wide">Type</label>
+                    <label className="text-xs font-bold text-slate-800 tracking-wide">{t('Type')}</label>
                     <div className="relative">
                       <select value={backupType} onChange={(e) => setBackupType(e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg pl-4 pr-10 py-2.5 text-sm text-slate-900 appearance-none focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition font-medium">
-                        <option value="full">Full Backup</option>
-                        <option value="partial">File / Partial Backup</option>
+                        <option value="full">{t('Full Backup')}</option>
+                        <option value="partial">{t('File / Partial Backup')}</option>
                       </select>
                       <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     </div>
@@ -542,41 +544,41 @@ export default function SystemSettings() {
                 </div>
                 <div className="flex justify-end">
                   <button onClick={handleTriggerBackup} disabled={loading} className="flex items-center gap-2 bg-[#0066FF] hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm transition shadow-sm disabled:opacity-50">
-                    <Database size={16} /> Create Backup
+                    <Database size={16} /> {t('Create Backup')}
                   </button>
                 </div>
 
-                <SectionTitle title="RESTORE BACKUP" subtitle="Restore the system to a previously saved state." />
+                <SectionTitle title={t('RESTORE BACKUP')} subtitle={t('Restore the system to a previously saved state.')} />
                 <div className="border-t border-slate-100"></div>
                 <div className="flex items-center gap-3 flex-wrap">
                   <div className="relative">
                     <select value={restoreId} onChange={(e) => setRestoreId(e.target.value)} className="bg-white border border-slate-200 rounded-lg pl-4 pr-10 py-2.5 text-sm text-slate-900 appearance-none focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition font-medium max-w-[360px]">
-                      <option value="">— Select backup to restore —</option>
+                      <option value="">{t('— Select backup to restore —')}</option>
                       {backups.map((b) => (
                         <option key={b.id} value={b.id}>{b.backupName} · {b.backupType} · {new Date(b.createdAt).toLocaleString()}</option>
                       ))}
                     </select>
                     <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                   </div>
-                  <button onClick={handleRestore} disabled={loading} className="text-amber-800 border border-amber-300 px-4 py-2.5 rounded-lg font-semibold text-sm hover:bg-amber-50 transition disabled:opacity-50">Restore Selected</button>
+                  <button onClick={handleRestore} disabled={loading} className="text-amber-800 border border-amber-300 px-4 py-2.5 rounded-lg font-semibold text-sm hover:bg-amber-50 transition disabled:opacity-50">{t('Restore Selected')}</button>
                 </div>
                 {restoreMsg && (
                   <div className={`p-3 rounded-lg text-sm font-medium border ${restoreMsg.startsWith('❌') ? 'bg-red-50 border-red-300 text-red-800' : 'bg-emerald-50 border-emerald-300 text-emerald-800'}`}>{restoreMsg}</div>
                 )}
 
-                <SectionTitle title="BACKUP HISTORY" subtitle="Previously saved backups." />
+                <SectionTitle title={t('BACKUP HISTORY')} subtitle={t('Previously saved backups.')} />
                 <div className="border-t border-slate-100"></div>
                 {backups.length === 0 ? (
-                  <p className="text-slate-400">No backups recorded yet.</p>
+                  <p className="text-slate-400">{t('No backups recorded yet.')}</p>
                 ) : (
                   <div className="border border-slate-200 rounded-lg overflow-x-auto">
                     <table className="w-full text-xs border-collapse">
                       <thead>
                         <tr>
-                          <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Name</th>
-                          <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Type</th>
-                          <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Status</th>
-                          <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-right">Created</th>
+                          <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">{t('Name')}</th>
+                          <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">{t('Type')}</th>
+                          <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">{t('Status')}</th>
+                          <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-right">{t('Created')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -595,38 +597,38 @@ export default function SystemSettings() {
               </div>
             ) : activeSubTab === 'subscription' ? (
               <div className="p-8 space-y-6">
-                <SectionTitle title="SUBSCRIPTION SETTINGS" subtitle="Plans and prices are managed by the platform administrator and update here automatically." />
+                <SectionTitle title={t('SUBSCRIPTION SETTINGS')} subtitle={t('Plans and prices are managed by the platform administrator and update here automatically.')} />
                 <div className="border-t border-slate-100"></div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-                  <Field label="Monthly Price" value={data.settings.subscription_monthly_price ?? 50000} readOnly />
-                  <Field label="Quarterly Price" value={data.settings.subscription_quarterly_price ?? 130000} readOnly />
-                  <Field label="Annually Price" value={data.settings.subscription_annually_price ?? 480000} readOnly />
-                  <Field label="Monthly Discount (%)" value={0} onChange={() => {}} readOnly />
-                  <Field label="Quarterly Discount (%)" value={data.settings.subscription_quarterly_discount ?? 8} readOnly />
-                  <Field label="Annually Discount (%)" value={data.settings.subscription_annually_discount ?? 14} readOnly />
+                  <Field label={t('Monthly Price')} value={data.settings.subscription_monthly_price ?? 50000} readOnly />
+                  <Field label={t('Quarterly Price')} value={data.settings.subscription_quarterly_price ?? 130000} readOnly />
+                  <Field label={t('Annually Price')} value={data.settings.subscription_annually_price ?? 480000} readOnly />
+                  <Field label={t('Monthly Discount (%)')} value={0} onChange={() => {}} readOnly />
+                  <Field label={t('Quarterly Discount (%)')} value={data.settings.subscription_quarterly_discount ?? 8} readOnly />
+                  <Field label={t('Annually Discount (%)')} value={data.settings.subscription_annually_discount ?? 14} readOnly />
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-800 tracking-wide">Auto Renewal</label>
+                    <label className="text-xs font-bold text-slate-800 tracking-wide">{t('Auto Renewal')}</label>
                     <div className="relative">
                       <select value={data.settings.auto_renewal ?? 'true'} disabled className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-4 pr-10 py-2.5 text-sm text-slate-900 appearance-none font-medium">
-                        <option value="true">Enabled</option>
-                        <option value="false">Disabled</option>
+                        <option value="true">{t('Enabled')}</option>
+                        <option value="false">{t('Disabled')}</option>
                       </select>
                       <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     </div>
                   </div>
-                  <Field label="Alert Before Expiry (days)" value={data.settings.alert_before_expiry_days ?? 7} readOnly />
+                  <Field label={t('Alert Before Expiry (days)')} value={data.settings.alert_before_expiry_days ?? 7} readOnly />
                 </div>
               </div>
             ) : activeSubTab === 'permissions' ? (
               <div className="p-8 space-y-6">
-                <SectionTitle title="ROLE PERMISSIONS" subtitle="Toggle what each role can do across the system." />
+                <SectionTitle title={t('ROLE PERMISSIONS')} subtitle={t('Toggle what each role can do across the system.')} />
                 <div className="border-t border-slate-100"></div>
                 <div className="border border-slate-200 rounded-lg overflow-x-auto">
                   <table className="w-full text-xs border-collapse">
                     <thead>
                       <tr>
-                        <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">Role</th>
-                        {PERMISSION_LABELS.map(([k, lbl]) => <th key={k} className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-center">{lbl}</th>)}
+                        <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">{t('Role')}</th>
+                        {PERMISSION_LABELS.map(([k, lbl]) => <th key={k} className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-center">{t(lbl)}</th>)}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -641,28 +643,28 @@ export default function SystemSettings() {
                         </tr>
                       ))}
                       {!permDraft.length && (
-                        <tr><td colSpan={PERMISSION_LABELS.length + 1} className="p-2 text-center text-slate-400">No roles configured.</td></tr>
+                        <tr><td colSpan={PERMISSION_LABELS.length + 1} className="p-2 text-center text-slate-400">{t('No roles configured.')}</td></tr>
                       )}
                     </tbody>
                   </table>
                 </div>
                 <div className="flex justify-end">
                   <button onClick={handleSavePermissions} className="flex items-center gap-2 bg-[#0066FF] hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm transition shadow-sm">
-                    <Save size={16} /> Save Permissions
+                    <Save size={16} /> {t('Save Permissions')}
                   </button>
                 </div>
               </div>
             ) : activeSubTab === 'security' ? (
               <div className="p-8 space-y-6">
-                <SectionTitle title="SECURITY SETTINGS" subtitle="Password policy, login attempts and session timeout." />
+                <SectionTitle title={t('SECURITY SETTINGS')} subtitle={t('Password policy, login attempts and session timeout.')} />
                 <div className="border-t border-slate-100"></div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5 max-w-[480px]">
-                  <Field label="Max Login Attempts" value={data.settings.max_login_attempts ?? 5} onChange={(v) => setSetting('max_login_attempts', v)} />
-                  <Field label="Session Timeout (min)" value={data.settings.session_timeout ?? 30} onChange={(v) => setSetting('session_timeout', v)} />
+                  <Field label={t('Max Login Attempts')} value={data.settings.max_login_attempts ?? 5} onChange={(v) => setSetting('max_login_attempts', v)} />
+                  <Field label={t('Session Timeout (min)')} value={data.settings.session_timeout ?? 30} onChange={(v) => setSetting('session_timeout', v)} />
                 </div>
 
                 <div className="border-t border-slate-100 pt-6">
-                  <SectionTitle title="TWO-FACTOR AUTHENTICATION" subtitle="Add an extra layer of security to login." />
+                  <SectionTitle title={t('TWO-FACTOR AUTHENTICATION')} subtitle={t('Add an extra layer of security to login.')} />
                   <div className="border-t border-slate-100"></div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5 max-w-[480px]">
                     <div className="flex items-center gap-3">
@@ -670,27 +672,27 @@ export default function SystemSettings() {
                         <input type="checkbox" checked={twoFactor.isEnabled} onChange={(e) => setTwoFactor({ ...twoFactor, isEnabled: e.target.checked })} className="sr-only peer" />
                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                       </label>
-                      <span className="text-sm font-semibold text-slate-700">Enable 2FA</span>
+                      <span className="text-sm font-semibold text-slate-700">{t('Enable 2FA')}</span>
                     </div>
                    {twoFactor.isEnabled && (
                      <>
                        <div className="space-y-1.5">
-                         <label className="text-xs font-bold text-slate-800 tracking-wide">Method</label>
+                         <label className="text-xs font-bold text-slate-800 tracking-wide">{t('Method')}</label>
                          <div className="relative">
                            <select value={twoFactor.method} onChange={(e) => setTwoFactor({ ...twoFactor, method: e.target.value })} className="w-full bg-white border border-slate-200 rounded-lg pl-4 pr-10 py-2.5 text-sm text-slate-900 appearance-none focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition font-medium">
-                             <option value="email">Email</option>
-                             <option value="sms">SMS</option>
-                             <option value="authenticator">Authenticator App</option>
+                             <option value="email">{t('Email')}</option>
+                             <option value="sms">{t('SMS')}</option>
+                             <option value="authenticator">{t('Authenticator App')}</option>
                            </select>
                            <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                          </div>
                        </div>
                        <div className="space-y-1.5">
-                         <label className="text-xs font-bold text-slate-800 tracking-wide">Scope</label>
+                         <label className="text-xs font-bold text-slate-800 tracking-wide">{t('Scope')}</label>
                          <div className="relative">
                            <select value={twoFactor.scope} onChange={(e) => setTwoFactor({ ...twoFactor, scope: e.target.value })} className="w-full bg-white border border-slate-200 rounded-lg pl-4 pr-10 py-2.5 text-sm text-slate-900 appearance-none focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition font-medium">
-                             <option value="platform">Platform (all businesses)</option>
-                             <option value="business">This Business Only</option>
+                             <option value="platform">{t('Platform (all businesses)')}</option>
+                             <option value="business">{t('This Business Only')}</option>
                            </select>
                            <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                          </div>
@@ -699,14 +701,14 @@ export default function SystemSettings() {
                    )}
                    <div className="flex justify-end pt-2">
                      <button onClick={handleSaveTwoFactor} className="flex items-center gap-2 bg-[#0066FF] hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm transition shadow-sm">
-                       <Save size={16} /> Save 2FA Settings
+                       <Save size={16} /> {t('Save 2FA Settings')}
                      </button>
                    </div>
                   </div>
                   {twoFactor.isEnabled && (
                     <div className="flex justify-end pt-2">
                       <button onClick={handleSaveTwoFactor} className="flex items-center gap-2 bg-[#0066FF] hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm transition shadow-sm">
-                        <Save size={16} /> Save 2FA Settings
+                        <Save size={16} /> {t('Save 2FA Settings')}
                       </button>
                     </div>
                   )}
@@ -714,54 +716,54 @@ export default function SystemSettings() {
 
                 <div className="flex justify-end">
                   <button onClick={handleSaveSecurity} className="flex items-center gap-2 bg-[#0066FF] hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm transition shadow-sm">
-                    <Save size={16} /> Save Security Settings
+                    <Save size={16} /> {t('Save Security Settings')}
                   </button>
                 </div>
               </div>
             ) : activeSubTab === 'payments' ? (
               <div className="p-8 space-y-6">
-                <SectionTitle title="PAYMENT SETTINGS & QR CODES" subtitle="Configure QR payment methods and merchant details for customer scan-to-pay." />
+                <SectionTitle title={t('PAYMENT SETTINGS & QR CODES')} subtitle={t('Configure QR payment methods and merchant details for customer scan-to-pay.')} />
                 <div className="border-t border-slate-100"></div>
                 <div className="flex items-center gap-3">
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" checked={paymentSettings.qrPaymentEnabled} onChange={(e) => setPaymentSettings({ ...paymentSettings, qrPaymentEnabled: e.target.checked })} className="sr-only peer" />
                     <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                   </label>
-                  <span className="text-sm font-semibold text-slate-700">Enable QR Payments</span>
+                  <span className="text-sm font-semibold text-slate-700">{t('Enable QR Payments')}</span>
                 </div>
                 {paymentSettings.qrPaymentEnabled && (
                   <>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
                       <div className="md:col-span-2">
-                        <label className="text-xs font-bold text-slate-800 tracking-wide">Merchant Name</label>
+                        <label className="text-xs font-bold text-slate-800 tracking-wide">{t('Merchant Name')}</label>
                         <input type="text" value={paymentSettings.merchantName} onChange={(e) => setPaymentSettings({ ...paymentSettings, merchantName: e.target.value })} className="mt-1 w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition font-medium" />
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-slate-800 tracking-wide">MTN Mobile Money Number</label>
-                        <input type="text" value={paymentSettings.mtnMomoNumber} onChange={(e) => setPaymentSettings({ ...paymentSettings, mtnMomoNumber: e.target.value })} placeholder="e.g. 0788123456" className="mt-1 w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition font-medium" />
+                        <label className="text-xs font-bold text-slate-800 tracking-wide">{t('MTN Mobile Money Number')}</label>
+                        <input type="text" value={paymentSettings.mtnMomoNumber} onChange={(e) => setPaymentSettings({ ...paymentSettings, mtnMomoNumber: e.target.value })} placeholder={t('e.g. 0788123456')} className="mt-1 w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition font-medium" />
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-slate-800 tracking-wide">Airtel Money Number</label>
-                        <input type="text" value={paymentSettings.airtelMoneyNumber} onChange={(e) => setPaymentSettings({ ...paymentSettings, airtelMoneyNumber: e.target.value })} placeholder="e.g. 0733123456" className="mt-1 w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition font-medium" />
+                        <label className="text-xs font-bold text-slate-800 tracking-wide">{t('Airtel Money Number')}</label>
+                        <input type="text" value={paymentSettings.airtelMoneyNumber} onChange={(e) => setPaymentSettings({ ...paymentSettings, airtelMoneyNumber: e.target.value })} placeholder={t('e.g. 0733123456')} className="mt-1 w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition font-medium" />
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-slate-800 tracking-wide">Merchant Code</label>
-                        <input type="text" value={paymentSettings.merchantCode} onChange={(e) => setPaymentSettings({ ...paymentSettings, merchantCode: e.target.value })} placeholder="e.g. 123456" className="mt-1 w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition font-medium" />
+                        <label className="text-xs font-bold text-slate-800 tracking-wide">{t('Merchant Code')}</label>
+                        <input type="text" value={paymentSettings.merchantCode} onChange={(e) => setPaymentSettings({ ...paymentSettings, merchantCode: e.target.value })} placeholder={t('e.g. 123456')} className="mt-1 w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition font-medium" />
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-slate-800 tracking-wide">Bank Account</label>
-                        <input type="text" value={paymentSettings.bankAccount} onChange={(e) => setPaymentSettings({ ...paymentSettings, bankAccount: e.target.value })} placeholder="e.g. 40001-0001234567-00" className="mt-1 w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition font-medium" />
+                        <label className="text-xs font-bold text-slate-800 tracking-wide">{t('Bank Account')}</label>
+                        <input type="text" value={paymentSettings.bankAccount} onChange={(e) => setPaymentSettings({ ...paymentSettings, bankAccount: e.target.value })} placeholder={t('e.g. 40001-0001234567-00')} className="mt-1 w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition font-medium" />
                       </div>
                     </div>
                     <div className="flex justify-end">
                       <button onClick={handleSavePaymentSettings} disabled={loading} className="flex items-center gap-2 bg-[#0066FF] hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm transition shadow-sm disabled:opacity-50">
-                        <Save size={16} /> Save Payment Settings
+                        <Save size={16} /> {t('Save Payment Settings')}
                       </button>
                     </div>
 
                     <div className="border-t border-slate-100 pt-6">
-                      <h3 className="text-sm font-bold text-slate-800 tracking-wide mb-4">BUSINESS QR CODE</h3>
-                      <p className="text-xs text-slate-500 mb-4">Print this QR code and place it at the bar counter or on receipts. Customers can scan it to see your payment details.</p>
+                      <h3 className="text-sm font-bold text-slate-800 tracking-wide mb-4">{t('BUSINESS QR CODE')}</h3>
+                      <p className="text-xs text-slate-500 mb-4">{t('Print this QR code and place it at the bar counter or on receipts. Customers can scan it to see your payment details.')}</p>
                       {merchantQR ? (
                         <div className="flex flex-col items-center gap-4 p-6 border border-slate-200 rounded-xl bg-white">
                           <div className="p-4 bg-white border border-slate-100 rounded-lg shadow-sm">
@@ -769,14 +771,14 @@ export default function SystemSettings() {
                           </div>
                           <div className="text-center">
                             <p className="text-sm font-bold text-slate-900">{merchantQR.merchant?.name || paymentSettings.merchantName}</p>
-                            <p className="text-xs text-slate-500 mt-1">QR Payment Enabled</p>
+                            <p className="text-xs text-slate-500 mt-1">{t('QR Payment Enabled')}</p>
                           </div>
                           <button onClick={() => window.print()} className="flex items-center gap-2 border border-slate-300 text-slate-700 font-semibold px-4 py-2 rounded-lg text-sm hover:bg-slate-50 transition">
-                            <Printer size={16} /> Print QR Code
+                            <Printer size={16} /> {t('Print QR Code')}
                           </button>
                         </div>
                       ) : (
-                        <p className="text-sm text-slate-400">Save payment settings to generate your business QR code.</p>
+                        <p className="text-sm text-slate-400">{t('Save payment settings to generate your business QR code.')}</p>
                       )}
                     </div>
                   </>
@@ -784,21 +786,21 @@ export default function SystemSettings() {
               </div>
             ) : activeSubTab === 'audit' ? (
               <div className="p-6">
-                <SectionTitle title="AUDIT LOGS" subtitle="View system audit logs and export records." />
+                <SectionTitle title={t('AUDIT LOGS')} subtitle={t('View system audit logs and export records.')} />
                 <div className="p-6">
                   <AuditLogViewer />
                 </div>
               </div>
             ) : (
               <div className="p-8 space-y-6">
-                <SectionTitle title="RECOVERY" subtitle="Use the Backup tab to create and restore backups." />
+                <SectionTitle title={t('RECOVERY')} subtitle={t('Use the Backup tab to create and restore backups.')} />
                 <div className="border-t border-slate-100"></div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <button className="text-left bg-white border border-slate-300 px-4 py-4 rounded-lg font-semibold text-slate-700 hover:bg-slate-50 transition" onClick={() => setActiveSubTab('backup')}>
-                    <strong className="block">📦 Restore from Backup</strong><span className="font-normal text-slate-500">Recover data from a saved backup file</span>
+                    <strong className="block">{t('📦 Restore from Backup')}</strong><span className="font-normal text-slate-500">{t('Recover data from a saved backup file')}</span>
                   </button>
                   <button className="text-left bg-white border border-slate-300 px-4 py-4 rounded-lg font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50" onClick={handleTriggerBackup} disabled={loading}>
-                    <strong className="block">➕ Create Recovery Point</strong><span className="font-normal text-slate-500">Snapshot current state for safekeeping</span>
+                    <strong className="block">{t('➕ Create Recovery Point')}</strong><span className="font-normal text-slate-500">{t('Snapshot current state for safekeeping')}</span>
                   </button>
                 </div>
               </div>

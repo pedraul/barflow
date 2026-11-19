@@ -1,8 +1,10 @@
+import { usePreferences } from '../../context/PreferencesContext'
 import React from 'react'
 export default function Menu() {
+  const { t } = usePreferences()
   return (
     <div className="page">
-      <div className="user-page-heading"><div><p className="eyebrow">Waiter workspace</p><h1>Menu</h1><p>Menu management lives in the Waiter dashboard for now.</p></div></div>
+      <div className="user-page-heading"><div><p className="eyebrow">{t("Waiter workspace")}</p><h1>{t("Menu")}</h1><p>{t("Menu management lives in the Waiter dashboard for now.")}</p></div></div>
     </div>
   )
 }

@@ -1,0 +1,395 @@
+/* ============================================================
+   MOBILE POLISH — phones only (≤ 768px)
+   Purely visual: spacing, touch targets, surfaces and motion.
+   Loaded after styles.css so it refines the existing look without
+   changing any page content. Desktop is untouched.
+   ============================================================ */
+
+@media (max-width: 768px) {
+  /* ---- Base ------------------------------------------------ */
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--bg) !important;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: none;
+  }
+
+  .layout-body {
+    background: var(--bg) !important;
+    padding: 0 !important;
+    border-bottom: none !important;
+  }
+
+  .app-content {
+    padding-bottom: calc(24px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .app-content > .page,
+  .page {
+    padding: 16px 14px !important;
+  }
+
+  /* ---- Top bar: frosted glass, compact, safe-area aware ---- */
+  .app-topbar,
+  .mobile-topbar {
+    min-height: 56px !important;
+    height: auto !important;
+    padding: env(safe-area-inset-top) 12px 0 !important;
+    gap: 6px !important;
+    background: rgba(255, 255, 255, 0.86) !important;
+    backdrop-filter: saturate(180%) blur(14px);
+    -webkit-backdrop-filter: saturate(180%) blur(14px);
+    border-bottom: 1px solid rgba(226, 232, 240, 0.8) !important;
+    box-shadow: 0 1px 12px rgba(15, 23, 42, 0.05);
+  }
+
+  .mobile-menu-button,
+  .app-topbar .back-btn,
+  .mobile-topbar .back-btn,
+  .mobile-logout-btn {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px;
+    display: inline-grid !important;
+    place-items: center;
+    border-radius: 12px !important;
+    border: none !important;
+    background: transparent !important;
+    color: var(--text-2) !important;
+    font-size: 20px !important;
+    transition: background 0.15s ease, transform 0.1s ease;
+  }
+
+  .mobile-menu-button:active,
+  .app-topbar .back-btn:active,
+  .mobile-topbar .back-btn:active,
+  .mobile-logout-btn:active {
+    background: var(--surface-2) !important;
+    transform: scale(0.94);
+  }
+
+  .app-topbar .back-btn svg,
+  .mobile-topbar .back-btn svg {
+    width: 22px !important;
+    height: 22px !important;
+  }
+
+  .mobile-brand {
+    font-size: 1.05rem !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.02em;
+    color: var(--text) !important;
+    white-space: nowrap;
+  }
+
+  .branch-badge {
+    max-width: 38vw;
+    overflow: hidden;
+    border-radius: 999px !important;
+    font-size: 11px !important;
+  }
+
+  .branch-badge-select {
+    max-width: 100%;
+    text-overflow: ellipsis;
+  }
+
+  /* ---- Navigation drawer ------------------------------------ */
+  .sidebar-overlay {
+    background: rgba(15, 23, 42, 0.4) !important;
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    animation: mobile-fade-in 0.2s ease;
+  }
+
+  .sidebar-mobile,
+  .owner-sidebar-mobile,
+  .operator-sidebar-mobile {
+    width: 284px !important;
+    max-width: 86vw !important;
+    left: -300px !important;
+    border-radius: 0 22px 22px 0;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    background: linear-gradient(180deg, #0f1a3a 0%, #0b132b 100%) !important;
+    box-shadow: 12px 0 40px rgba(2, 6, 23, 0.35) !important;
+    transition: left 0.28s cubic-bezier(0.32, 0.72, 0, 1) !important;
+  }
+
+  .sidebar-mobile.sidebar-open,
+  .owner-sidebar-mobile.owner-sidebar-open,
+  .operator-sidebar-mobile.operator-sidebar-open {
+    left: 0 !important;
+  }
+
+  .sidebar-mobile nav,
+  .owner-sidebar-mobile nav,
+  .operator-sidebar-mobile nav {
+    padding: 18px 14px !important;
+  }
+
+  .sidebar-mobile nav > div > p,
+  .owner-sidebar-mobile nav > div > p,
+  .operator-sidebar-mobile nav > div > p {
+    font-size: 10.5px !important;
+    letter-spacing: 0.12em !important;
+    color: #64748b !important;
+    margin-bottom: 6px !important;
+  }
+
+  .sidebar-mobile a,
+  .owner-sidebar-mobile a,
+  .operator-sidebar-mobile a,
+  .sidebar-mobile .sidebar-link,
+  .owner-sidebar-mobile .sidebar-link,
+  .operator-sidebar-mobile .sidebar-link {
+    min-height: 46px;
+    padding: 10px 12px !important;
+    border-radius: 12px !important;
+    font-size: 15px !important;
+    color: #cbd5e1 !important;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  .sidebar-mobile a:active,
+  .owner-sidebar-mobile a:active,
+  .operator-sidebar-mobile a:active {
+    background: rgba(245, 158, 11, 0.16) !important;
+    color: #ffffff !important;
+  }
+
+  .sidebar-mobile .sidebar-logout,
+  .owner-sidebar-mobile .sidebar-logout {
+    color: #fca5a5 !important;
+  }
+
+  /* ---- Page headings --------------------------------------- */
+  .user-page-heading {
+    margin-bottom: 18px !important;
+    padding: 0 !important;
+  }
+
+  .user-page-heading h1 {
+    font-size: 1.5rem !important;
+    line-height: 1.2 !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.025em;
+  }
+
+  .user-page-heading p:not(.eyebrow) {
+    font-size: 0.875rem !important;
+    line-height: 1.5 !important;
+    color: var(--text-3) !important;
+  }
+
+  .eyebrow {
+    font-size: 10.5px !important;
+    letter-spacing: 0.12em !important;
+    font-weight: 700 !important;
+    color: var(--brand-dark) !important;
+  }
+
+  /* ---- Cards & surfaces ------------------------------------ */
+  .summary-card,
+  .section-card,
+  .user-section,
+  .account-section,
+  .command-card,
+  .obw-card,
+  .salary-summary-card {
+    border-radius: 18px !important;
+    border: 1px solid rgba(226, 232, 240, 0.9) !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 18px -8px rgba(15, 23, 42, 0.12) !important;
+    background: var(--surface) !important;
+  }
+
+  .summary-card,
+  .section-card {
+    padding: 16px !important;
+  }
+
+  /* Tailwind-styled cards used across pages */
+  .app-content .rounded-xl,
+  .app-content .rounded-lg.shadow-sm {
+    border-radius: 16px;
+  }
+
+  /* ---- Tables: smooth horizontal scroll inside a card ------- */
+  .user-table-wrap,
+  .app-content .overflow-x-auto {
+    border-radius: 16px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .user-table-wrap::-webkit-scrollbar,
+  .app-content .overflow-x-auto::-webkit-scrollbar {
+    display: none;
+  }
+
+  .user-table thead th,
+  .app-content table thead th {
+    position: sticky;
+    top: 0;
+    background: var(--surface-2);
+    font-size: 11px !important;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-3) !important;
+  }
+
+  .user-table td,
+  .app-content table td {
+    vertical-align: middle;
+  }
+
+  /* ---- Buttons: comfortable touch targets ------------------ */
+  .pay-action,
+  .secondary-action,
+  .danger-action {
+    min-height: 46px !important;
+    padding: 12px 18px !important;
+    border-radius: 14px !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    transition: transform 0.1s ease, box-shadow 0.15s ease, background 0.15s ease;
+  }
+
+  .pay-action {
+    box-shadow: 0 6px 16px -6px var(--brand-glow);
+  }
+
+  .pay-action:active,
+  .secondary-action:active,
+  .danger-action:active,
+  .app-content button:active {
+    transform: scale(0.97);
+  }
+
+  .create-user-form-actions,
+  .form-actions,
+  .user-actions {
+    gap: 10px !important;
+  }
+
+  .create-user-form-actions > button,
+  .form-actions > button {
+    flex: 1 1 auto;
+  }
+
+  /* ---- Forms: 16px text stops iOS zoom-on-focus ------------ */
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select,
+  textarea {
+    font-size: 16px !important;
+    border-radius: 12px !important;
+  }
+
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select {
+    min-height: 44px;
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: none !important;
+    border-color: var(--brand) !important;
+    box-shadow: 0 0 0 4px var(--brand-glow) !important;
+  }
+
+  input[type='checkbox'],
+  input[type='radio'] {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--brand-dark);
+  }
+
+  /* ---- Dialogs become bottom sheets ------------------------ */
+  .modal-backdrop {
+    place-items: end center !important;
+    padding: 0 !important;
+  }
+
+  .modal-backdrop > .confirm-dialog {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 92dvh;
+    overflow-y: auto;
+    border-radius: 24px 24px 0 0 !important;
+    padding: 22px 18px calc(18px + env(safe-area-inset-bottom)) !important;
+    animation: mobile-sheet-up 0.28s cubic-bezier(0.32, 0.72, 0, 1) !important;
+  }
+
+  .modal-backdrop > .confirm-dialog::before {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 4px;
+    margin: -8px auto 14px;
+    border-radius: 999px;
+    background: var(--surface-3);
+  }
+
+  .confirm-dialog > div:last-child {
+    flex-direction: column-reverse;
+  }
+
+  .confirm-dialog > div:last-child > button {
+    width: 100%;
+  }
+
+  /* ---- Notices --------------------------------------------- */
+  .subscription-lock,
+  .error-box,
+  .success-box,
+  .creation-success {
+    border-radius: 14px !important;
+    font-size: 0.875rem;
+  }
+
+  .emptyState {
+    padding: 40px 16px !important;
+  }
+}
+
+/* Very small phones */
+@media (max-width: 380px) {
+  .app-content > .page,
+  .page {
+    padding: 14px 10px !important;
+  }
+
+  .user-page-heading h1 {
+    font-size: 1.3rem !important;
+  }
+
+  .branch-badge {
+    max-width: 30vw;
+  }
+}
+
+@keyframes mobile-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes mobile-sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-mobile,
+  .owner-sidebar-mobile,
+  .operator-sidebar-mobile,
+  .modal-backdrop > * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

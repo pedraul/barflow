@@ -324,7 +324,12 @@ export async function initiatePayment(payload) {
 }
 
 export async function verifyPayment(paymentId) {
-  const { data } = await api.post('/customer/payment/verify', { paymentId })
+  const { data } = await api.get(`/customer/payment/${paymentId}/status`)
+  return data
+}
+
+export async function confirmCashPayment(paymentId) {
+  const { data } = await api.post(`/payments/cash/${paymentId}/confirm`)
   return data
 }
 
@@ -369,6 +374,19 @@ export async function fetchQRCodes(branchId) {
   if (branchId && branchId !== 'all') params.set('branchId', branchId)
   const query = params.toString()
   const { data } = await api.get(`/operator/qr-codes${query ? `?${query}` : ''}`)
+  return data
+}
+
+export async function fetchManagedTables(branchId) {
+  const params = new URLSearchParams()
+  if (branchId && branchId !== 'all') params.set('branchId', branchId)
+  const query = params.toString()
+  const { data } = await api.get(`/manager/tables${query ? `?${query}` : ''}`)
+  return data
+}
+
+export async function createManagedTable(tableNumber, branchId) {
+  const { data } = await api.post('/manager/tables', { tableNumber, branchId })
   return data
 }
 
@@ -460,6 +478,10 @@ export async function rejectTransfer(id) {
   const { data } = await api.post(`/manager/transfers/${id}/approve`, { action: 'rejected' })
   return data
 }
+export async function checkTransferPayoutStatus(id) {
+  const { data } = await api.post(`/manager/transfers/${id}/status`)
+  return data
+}
 export async function fetchPendingRefunds() {
   const { data } = await api.get('/manager/refunds/pending')
   return data
@@ -488,6 +510,10 @@ export async function approvePayroll(id) {
   const { data } = await api.post(`/manager/payrolls/${id}/approve`, { action: 'approved' })
   return data
 }
+export async function checkPayrollPayoutStatus(id) {
+  const { data } = await api.post(`/manager/payrolls/${id}/status`)
+  return data
+}
 export async function rejectPayroll(id) {
   const { data } = await api.post(`/manager/payrolls/${id}/approve`, { action: 'rejected' })
   return data
@@ -506,6 +532,10 @@ export async function approveWithdrawal(id) {
 
 export async function rejectWithdrawal(id) {
   const { data } = await api.post(`/manager/withdrawals/${id}/approve`, { action: 'rejected' })
+  return data
+}
+export async function checkWithdrawalPayoutStatus(id) {
+  const { data } = await api.post(`/manager/withdrawals/${id}/status`)
   return data
 }
 
@@ -734,7 +764,105 @@ export async function generateMerchantQRPayment() {
   return data
 }
 
-export async function verifyQRPayment(payload) {
-  const { data } = await api.post('/v1/owner/qr-payment/verify', payload)
+
+// ===== STAFF SHIFTS =====
+const shiftError = (error) => {
+  const message = error.response?.data?.error
+  return message ? new Error(message) : error
+}
+
+export async function fetchCurrentShift() {
+  try {
+    const { data } = await api.get('/shifts/current')
+    return data.shift
+  } catch (error) { throw shiftError(error) }
+}
+
+export async function startShift(note) {
+  try {
+    const { data } = await api.post('/shifts/start', { note })
+    return data.shift
+  } catch (error) { throw shiftError(error) }
+}
+
+export async function endShift(note) {
+  try {
+    const { data } = await api.post('/shifts/end', { note })
+    return data.shift
+  } catch (error) { throw shiftError(error) }
+}
+
+export async function fetchShifts(params = {}) {
+  try {
+    const { data } = await api.get('/shifts', { params })
+    return data
+  } catch (error) { throw shiftError(error) }
+}
+
+export async function fetchShiftPerformance(params = {}) {
+  try {
+    const { data } = await api.get('/shifts/performance', { params })
+    return data
+  } catch (error) { throw shiftError(error) }
+}
+
+// ===== STAFF ACCESS (owner-granted permissions) =====
+const apiError = (error) => {
+  const message = error.response?.data?.error
+  return message ? new Error(message) : error
+}
+
+export async function fetchMyGrants() {
+  try {
+    const { data } = await api.get('/staff-permissions/me')
+    return data
+  } catch (error) { throw apiError(error) }
+}
+
+export async function fetchStaffPermissions() {
+  try {
+    const { data } = await api.get('/staff-permissions')
+    return data
+  } catch (error) { throw apiError(error) }
+}
+
+export async function updateStaffPermissions(userId, permissions) {
+  try {
+    const { data } = await api.put(`/staff-permissions/${userId}`, { permissions })
+    return data
+  } catch (error) { throw apiError(error) }
+}
+
+export async function resetStaffPassword(userId, newPassword) {
+  try {
+    const { data } = await api.put(`/v1/owner/users/${userId}/reset-password`, { newPassword })
+    return data
+  } catch (error) { throw apiError(error) }
+}
+
+export async function createStaffUser(payload) {
+  try {
+    const { data } = await api.post('/users', payload)
+    return data
+  } catch (error) { throw apiError(error) }
+}
+
+export async function updateStaffUser(id, changes) {
+  try {
+    const { data } = await api.patch(`/users/${id}`, changes)
+    return data
+  } catch (error) { throw apiError(error) }
+}
+
+export async function deactivateStaffUser(id) {
+  try {
+    const { data } = await api.delete(`/users/${id}`)
+    return data
+  } catch (error) { throw apiError(error) }
+}
+
+// ===== CUSTOMER: orders placed from this device =====
+export async function fetchMyCustomerOrders(orderIds, businessId) {
+  const { data } = await api.post('/customer/orders/mine', { orderIds, businessId })
   return data
 }

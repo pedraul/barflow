@@ -9,5 +9,14 @@ backend/dist
 *.dump
 *.sql
 !backend/migrations/20261005_add_branch_owned_products.sql
+!backend/migrations/20261024_add_subscription_payment_provider_fields.sql
+!backend/migrations/20261026_add_salary_payout_provider_fields.sql
+!backend/migrations/20261026_add_outbound_payout_provider_fields.sql
+!backend/migrations/20261026_create_dining_tables.sql
+!backend/migrations/20261026_backfill_order_table_numbers.sql
+!backend/migrations/20261029_fix_order_station_assignments.sql
+!backend/migrations/20261029_repair_branch_owned_stock.sql
+!backend/migrations/20261119_create_staff_shifts.sql
+!backend/migrations/20261120_create_user_permissions.sql
 *.bak
 *.log

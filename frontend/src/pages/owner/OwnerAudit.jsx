@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react'
+import { usePreferences } from '../../context/PreferencesContext'
 
 const FILTERS = [
   { key: 'all', label: 'All' },
@@ -26,6 +27,7 @@ const TAG_COLORS = {
 }
 
 export default function OwnerAudit({ entries }) {
+  const { t } = usePreferences()
   const [filter, setFilter] = useState('all')
 
   const filtered = useMemo(
@@ -35,7 +37,7 @@ export default function OwnerAudit({ entries }) {
 
   return (
     <div className="p-6 space-y-6 max-w-[1400px] mx-auto w-full">
-      <nav className="flex flex-wrap gap-2" aria-label="Audit filters">
+      <nav className="flex flex-wrap gap-2" aria-label={t('Audit filters')}>
         {FILTERS.map((f) => (
           <button
             key={f.key}
@@ -43,13 +45,13 @@ export default function OwnerAudit({ entries }) {
             className={`rounded-full px-3.5 py-1.5 text-sm font-semibold border transition ${filter === f.key ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-500 border-slate-300 hover:border-indigo-500 hover:text-indigo-600'}`}
             onClick={() => setFilter(f.key)}
           >
-            {f.label}
+            {t(f.label)}
           </button>
         ))}
       </nav>
 
       <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-        <h2 className="text-lg font-bold text-slate-900 mb-4">Audit logs</h2>
+        <h2 className="text-lg font-bold text-slate-900 mb-4">{t('Audit logs')}</h2>
         {filtered.length ? (
           filtered.map((entry) => (
             <p key={entry.id} className="my-2 text-slate-700">
@@ -58,7 +60,7 @@ export default function OwnerAudit({ entries }) {
             </p>
           ))
         ) : (
-          <p className="text-slate-400">No audit entries recorded yet.</p>
+          <p className="text-slate-400">{t('No audit entries recorded yet.')}</p>
         )}
       </section>
     </div>

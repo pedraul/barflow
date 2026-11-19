@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import * as api from '../../api/endpoints'
 import { useAuth } from '../../context/AuthContext'
+import { usePreferences } from '../../context/PreferencesContext'
 import { buildWorkspaceUrl } from '../../config/workspaceUrl'
 import { ShieldCheck, Info, RotateCw, HelpCircle, Lock, Mail, Smartphone } from 'lucide-react'
 
@@ -12,6 +13,7 @@ export default function TwoFactorVerify() {
   const method = searchParams.get('method') || 'email'
   const navigate = useNavigate()
   const { login, user } = useAuth()
+  const { t } = usePreferences()
 
   const [otp, setOtp] = useState(['', '', '', '', '', ''])
   const [timer, setTimer] = useState(45)
@@ -57,10 +59,10 @@ export default function TwoFactorVerify() {
       setLoading(true)
       api.sendTwoFactorCode(email, userId, method)
         .then(() => setTimer(45))
-        .catch((err) => setError(err.message || 'Failed to send verification code.'))
+        .catch((err) => setError(err.message || t('Failed to send verification code.')))
         .finally(() => setLoading(false))
     }
-  }, [tempToken, email, userId, adminId, method, isPlatformAdmin, navigate])
+  }, [tempToken, email, userId, adminId, method, isPlatformAdmin, navigate, t])
 
   useEffect(() => {
     if (timer > 0) {
@@ -135,7 +137,7 @@ export default function TwoFactorVerify() {
         }
       }
     } catch (err) {
-      setError(err.message || 'Invalid or expired code.')
+      setError(err.message || t('Invalid or expired code.'))
     } finally {
       setLoading(false)
     }
@@ -164,7 +166,7 @@ export default function TwoFactorVerify() {
       await api.sendTwoFactorCode(email, userId, method)
       setTimer(45)
     } catch (err) {
-      setError(err.message || 'Failed to resend code.')
+      setError(err.message || t('Failed to resend code.'))
     } finally {
       setLoading(false)
     }
@@ -189,7 +191,7 @@ export default function TwoFactorVerify() {
               Bar<span className="text-[#5B41DE]">Flow</span>
             </span>
             <span className="text-[10px] text-gray-400 font-medium tracking-wide">
-              Smart Bar Management
+              {t('Smart Bar Management')}
             </span>
           </div>
         </div>
@@ -214,11 +216,11 @@ export default function TwoFactorVerify() {
         </div>
 
         <h1 className="text-2xl font-bold text-[#1E1B4B] mb-2 tracking-tight">
-          Two-Factor Authentication
+          {t('Two-Factor Authentication')}
         </h1>
         <p className="text-sm text-gray-500 mb-6 font-normal">
-          Enter the 6-digit code sent to <br />
-          <span className="font-semibold text-[#5B41DE]">{email || 'your email'}</span>
+          {t('Enter the 6-digit code sent to')} <br />
+          <span className="font-semibold text-[#5B41DE]">{email || t('your email')}</span>
         </p>
 
         <form onSubmit={handleSubmit} className="w-full">
@@ -228,6 +230,7 @@ export default function TwoFactorVerify() {
                 key={index}
                 type="text"
                 maxLength="1"
+                aria-label={`${t('Verification code digit')} ${index + 1}`}
                 ref={(el) => (inputRefs.current[index] = el)}
                 value={data}
                 onChange={(e) => handleChange(e.target, index)}
@@ -244,7 +247,7 @@ export default function TwoFactorVerify() {
           )}
 
           {loading && otp.every((v) => v === '') && (
-            <p className="text-sm text-gray-500 mb-4">Sending verification code...</p>
+            <p className="text-sm text-gray-500 mb-4">{t('Sending verification code...')}</p>
           )}
 
           <button
@@ -253,14 +256,14 @@ export default function TwoFactorVerify() {
             disabled={loading || otp.some((v) => v === '')}
           >
             <ShieldCheck className="w-5 h-5" />
-            <span>{loading ? 'Verifying...' : 'Verify'}</span>
+            <span>{loading ? t('Verifying...') : t('Verify')}</span>
           </button>
         </form>
 
         <div className="relative w-full flex items-center justify-center mb-6">
           <div className="border-t border-gray-100 w-full"></div>
           <span className="bg-white px-3 text-[10px] text-gray-400 font-medium absolute">
-            or
+            {t('or')}
           </span>
         </div>
 
@@ -272,18 +275,18 @@ export default function TwoFactorVerify() {
           }`}
         >
           <RotateCw className="w-4 h-4" />
-          <span>Resend Code</span>
+          <span>{t('Resend Code')}</span>
         </button>
 
         <p className="text-xs text-gray-400 font-medium">
-          You can request a new code in{' '}
+          {t('You can request a new code in')}{' '}
           <span className="text-gray-700 font-semibold">{formattedTime}</span>
         </p>
       </div>
 
       <div className="mt-8 flex items-center gap-2 text-xs text-gray-500 font-normal">
         <HelpCircle className="w-4 h-4 text-gray-400" />
-        <span>Didn't receive the code? Check your spam folder or try again.</span>
+        <span>{t("Didn't receive the code? Check your spam folder or try again.")}</span>
       </div>
     </div>
   )

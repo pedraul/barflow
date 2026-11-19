@@ -1,3 +1,4 @@
+import { usePreferences } from '../../context/PreferencesContext'
 import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, Plus, Minus, Trash2, ShoppingCart, CheckCircle2, ArrowLeft, UtensilsCrossed } from 'lucide-react'
@@ -20,6 +21,7 @@ const FOOD_CATEGORIES = [
 ]
 
 export default function WaiterNewOrder() {
+  const { t } = usePreferences()
   const navigate = useNavigate()
   const { user } = useAuth()
   const [menu, setMenu] = useState(null)
@@ -27,6 +29,14 @@ export default function WaiterNewOrder() {
   const [selectedSection, setSelectedSection] = useState(null)
   const [selectedCategory, setSelectedCategory] = useState(null)
   const [search, setSearch] = useState('')
+  const [cartOpen, setCartOpen] = useState(false)
+  const [cartNotice, setCartNotice] = useState('')
+
+  useEffect(() => {
+    if (!cartNotice) return undefined
+    const timeout = window.setTimeout(() => setCartNotice(''), 2200)
+    return () => window.clearTimeout(timeout)
+  }, [cartNotice])
 
   useEffect(() => {
     const storedBiz = sessionStorage.getItem('waiter_business_id') || ''
@@ -105,11 +115,14 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const count = cart.reduce((sum, item) => sum + item.quantity, 0)
 
-  const add = (product) => setCart((current) => {
-    const found = current.find((item) => item.productId === product.id)
-    if (found) return current.map((item) => item.productId === product.id ? { ...item, quantity: item.quantity + 1 } : item)
-    return [...current, { productId: product.id, name: product.name, price: product.price, quantity: 1, imageUrl: product.imageUrl || '' }]
-  })
+  const add = (product) => {
+    setCart((current) => {
+      const found = current.find((item) => item.productId === product.id)
+      if (found) return current.map((item) => item.productId === product.id ? { ...item, quantity: item.quantity + 1 } : item)
+      return [...current, { productId: product.id, name: product.name, price: product.price, quantity: 1, imageUrl: product.imageUrl || '' }]
+    })
+    setCartNotice(product.name + " " + t("added to cart"))
+  }
   const change = (id, delta) => setCart((current) => current.map((item) => item.productId === id ? { ...item, quantity: item.quantity + delta } : item).filter((item) => item.quantity > 0))
   const proceed = () => {
     sessionStorage.setItem('waiter_cart', JSON.stringify(cart))
@@ -120,15 +133,16 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
   }
 
   return <div className="page waiter-new-order bg-white min-h-screen">
+    {cartNotice && <div role="status" aria-live="polite" className="customer-cart-toast"><CheckCircle2 size={19} />{cartNotice}</div>}
     <div className="p-6 lg:p-8">
-      <div className="mb-5 flex flex-wrap justify-between gap-5"><div><p className="text-xs font-bold text-amber-600 uppercase tracking-wider">Waiter workspace</p><h1 className="text-3xl font-extrabold text-slate-950">New Order for Customer</h1><p className="text-slate-500 mt-1">Build the customer's order and send it to the operator for routing.</p></div></div>
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_350px] border border-slate-200 rounded-xl overflow-hidden min-h-[680px]">
-        <section className="p-6">
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-5"><div><p className="text-xs font-bold text-amber-600 uppercase tracking-wider">{t("Waiter workspace")}</p><h1 className="text-3xl font-extrabold text-slate-950">{t("New Order for Customer")}</h1><p className="text-slate-500 mt-1">{t("Build the customer's order and send it to the operator for routing.")}</p></div><button type="button" onClick={() => setCartOpen((open) => !open)} aria-expanded={cartOpen} className="flex items-center gap-2 rounded-lg bg-slate-900 px-5 py-3 font-bold text-white shadow-sm hover:bg-slate-700"><ShoppingCart size={19}/>{' '}{t("My Cart")}{' '}<span className="grid h-6 min-w-6 place-items-center rounded-full bg-orange-500 px-1 text-xs">{count}</span></button></div>
+      <div className="waiter-order-layout min-h-[680px]">
+        <section className="waiter-order-menu w-full rounded-xl border border-slate-200 bg-white p-5 md:p-7">
           {/* Search bar always visible */}
           <div className="flex justify-between gap-4 mb-5">
-            <div className="relative w-80 max-w-full">
+            <div className="relative w-full max-w-xl">
               <Search size={18} className="absolute left-3 top-3 text-slate-400"/>
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search menu..." className="w-full border rounded-lg py-2 pl-9 pr-3"/>
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("Search menu...")} className="w-full border rounded-lg py-2 pl-9 pr-3"/>
             </div>
           </div>
 
@@ -136,34 +150,33 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
           {selectedCategory ? (
             <>
               <button onClick={() => { setSelectedCategory(null); setSearch('') }} className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-lg font-bold text-sm hover:bg-slate-800 transition shadow-md mb-4">
-                <ArrowLeft size={18} /> Back to categories
-              </button>
-              <h2 className="text-2xl font-extrabold">{selectedCategory}</h2>
-              <p className="text-slate-500 text-sm mt-1">Choose items to add to the customer's order</p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mt-5">
+                <ArrowLeft size={18} />{t("Back to categories")}</button>
+              <h2 className="text-2xl font-extrabold">{t(selectedCategory)}</h2>
+              <p className="text-slate-500 text-sm mt-1">{t("Choose items to add to the customer's order")}</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 mt-5">
                 {(search ? searchItems : categoryItems).map((item) => {
                   const inCart = cart.find((cartItem) => cartItem.productId === item.id)
                   const soldOut = Number(item.quantity) <= 0
                   return (
-                    <article key={item.id} className="overflow-hidden border border-slate-200 rounded-xl shadow-sm bg-white">
+                    <article key={item.id} className="waiter-market-card overflow-hidden border border-slate-200 rounded-xl bg-white">
                       <div className="relative h-44 bg-slate-100 overflow-hidden">
-                        <div className="absolute inset-0 grid place-items-center text-slate-400"><UtensilsCrossed size={30} /><span className="text-xs mt-1">No image</span></div>
+                        <div className="absolute inset-0 grid place-items-center text-slate-400"><UtensilsCrossed size={30} /><span className="text-xs mt-1">{t("No image")}</span></div>
                         {item.imageUrl && <img src={item.imageUrl} alt={item.name} className="relative z-10 w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} />}
                       </div>
                       <div className="p-3">
                         <h3 className="font-bold text-base">{item.name}</h3>
                         <p className="font-bold text-base mt-1">{money(item.price)}</p>
                         <button disabled={soldOut} onClick={() => add(item)} className="mt-3 w-full border border-slate-300 rounded-lg py-1.5 flex justify-between px-3 font-semibold text-sm hover:border-amber-500 disabled:opacity-50">
-                          {soldOut ? 'Sold out' : 'Add'} <Plus className="rounded bg-amber-600 text-white p-0.5" size={18} />
+                          {soldOut ? t("Sold out") : t("Add")} <Plus className="rounded bg-amber-600 text-white p-0.5" size={18} />
                         </button>
-                        {inCart && <p className="text-xs text-emerald-600 mt-2 flex gap-1 items-center"><CheckCircle2 size={14} />{inCart.quantity} in order</p>}
+                        {inCart && <p className="text-xs text-emerald-600 mt-2 flex gap-1 items-center"><CheckCircle2 size={14} />{inCart.quantity}{' '}{t("in order")}</p>}
                       </div>
                     </article>
                   )
                 })}
                 {(search ? searchItems : categoryItems).length === 0 && (
                   <p className="col-span-full text-center text-slate-500 py-12">
-                    {search ? `No items found matching "${search}"` : 'No items in this category.'}
+                    {search ? `No items found matching "${search}"` : t("No items in this category.")}
                   </p>
                 )}
               </div>
@@ -171,51 +184,51 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
           ) : search ? (
             /* Search results view */
             <>
-              <h2 className="text-2xl font-extrabold mb-4">Search Results</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mt-2">
+              <h2 className="text-2xl font-extrabold mb-4">{t("Search Results")}</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 mt-2">
                 {searchItems.map((item) => {
                   const inCart = cart.find((cartItem) => cartItem.productId === item.id)
                   const soldOut = Number(item.quantity) <= 0
                   return (
-                    <article key={item.id} className="overflow-hidden border border-slate-200 rounded-xl shadow-sm bg-white">
+                    <article key={item.id} className="waiter-market-card overflow-hidden border border-slate-200 rounded-xl bg-white">
                       <div className="relative h-44 bg-slate-100 overflow-hidden">
-                        <div className="absolute inset-0 grid place-items-center text-slate-400"><UtensilsCrossed size={30} /><span className="text-xs mt-1">No image</span></div>
+                        <div className="absolute inset-0 grid place-items-center text-slate-400"><UtensilsCrossed size={30} /><span className="text-xs mt-1">{t("No image")}</span></div>
                         {item.imageUrl && <img src={item.imageUrl} alt={item.name} className="relative z-10 w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} />}
                       </div>
                       <div className="p-3">
                         <h3 className="font-bold text-base">{item.name}</h3>
                         <p className="font-bold text-base mt-1">{money(item.price)}</p>
                         <button disabled={soldOut} onClick={() => add(item)} className="mt-3 w-full border border-slate-300 rounded-lg py-1.5 flex justify-between px-3 font-semibold text-sm hover:border-amber-500 disabled:opacity-50">
-                          {soldOut ? 'Sold out' : 'Add'} <Plus className="rounded bg-amber-600 text-white p-0.5" size={18} />
+                          {soldOut ? t("Sold out") : t("Add")} <Plus className="rounded bg-amber-600 text-white p-0.5" size={18} />
                         </button>
-                        {inCart && <p className="text-xs text-emerald-600 mt-2 flex gap-1 items-center"><CheckCircle2 size={14} />{inCart.quantity} in order</p>}
+                        {inCart && <p className="text-xs text-emerald-600 mt-2 flex gap-1 items-center"><CheckCircle2 size={14} />{inCart.quantity}{' '}{t("in order")}</p>}
                       </div>
                     </article>
                   )
                 })}
                 {searchItems.length === 0 && (
-                  <p className="col-span-full text-center text-slate-500 py-12">No items found matching "{search}"</p>
+                  <p className="col-span-full text-center text-slate-500 py-12">{t("No items found matching \"")}{search}"</p>
                 )}
               </div>
             </>
           ) : !selectedSection ? (
             /* Menu sections view — Bar menu (drinks) and Food menu */
             <>
-              <h2 className="text-2xl font-extrabold mb-1">Menu</h2>
-              <p className="text-slate-500 mb-5">Choose the menu section, then select a category to browse items</p>
+              <h2 className="text-2xl font-extrabold mb-1">{t("Menu")}</h2>
+              <p className="text-slate-500 mb-5">{t("Choose the menu section, then select a category to browse items")}</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <button onClick={() => { setSelectedSection('bar'); setSearch('') }} className="overflow-hidden border border-slate-200 rounded-xl shadow-sm bg-white text-left hover:border-amber-500 hover:shadow-md transition">
                   <img src="/drinks.webp" alt="" className="h-48 w-full object-cover" />
                   <div className="p-6">
-                    <div className="text-2xl font-black text-slate-900">Bar menu</div>
-                    <div className="text-sm text-slate-500 mt-1">Beer, Wine, Spirits, Cocktails, Soft Drinks, Juices, Water, Energy Drinks, Tea and Coffee</div>
+                    <div className="text-2xl font-black text-slate-900">{t("Bar menu")}</div>
+                    <div className="text-sm text-slate-500 mt-1">{t("Beer, Wine, Spirits, Cocktails, Soft Drinks, Juices, Water, Energy Drinks, Tea and Coffee")}</div>
                   </div>
                 </button>
                 <button onClick={() => { setSelectedSection('food'); setSearch('') }} className="overflow-hidden border border-slate-200 rounded-xl shadow-sm bg-white text-left hover:border-amber-500 hover:shadow-md transition">
                   <img src="/food.webp" alt="" className="h-48 w-full object-cover" />
                   <div className="p-6">
-                    <div className="text-2xl font-black text-slate-900">Food menu</div>
-                    <div className="text-sm text-slate-500 mt-1">Appetizers, Snacks, BBQ & Grills, Chicken, Beef, Pork, Fish & Seafood, Burgers, Pizza, Sandwiches, Fries, Main Meals, Local Dishes, Salads, Desserts</div>
+                    <div className="text-2xl font-black text-slate-900">{t("Food menu")}</div>
+                    <div className="text-sm text-slate-500 mt-1">{t("Appetizers, Snacks, BBQ & Grills, Chicken, Beef, Pork, Fish & Seafood, Burgers, Pizza, Sandwiches, Fries, Main Meals, Local Dishes, Salads, Desserts")}</div>
                   </div>
                 </button>
               </div>
@@ -224,10 +237,9 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
             /* Categories of the selected section */
             <>
               <button onClick={() => { setSelectedSection(null); setSelectedCategory(null); setSearch('') }} className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-lg font-bold text-sm hover:bg-slate-800 transition shadow-md mb-4">
-                <ArrowLeft size={18} /> Back to menu sections
-              </button>
-              <h2 className="text-2xl font-extrabold">{selectedSection === 'bar' ? 'Bar menu' : 'Food menu'} — Categories</h2>
-              <p className="text-slate-500 text-sm mt-1">Select a category to browse items</p>
+                <ArrowLeft size={18} />{t("Back to menu sections")}</button>
+              <h2 className="text-2xl font-extrabold">{selectedSection === 'bar' ? t("Bar menu") : t("Food menu")}{' '}{t("— Categories")}</h2>
+              <p className="text-slate-500 text-sm mt-1">{t("Select a category to browse items")}</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-5">
                 {(selectedSection === 'bar' ? barCategories : foodCategories).map((group) => (
                   <button key={group.name} onClick={() => setSelectedCategory(group.name)} className="overflow-hidden border border-slate-200 rounded-xl shadow-sm bg-white text-left hover:border-amber-500 hover:shadow-md transition">
@@ -237,27 +249,26 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
                       className="h-28 w-full object-cover"
                     />
                     <div className="p-4">
-                      <div className="text-xl font-bold text-slate-900">{group.name}</div>
-                      <div className="text-xs text-slate-500 mt-1">{group.items?.length || 0} items</div>
+                      <div className="text-xl font-bold text-slate-900">{t(group.name)}</div>
+                      <div className="text-xs text-slate-500 mt-1">{group.items?.length || 0}{' '}{t("items")}</div>
                     </div>
                   </button>
                 ))}
                 {(selectedSection === 'bar' ? barCategories : foodCategories).length === 0 && (
-                  <p className="col-span-full text-center text-slate-500 py-12">No categories in this section yet. The manager needs to add menu items first.</p>
+                  <p className="col-span-full text-center text-slate-500 py-12">{t("No categories in this section yet. The manager needs to add menu items first.")}</p>
                 )}
               </div>
             </>
           )}
         </section>
 
-        {/* Cart sidebar */}
-        <aside className="p-5 border-l border-slate-200">
+        {cartOpen && <aside className="waiter-order-cart p-5 border border-slate-200 bg-white">
           <div className="flex justify-between border-b pb-4">
-            <h2 className="font-bold text-lg">Your Order ({count})</h2>
-            <button onClick={() => setCart([])} className="text-red-600 text-sm">Clear All</button>
+            <h2 className="font-bold text-lg">{t("Your Order (")}{count})</h2>
+            <button onClick={() => setCart([])} className="text-red-600 text-sm">{t("Clear All")}</button>
           </div>
           {cart.length === 0 ? (
-            <p className="text-center text-slate-500 py-10">No items added yet.</p>
+            <p className="text-center text-slate-500 py-10">{t("No items added yet.")}</p>
           ) : (
             <>
               <div className="divide-y">
@@ -267,30 +278,29 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
                       <strong>{item.name}</strong>
                       <p className="text-sm">{money(item.price)}</p>
                       <span className="border rounded inline-flex gap-3 items-center px-2 mt-2">
-                        <button onClick={() => change(item.productId, -1)}><Minus size={14}/></button>
+                        <button aria-label={t('Decrease quantity')} onClick={() => change(item.productId, -1)}><Minus size={14}/></button>
                         {item.quantity}
-                        <button onClick={() => change(item.productId, 1)}><Plus size={14}/></button>
+                        <button aria-label={t('Increase quantity')} onClick={() => change(item.productId, 1)}><Plus size={14}/></button>
                       </span>
                     </div>
                     <div className="text-right">
-                      <button onClick={() => change(item.productId, -item.quantity)}><Trash2 size={16} className="text-slate-400"/></button>
+                      <button aria-label={t('Remove item')} onClick={() => change(item.productId, -item.quantity)}><Trash2 size={16} className="text-slate-400"/></button>
                       <p className="font-bold mt-5">{money(item.price * item.quantity)}</p>
                     </div>
                   </div>
                 ))}
               </div>
               <div className="border-t pt-4 mt-3">
-                <div className="flex justify-between"><span>Subtotal</span><span>{money(total)}</span></div>
-                <div className="flex justify-between text-xl font-extrabold mt-3"><span>Total</span><span className="text-amber-600">{money(total)}</span></div>
+                <div className="flex justify-between"><span>{t("Subtotal")}</span><span>{money(total)}</span></div>
+                <div className="flex justify-between text-xl font-extrabold mt-3"><span>{t("Total")}</span><span className="text-amber-600">{money(total)}</span></div>
                 <button disabled={!cart.length} onClick={proceed} className="w-full mt-5 bg-gradient-to-r from-amber-500 to-orange-600 text-white py-3 rounded-lg font-bold disabled:opacity-50 flex justify-center gap-2">
-                  <ShoppingCart size={19}/>View Cart & Place Order
-                </button>
+                  <ShoppingCart size={19}/>{t("View Cart & Place Order")}</button>
               </div>
             </>
           )}
-        </aside>
+        </aside>}
       </div>
-      <p className="mt-4 text-sm text-slate-500">Waiter: {user?.name || 'Waiter'} · Orders are sent to the system operator, who routes food to the kitchen and drinks to the bar.</p>
+      <p className="mt-4 text-sm text-slate-500">{t("Waiter:")}{' '}{user?.name || t("Waiter")}{' '}{t("· Orders are sent to the system operator, who routes food to the kitchen and drinks to the bar.")}</p>
     </div>
   </div>
 }

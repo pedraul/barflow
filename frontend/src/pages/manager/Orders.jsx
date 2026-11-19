@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import { fetchOrders } from '../../api/endpoints'
 import OrderRestockModal from '../../components/OrderRestockModal'
+import { getOrderLocation } from '../../utils/orderDisplay'
+import { usePreferences } from '../../context/PreferencesContext'
 
 const STATUS_OPTIONS = ['', 'Open', 'Preparing', 'Ready', 'Served', 'Paid', 'Cancelled']
 const SOURCE_OPTIONS = ['', 'qr', 'waiter']
@@ -11,6 +13,7 @@ const money = (v) =>
   }) + ' RWF'
 
 export default function ManagerOrders() {
+  const { t } = usePreferences()
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -71,28 +74,28 @@ export default function ManagerOrders() {
     <div className="page manager-orders">
       <div className="user-page-heading">
         <div>
-          <p className="eyebrow">Manager workspace</p>
-          <h1>All Orders</h1>
-          <p>Oversight of every order across branches and sources. View only.</p>
+          <p className="eyebrow">{t('Manager workspace')}</p>
+          <h1>{t('All Orders')}</h1>
+          <p>{t('Oversight of every order across branches and sources. View only.')}</p>
         </div>
       </div>
 
       <div className="user-info-grid">
         <div className="summary-card">
           <strong>{totals.count}</strong>
-          <span>Orders</span>
+          <span>{t('Orders')}</span>
         </div>
         <div className="summary-card">
           <strong>{money(totals.gross)}</strong>
-          <span>Total Value</span>
+          <span>{t('Total Value')}</span>
         </div>
         <div className="summary-card">
           <strong>{money(totals.qr)}</strong>
-          <span>QR Orders</span>
+          <span>{t('QR Orders')}</span>
         </div>
         <div className="summary-card">
           <strong>{money(totals.waiter)}</strong>
-          <span>Waiter Orders</span>
+          <span>{t('Waiter Orders')}</span>
         </div>
       </div>
 
@@ -106,27 +109,27 @@ export default function ManagerOrders() {
             marginBottom: 16,
           }}
         >
-          <Field label="Status">
+          <Field label={t('Status')}>
             <select value={status} onChange={(e) => setStatus(e.target.value)} style={sel}>
                 {STATUS_OPTIONS.map((s) => (
                   <option key={s || 'all'} value={s}>
-                    {s || 'All'}
+                    {s ? t(s) : t('All')}
                   </option>
                 ))}
             </select>
           </Field>
-          <Field label="Source">
+          <Field label={t('Source')}>
             <select value={source} onChange={(e) => setSource(e.target.value)} style={sel}>
                 {SOURCE_OPTIONS.map((s) => (
                   <option key={s || 'all'} value={s}>
-                    {s ? s.toUpperCase() : 'All'}
+                    {s ? t(s === 'qr' ? 'QR' : 'Waiter') : t('All')}
                   </option>
                 ))}
             </select>
           </Field>
-          <Field label="Branch">
+          <Field label={t('Branch')}>
             <select value={branch} onChange={(e) => setBranch(e.target.value)} style={sel}>
-              <option value="">All</option>
+              <option value="">{t('All')}</option>
                 {branches.map((b) => (
                   <option key={b.id} value={b.id}>
                     {b.name}
@@ -135,7 +138,7 @@ export default function ManagerOrders() {
             </select>
           </Field>
           <button type="button" className="pay-action" style={{ padding: '10px 18px' }} onClick={load}>
-            Apply
+            {t('Apply')}
           </button>
           <button
             type="button"
@@ -148,23 +151,23 @@ export default function ManagerOrders() {
               setTimeout(load, 0)
             }}
           >
-            Clear
+            {t('Clear')}
           </button>
         </div>
 
         {error && (
           <div className="subscription-lock" style={{ padding: '12px', marginBottom: 16 }}>
-            Error: {error}
+            {t('Error:')} {error}
           </div>
         )}
 
         {loading ? (
           <p style={{ textAlign: 'center', color: 'var(--text-4)', marginTop: '2rem' }}>
-            Loading orders…
+            {t('Loading orders…')}
           </p>
         ) : orders.length === 0 ? (
           <p style={{ textAlign: 'center', color: 'var(--text-4)', marginTop: '2rem' }}>
-            No orders found.
+            {t('No orders found.')}
           </p>
         ) : (
           <div className="user-table-wrap">
@@ -172,15 +175,15 @@ export default function ManagerOrders() {
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>Table</th>
-                  <th>Branch</th>
-                  <th>Type</th>
-                  <th>Source</th>
-                  <th>Items</th>
-                  <th>Status</th>
-                  <th style={{ textAlign: 'right' }}>Total</th>
-                  <th style={{ textAlign: 'right' }}>Time</th>
-                  <th style={{ textAlign: 'right' }}>Actions</th>
+                  <th>{t('Table')}</th>
+                  <th>{t('Branch')}</th>
+                  <th>{t('Type')}</th>
+                  <th>{t('Source')}</th>
+                  <th>{t('Items')}</th>
+                  <th>{t('Status')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('Total')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('Time')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('Actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -189,10 +192,10 @@ export default function ManagerOrders() {
                   return (
                   <tr key={o.id}>
                     <td className="obw-strong">{o.orderNumber ?? o.id}</td>
-                    <td>{o.tableName ?? o.customer ?? '—'}</td>
+                    <td>{getOrderLocation(o)}</td>
                     <td>{o.branchName ?? o.branchId ?? '—'}</td>
                     <td style={{ textTransform: 'capitalize' }}>{o.orderType ?? '—'}</td>
-                    <td style={{ textTransform: 'capitalize' }}>{o.source ?? 'waiter'}</td>
+                    <td style={{ textTransform: 'capitalize' }}>{o.source ?? t('waiter')}</td>
                     <td>{(o.items || []).length}</td>
                     <td>
                       <span
@@ -226,7 +229,7 @@ export default function ManagerOrders() {
                           }}
                           onClick={() => setRestockOrder(o)}
                         >
-                          Return Items
+                          {t('Return Items')}
                         </button>
                       )}
                     </td>
@@ -268,4 +271,3 @@ const sel = {
   fontSize: 14,
   minWidth: 140,
 }
-

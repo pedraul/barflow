@@ -1,5 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
+import { usePreferences } from '../../context/PreferencesContext'
 
 const CARDS = [
   { to: '/manager/transfer/transfers', title: 'Approve transfers', desc: 'Review and approve outgoing transfers.' },
@@ -8,21 +9,22 @@ const CARDS = [
 ]
 
 export default function Transfer() {
+  const { t } = usePreferences()
   return (
     <div className="page manager-transfer">
       <div className="user-page-heading">
         <div>
-          <p className="eyebrow">Manager workspace</p>
-          <h1>Transfer</h1>
-          <p>Approve money movements that need a manager’s sign-off.</p>
+          <p className="eyebrow">{t('Manager workspace')}</p>
+          <h1>{t('Transfer')}</h1>
+          <p>{t('Approve money movements that need a manager’s sign-off.')}</p>
         </div>
       </div>
 
       <div className="link-grid overview-grid">
         {CARDS.map((card) => (
           <Link key={card.to} to={card.to} className="quick-link-btn">
-            {card.title}
-            <small>{card.desc}</small>
+            {t(card.title)}
+            <small>{t(card.desc)}</small>
           </Link>
         ))}
       </div>

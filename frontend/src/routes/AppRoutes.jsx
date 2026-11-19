@@ -63,6 +63,7 @@ import { CustomerProvider } from '../context/CustomerContext'
 import MenuPage from '../pages/customer/MenuPage'
 import CartPage from '../pages/customer/CartPage'
 import PaymentPage from '../pages/customer/PaymentPage'
+import MyOrdersPage from '../pages/customer/MyOrdersPage'
 import QRCodeManager from '../pages/operator/QRCodeManager'
 import KitchenDisplay from '../pages/kitchen/KitchenDisplay'
 import KitchenLayout from '../layouts/KitchenLayout'
@@ -78,6 +79,11 @@ import WaiterCart from '../pages/waiter/WaiterCart'
 import WaiterCheckout from '../pages/waiter/WaiterCheckout'
 import WaiterUnpaidOrders from '../pages/waiter/UnpaidOrders'
 import WaiterOrderHistory from '../pages/waiter/WaiterOrderHistory'
+import AllOrdersPage from '../pages/shared/AllOrdersPage'
+import ShiftsPage from '../pages/shared/ShiftsPage'
+import StaffManagementPage from '../pages/shared/StaffManagementPage'
+import OwnerStaffAccess from '../pages/owner/StaffAccess'
+import RoleLayout from '../layouts/RoleLayout'
 
 export default function AppRoutes() {
   return (
@@ -108,6 +114,7 @@ export default function AppRoutes() {
       <Route path="/menu" element={<CustomerProvider><MenuPage /></CustomerProvider>} />
       <Route path="/cart" element={<CustomerProvider><CartPage /></CustomerProvider>} />
       <Route path="/payment" element={<CustomerProvider><PaymentPage /></CustomerProvider>} />
+      <Route path="/my-orders" element={<CustomerProvider><MyOrdersPage /></CustomerProvider>} />
 
       {/* Owner Routes */}
       <Route
@@ -198,6 +205,17 @@ export default function AppRoutes() {
           <ProtectedRoute checkSubscription allow={['Owner']}>
             <OwnerLayout>
               <OwnerQRWorkspace />
+            </OwnerLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/owner/table-qr"
+        element={
+          <ProtectedRoute checkSubscription allow={['Owner']}>
+            <OwnerLayout>
+              <QRCodeManager />
             </OwnerLayout>
           </ProtectedRoute>
         }
@@ -868,6 +886,97 @@ export default function AppRoutes() {
         }
       />
 
+      {/* All orders (read-only, branch-wide) for waiter / kitchen / bar */}
+      <Route
+        path="/waiter/all-orders"
+        element={
+          <ProtectedRoute checkSubscription allow={['Waiter']}>
+            <WaiterLayout>
+              <AllOrdersPage eyebrow="Waiter workspace" />
+            </WaiterLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/kitchen/orders"
+        element={
+          <ProtectedRoute checkSubscription allow={['Kitchen', 'Operator', 'Manager', 'Owner']}>
+            <KitchenLayout>
+              <AllOrdersPage eyebrow="Kitchen" />
+            </KitchenLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/bar/orders"
+        element={
+          <ProtectedRoute checkSubscription allow={['Bar', 'Operator', 'Manager', 'Owner']}>
+            <BarLayout>
+              <AllOrdersPage eyebrow="Bar" />
+            </BarLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Staff shifts & performance */}
+      <Route
+        path="/owner/shifts"
+        element={
+          <ProtectedRoute checkSubscription allow={['Owner']}>
+            <OwnerLayout>
+              <ShiftsPage />
+            </OwnerLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/manager/shifts"
+        element={
+          <ProtectedRoute checkSubscription allow={['Manager']}>
+            <ManagerLayout>
+              <ShiftsPage />
+            </ManagerLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Staff access: owner grants, workers use what they were granted */}
+      <Route
+        path="/owner/access"
+        element={
+          <ProtectedRoute checkSubscription allow={['Owner']}>
+            <OwnerLayout>
+              <OwnerStaffAccess />
+            </OwnerLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/staff"
+        element={
+          <ProtectedRoute checkSubscription allow={['Manager', 'Accountant', 'Waiter', 'Kitchen', 'Bar', 'Operator']}>
+            <RoleLayout>
+              <StaffManagementPage />
+            </RoleLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/staff/shifts"
+        element={
+          <ProtectedRoute checkSubscription allow={['Manager', 'Accountant', 'Waiter', 'Kitchen', 'Bar', 'Operator']}>
+            <RoleLayout>
+              <ShiftsPage />
+            </RoleLayout>
+          </ProtectedRoute>
+        }
+      />
+
       {/* Shared Routes */}
       <Route
         path="/account/*"
@@ -939,4 +1048,3 @@ export default function AppRoutes() {
     </Routes>
   )
 }
-

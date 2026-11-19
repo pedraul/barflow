@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import * as api from '../api/endpoints'
 import { useAuth } from '../context/AuthContext'
 import { useOwner } from '../context/OwnerContext'
+import { usePreferences } from '../context/PreferencesContext'
 
 function formatCurrency(amount) {
   return 'RWF ' + Number(amount).toLocaleString('en-US', {
@@ -35,6 +36,7 @@ export default function StationDisplay({
 }) {
   const { user } = useAuth()
   const { activeBranchId } = useOwner()
+  const { t } = usePreferences()
   const branchId = String(user?.role || '').toLowerCase() === 'owner'
     ? activeBranchId
     : user?.branchId
@@ -78,7 +80,7 @@ export default function StationDisplay({
       await api.startPreparing(id, branchId)
       loadOrders()
     } catch (err) {
-      alert('Error: ' + err.message)
+      alert(`${t('Error:')} ${err.message}`)
     }
   }
 
@@ -87,7 +89,7 @@ export default function StationDisplay({
       await api.markAsReady(id, branchId)
       loadOrders()
     } catch (err) {
-      alert('Error: ' + err.message)
+      alert(`${t('Error:')} ${err.message}`)
     }
   }
 
@@ -95,7 +97,7 @@ export default function StationDisplay({
     return (
       <div style={styles.loadingScreen}>
         <div style={{ ...styles.spinner, borderTop: `4px solid ${accent}` }} />
-        <h2>Loading {stationLabel} Orders...</h2>
+        <h2>{t('Loading')} {t(stationLabel)} {t('Orders...')}</h2>
       </div>
     )
   }
@@ -138,13 +140,13 @@ export default function StationDisplay({
       <div style={styles.orderHeader}>
         <span style={styles.queueBadge}>#{queuePosition}</span>
                   <span style={styles.orderNumber}>{formatOrderNumber(order.orderNumber)}</span>
-        <span style={styles.tableBadge}>Table {order.tableNumber}</span>
+        <span style={styles.tableBadge}>{t('Table')} {order.tableNumber}</span>
       </div>
       <div style={styles.itemsList}>
         {order.items.map((item, idx) => renderItem(item, idx))}
       </div>
       <div style={styles.orderTotalRow}>
-        <span style={styles.orderTotalLabel}>Total</span>
+        <span style={styles.orderTotalLabel}>{t('Total')}</span>
         <span style={styles.orderTotalValue}>{formatCurrency(order.total || 0)}</span>
       </div>
       {trailing}
@@ -154,31 +156,31 @@ export default function StationDisplay({
   return (
     <div style={styles.container}>
       {soundAlert && newOrders.length > 0 && (
-        <div style={{ ...styles.alertBanner, backgroundColor: accent }}>{newAlert}</div>
+        <div style={{ ...styles.alertBanner, backgroundColor: accent }}>{t(newAlert)}</div>
       )}
 
       <div style={styles.header}>
-        <h1 style={styles.title}>{title}</h1>
+        <h1 style={styles.title}>{t(title)}</h1>
         <div style={styles.stats}>
-          <span style={styles.stat}>New: {newOrders.length}</span>
-          <span style={styles.stat}>Preparing: {preparingOrders.length}</span>
-          <span style={styles.stat}>Ready: {readyOrders.length}</span>
-          <span style={styles.stat}>Paid: {paidOrders.length}</span>
+          <span style={styles.stat}>{t('New:')} {newOrders.length}</span>
+          <span style={styles.stat}>{t('Preparing:')} {preparingOrders.length}</span>
+          <span style={styles.stat}>{t('Ready:')} {readyOrders.length}</span>
+          <span style={styles.stat}>{t('Paid:')} {paidOrders.length}</span>
         </div>
       </div>
 
-      {error && <div style={styles.errorBox}>Error: {error}</div>}
+      {error && <div style={styles.errorBox}>{t('Error:')} {error}</div>}
 
       {newOrders.length > 0 && (
         <div style={styles.section}>
-          <h2 style={styles.sectionTitle}>{newHeading}</h2>
+          <h2 style={styles.sectionTitle}>{t(newHeading)}</h2>
           <div style={styles.ordersGrid}>
             {newOrders.map((order, idx) =>
               renderOrderCard(
                 idx + 1,
                 order,
                 <button style={{ ...styles.startBtn, backgroundColor: accent }} onClick={() => handleStart(order.id)}>
-                  {startLabel}
+                  {t(startLabel)}
                 </button>
               )
             )}
@@ -188,14 +190,14 @@ export default function StationDisplay({
 
       {preparingOrders.length > 0 && (
         <div style={styles.section}>
-          <h2 style={styles.sectionTitle}>{preparingHeading}</h2>
+          <h2 style={styles.sectionTitle}>{t(preparingHeading)}</h2>
           <div style={styles.ordersGrid}>
             {preparingOrders.map((order, idx) =>
               renderOrderCard(
                 idx + 1,
                 order,
                 <button style={{ ...styles.readyBtn, backgroundColor: '#28a745' }} onClick={() => handleReady(order.id)}>
-                  {readyLabel}
+                  {t(readyLabel)}
                 </button>
               )
             )}
@@ -205,23 +207,23 @@ export default function StationDisplay({
 
       {readyOrders.length > 0 && (
         <div style={styles.section}>
-          <h2 style={{ ...styles.sectionTitle, color: '#28a745' }}>{readyHeading}</h2>
+          <h2 style={{ ...styles.sectionTitle, color: '#28a745' }}>{t(readyHeading)}</h2>
           <div style={styles.ordersGrid}>
             {readyOrders.map((order, idx) => (
               <div key={order.id} style={{ ...styles.orderCard, borderLeft: '4px solid #28a745' }}>
                 <div style={styles.orderHeader}>
                   <span style={styles.queueBadge}>#{idx + 1}</span>
                   <span style={styles.orderNumber}>{formatOrderNumber(order.orderNumber)}</span>
-                  <span style={styles.tableBadge}>Table {order.tableNumber}</span>
+                  <span style={styles.tableBadge}>{t('Table')} {order.tableNumber}</span>
                 </div>
                 <div style={styles.itemsList}>
                   {order.items.map((item, idx) => renderItem(item, idx))}
                 </div>
                 <div style={styles.orderTotalRow}>
-                  <span style={styles.orderTotalLabel}>Total</span>
+                  <span style={styles.orderTotalLabel}>{t('Total')}</span>
                   <span style={styles.orderTotalValue}>{formatCurrency(order.total || 0)}</span>
                 </div>
-                <div style={{ ...styles.readyLabel, color: '#28a745' }}>Ready! 🎉</div>
+                <div style={{ ...styles.readyLabel, color: '#28a745' }}>{t('Ready! 🎉')}</div>
               </div>
             ))}
           </div>
@@ -230,23 +232,23 @@ export default function StationDisplay({
 
       {paidOrders.length > 0 && (
         <div style={styles.section}>
-          <h2 style={{ ...styles.sectionTitle, color: '#0d6efd' }}>{paidHeading}</h2>
+          <h2 style={{ ...styles.sectionTitle, color: '#0d6efd' }}>{t(paidHeading)}</h2>
           <div style={styles.ordersGrid}>
             {paidOrders.map((order, idx) => (
               <div key={order.id} style={{ ...styles.orderCard, borderLeft: '4px solid #0d6efd' }}>
                 <div style={styles.orderHeader}>
                   <span style={styles.queueBadge}>#{idx + 1}</span>
                   <span style={styles.orderNumber}>{formatOrderNumber(order.orderNumber)}</span>
-                  <span style={styles.tableBadge}>Table {order.tableNumber}</span>
+                  <span style={styles.tableBadge}>{t('Table')} {order.tableNumber}</span>
                 </div>
                 <div style={styles.itemsList}>
                   {order.items.map((item, idx) => renderItem(item, idx))}
                 </div>
                 <div style={styles.orderTotalRow}>
-                  <span style={styles.orderTotalLabel}>Total</span>
+                  <span style={styles.orderTotalLabel}>{t('Total')}</span>
                   <span style={styles.orderTotalValue}>{formatCurrency(order.total || 0)}</span>
                 </div>
-                <div style={{ ...styles.readyLabel, color: '#0d6efd' }}>Paid • awaiting pickup</div>
+                <div style={{ ...styles.readyLabel, color: '#0d6efd' }}>{t('Paid • awaiting pickup')}</div>
               </div>
             ))}
           </div>
@@ -256,8 +258,8 @@ export default function StationDisplay({
       {orders.length === 0 && (
         <div style={styles.emptyState}>
           <div style={styles.emptyIcon}>{stationLabel === 'Bar' ? '🍺' : '🍳'}</div>
-          <h2>No orders yet</h2>
-          <p>Waiting for new {stationLabel.toLowerCase()} orders to come in...</p>
+          <h2>{t('No orders yet')}</h2>
+          <p>{t('Waiting for new')} {t(stationLabel.toLowerCase())} {t('orders to come in...')}</p>
         </div>
       )}
     </div>

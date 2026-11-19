@@ -1,67 +1,139 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { Link } from 'react-router-dom'
 import QRCode from '../QRCode'
 import { Printer } from 'lucide-react'
-import { PUBLIC_APP_URL } from '../config/publicAppUrl'
+import { buildTableMenuUrl } from '../config/tableMenuUrl'
+import { fetchManagedTables } from '../api/endpoints'
+import { usePreferences } from '../context/PreferencesContext'
 
-export default function MenuQRWidget({ embedded = false, businessId, branchId }) {
-  const params = new URLSearchParams()
-  if (businessId) params.set('businessId', businessId)
-  if (branchId && branchId !== 'all') params.set('branchId', branchId)
-  const query = params.toString()
-  const url = `${PUBLIC_APP_URL}/menu${query ? `?${query}` : ''}`
+export default function MenuQRWidget({
+  embedded = false,
+  businessId,
+  branchId,
+  branchName,
+  businessSlug,
+  addTablesPath,
+}) {
+  const { t } = usePreferences()
+  const [printError, setPrintError] = useState('')
+  const [printSelection, setPrintSelection] = useState(null)
+  const [registeredTables, setRegisteredTables] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [loadError, setLoadError] = useState('')
 
-  const printMenuQR = () => {
-    const qrMarkup = document.getElementById('menu-qr-code-for-print')?.outerHTML
-    if (!qrMarkup) return
+  useEffect(() => {
+    let active = true
+    if (!branchId || branchId === 'all') {
+      setRegisteredTables([])
+      setLoading(false)
+      return undefined
+    }
+    setRegisteredTables([])
+    setLoading(true)
+    setLoadError('')
+    fetchManagedTables(branchId)
+      .then((result) => { if (active) setRegisteredTables(result || []) })
+      .catch((error) => { if (active) setLoadError(error.response?.data?.error || error.message || t('Could not load table QR codes.')) })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [branchId, t])
 
-    const printWindow = window.open('', '_blank', 'width=600,height=700')
-    if (!printWindow) return
+  const registeredByNumber = new Map(registeredTables.map((table) => [Number(table.tableNumber), table]))
+  const tables = Array.from({ length: 100 }, (_, index) => {
+    const tableNumber = index + 1
+    return registeredByNumber.get(tableNumber) || { tableNumber, branchId, branchName }
+  }).concat(registeredTables.filter((table) => Number(table.tableNumber) > 100))
+    .sort((left, right) => Number(left.tableNumber) - Number(right.tableNumber))
 
-    printWindow.document.write(`
-      <!doctype html>
-      <html>
-        <head>
-          <title>Customer Menu QR Code</title>
-          <style>
-            @page { margin: 18mm; }
-            body { margin: 0; font-family: Arial, sans-serif; color: #0f172a; text-align: center; }
-            .qr-print-card { border: 2px solid #0f172a; border-radius: 16px; padding: 28px; max-width: 340px; margin: 0 auto; }
-            h1 { font-size: 24px; margin: 0 0 10px; }
-            p { font-size: 16px; margin: 10px 0 22px; color: #475569; }
-            svg { margin: 0 auto; }
-            small { display: block; margin-top: 20px; color: #64748b; word-break: break-all; }
-          </style>
-        </head>
-        <body>
-          <main class="qr-print-card">
-            <h1>Scan to Order</h1>
-            <p>Scan this code to view our menu and place your order.</p>
-            ${qrMarkup}
-            <small>${url}</small>
-          </main>
-          <script>window.onload = () => { window.print(); window.onafterprint = () => window.close(); }<\/script>
-        </body>
-      </html>
-    `)
-    printWindow.document.close()
+  const getTableUrl = (table) => {
+    return buildTableMenuUrl({
+      tableNumber: table.tableNumber,
+      businessId,
+      branchId: table.branchId,
+      businessSlug,
+    })
+  }
+
+  useEffect(() => {
+    if (!printSelection) return undefined
+
+    let frameId
+    const stopPrinting = () => {
+      document.body.classList.remove('account-qr-printing')
+      setPrintSelection(null)
+    }
+
+    document.body.classList.add('account-qr-printing')
+    window.addEventListener('afterprint', stopPrinting)
+    frameId = window.requestAnimationFrame(() => {
+      try {
+        window.print()
+      } catch (error) {
+        stopPrinting()
+        setPrintError(`${t('Could not open the print dialog:')} ${error.message}`)
+      }
+    })
+
+    return () => {
+      window.cancelAnimationFrame(frameId)
+      window.removeEventListener('afterprint', stopPrinting)
+      document.body.classList.remove('account-qr-printing')
+    }
+  }, [printSelection])
+
+  const printTables = (selectedTables) => {
+    setPrintError('')
+    setPrintSelection(selectedTables)
   }
 
   return (
     <div className={`menu-qr-widget${embedded ? ' menu-qr-widget--embedded' : ''}`}>
-      <div className="menu-qr-card no-print">
-        <div className="menu-qr-head">
-          <span className="menu-qr-title">Menu QR</span>
-        </div>
-        <div id="menu-qr-code-for-print"><QRCode value={url} size={220} level="M" /></div>
-        <p className="menu-qr-caption">Scan to open menu &amp; order</p>
-        <button
-          type="button"
-          onClick={printMenuQR}
-          className="w-full flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700 transition"
-        >
-          <Printer size={14} /> Print customer QR
-        </button>
+      {loading && <p role="status" className="account-table-qr-note">{t('Loading registered table QR codes…')}</p>}
+      {loadError && <p role="alert" className="error-box">{loadError}</p>}
+      <div className="account-table-qr-grid">
+        {tables.map((table) => {
+          return (
+            <article className="account-table-qr-card" key={table.tableNumber}>
+              <strong>{t('CLIENT TABLE')} {table.tableNumber}</strong>
+              <QRCode
+                value={getTableUrl(table)}
+                size={180}
+                level="M"
+                ariaLabel={`${t('QR code for CLIENT TABLE')} ${table.tableNumber}`}
+              />
+              {table.branchName && <span>{table.branchName}</span>}
+              <button type="button" onClick={() => printTables([table])}>
+                <Printer size={14} /> {t('Print CLIENT TABLE')} {table.tableNumber}
+              </button>
+            </article>
+          )
+        })}
       </div>
+      <button type="button" className="account-table-qr-print-all" onClick={() => printTables(tables)}>
+        <Printer size={16} /> {t('Print QR codes for all tables')}
+      </button>
+      {printError && <p role="alert" className="error-box">{printError}</p>}
+      {printSelection && createPortal(
+        <div className="account-table-qr-print-area">
+          <div className="account-table-qr-print-grid">
+            {printSelection.map((table) => (
+              <article className="account-table-qr-print-card" key={table.tableNumber}>
+                <strong>{t('CLIENT TABLE')} {table.tableNumber}</strong>
+                <QRCode value={getTableUrl(table)} size={190} level="M" />
+                {table.branchName && <span>{table.branchName}</span>}
+              </article>
+            ))}
+          </div>
+        </div>,
+        document.body
+      )}
+      {addTablesPath && (
+        <p className="account-table-qr-note">
+          {t('These codes are ready to use. Managers and owners can also add tables in')}{' '}
+          <Link to={addTablesPath}>{t('table management')}</Link>.
+        </p>
+      )}
     </div>
   )
 }

@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import { fetchRefunds } from '../../api/endpoints'
+import { usePreferences } from '../../context/PreferencesContext'
 
 const money = (value) => `${Number(value || 0).toLocaleString()} RWF`
 
 export default function Refunds() {
+  const { t } = usePreferences()
   const [refunds, setRefunds] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -23,38 +25,38 @@ export default function Refunds() {
 
       <div className="user-page-heading">
         <div>
-          <p className="eyebrow">Accountant workspace</p>
-          <h1>Refunds</h1>
-          <p>Refund requests and their status.</p>
+          <p className="eyebrow">{t('Accountant workspace')}</p>
+          <h1>{t('Refunds')}</h1>
+          <p>{t('Refund requests and their status.')}</p>
         </div>
       </div>
 
       <div className="user-info-grid">
         <div className="summary-card">
           <strong>{refunds.length}</strong>
-          <span>Refunds</span>
+          <span>{t('Refunds')}</span>
         </div>
         <div className="summary-card">
           <strong>{money(total)}</strong>
-          <span>Total Refunded</span>
+          <span>{t('Total Refunded')}</span>
         </div>
       </div>
 
       <section className="user-section">
         {loading ? (
-          <p style={{ textAlign: 'center', color: 'var(--text-4)', marginTop: '2rem' }}>Loading refunds…</p>
+          <p style={{ textAlign: 'center', color: 'var(--text-4)', marginTop: '2rem' }}>{t('Loading refunds…')}</p>
         ) : refunds.length === 0 ? (
-          <p style={{ textAlign: 'center', color: 'var(--text-4)', marginTop: '2rem' }}>No refunds found.</p>
+          <p style={{ textAlign: 'center', color: 'var(--text-4)', marginTop: '2rem' }}>{t('No refunds found.')}</p>
         ) : (
           <div className="user-table-wrap">
             <table className="user-table">
               <thead>
                 <tr>
-                  <th>ID</th>
-                  <th style={{ textAlign: 'right' }}>Amount</th>
-                  <th>Reason</th>
-                  <th>Status</th>
-                  <th style={{ textAlign: 'right' }}>Date</th>
+                  <th>{t('ID')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('Amount')}</th>
+                  <th>{t('Reason')}</th>
+                  <th>{t('Status')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('Date')}</th>
                 </tr>
               </thead>
               <tbody>

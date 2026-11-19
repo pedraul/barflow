@@ -4,6 +4,11 @@ import authMiddleware from '../middleware/authMiddleware.js'
 import roleMiddleware from '../middleware/roleMiddleware.js'
 import { logAudit, getClientIp, buildAuditVisibilityClause } from '../utils/audit.js'
 import { getFinancialSummary } from '../services/financialSummaryService.js'
+import { checkSalaryPayoutStatus, initiateSalaryPayout } from '../services/salaryPayoutService.js'
+import {
+  checkOutboundPayoutStatus,
+  initiateOutboundPayout,
+} from '../services/outboundPayoutService.js'
 import { getBranchContext } from '../middleware/branchContext.js'
 
 const router = Router()
@@ -16,11 +21,12 @@ router.get('/transfers/pending', ...managerOrOwner, async (req, res) => {
   try {
     const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
     const { rows } = await query(
-      `SELECT t.*, u1.full_name AS from_name, u2.full_name AS to_name, u2.phone AS to_phone
+      `SELECT t.*, u1.full_name AS from_name, u2.full_name AS to_name,
+              COALESCE(t.to_phone, u2.phone) AS recipient_phone
         FROM transfers t
         LEFT JOIN users u1 ON u1.id = t.from_user
         LEFT JOIN users u2 ON u2.id = t.to_user
-        WHERE t.status = 'pending' AND t.business_id = $1
+        WHERE t.status IN ('pending', 'processing') AND t.business_id = $1
           AND ($2::uuid IS NULL OR t.branch_id = $2)
         ORDER BY t.created_at DESC`,
       [scope.businessId, scope.branchId]
@@ -38,12 +44,88 @@ await logAudit({
     res.json(rows.map((t) => ({
       id: t.id,
       name: t.from_name || 'Unknown',
-      phone: t.to_phone || '',
+      phone: t.recipient_phone || '',
       amount: t.amount,
       purpose: t.description || '',
+      method: t.payout_method,
+      status: t.status,
+      payoutReference: t.payout_reference || null,
+      providerStatus: t.provider_status || null,
     })))
   } catch (error) {
     res.status(500).json({ error: error.message })
+  }
+})
+
+router.get('/tables', ...managerOrOwner, async (req, res) => {
+  try {
+    const scope = await getBranchContext(req, {
+      requestedBranchId: req.query.branchId,
+      allowOwnerAll: false,
+    })
+    const { rows } = await query(
+      `SELECT t.id, t.table_number, t.branch_id, b.name AS branch_name, t.created_at
+       FROM dining_tables t
+       JOIN branches b ON b.id = t.branch_id
+       WHERE t.business_id = $1 AND t.branch_id = $2
+       ORDER BY t.table_number`,
+      [scope.businessId, scope.branchId]
+    )
+    res.json(rows.map((row) => ({
+      id: row.id,
+      tableNumber: row.table_number,
+      branchId: row.branch_id,
+      branchName: row.branch_name,
+      createdAt: row.created_at,
+    })))
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ error: error.message })
+  }
+})
+
+router.post('/tables', ...managerOrOwner, async (req, res) => {
+  const tableNumber = Number(req.body.tableNumber)
+  if (!Number.isSafeInteger(tableNumber) || tableNumber <= 0) {
+    return res.status(400).json({ error: 'Enter a whole table number greater than zero.' })
+  }
+
+  try {
+    const scope = await getBranchContext(req, {
+      requestedBranchId: req.body.branchId,
+      allowOwnerAll: false,
+    })
+    const { rows } = await query(
+      `INSERT INTO dining_tables (business_id, branch_id, table_number, created_by)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (business_id, branch_id, table_number) DO NOTHING
+       RETURNING id, table_number, branch_id, created_at`,
+      [scope.businessId, scope.branchId, tableNumber, req.user.id]
+    )
+    if (!rows.length) {
+      return res.status(409).json({ error: `Table ${tableNumber} already exists in this branch.` })
+    }
+    const { rows: branchRows } = await query(
+      'SELECT name FROM branches WHERE id = $1 AND business_id = $2',
+      [scope.branchId, scope.businessId]
+    )
+    await logAudit({
+      userId: req.user.id,
+      actorName: req.user.full_name || req.user.email,
+      action: `Added Table ${tableNumber} for QR ordering`,
+      targetModule: 'Tables',
+      ipAddress: getClientIp(req),
+      businessId: scope.businessId,
+      metadata: { tableNumber, branchId: scope.branchId },
+    })
+    res.status(201).json({
+      id: rows[0].id,
+      tableNumber: rows[0].table_number,
+      branchId: rows[0].branch_id,
+      branchName: branchRows[0]?.name || '',
+      createdAt: rows[0].created_at,
+    })
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ error: error.message })
   }
 })
 
@@ -55,45 +137,55 @@ router.post('/transfers/:id/approve', ...managerOrOwner, async (req, res) => {
     if (!['approved', 'rejected'].includes(action)) {
       return res.status(400).json({ error: 'Action must be "approved" or "rejected".' })
     }
-    const { rows } = await query(
-      `UPDATE transfers SET status = $1, manager_approval = 1, manager_approved_by = $2, approved_at = NOW()
-        WHERE id = $3 AND business_id = $4
-          AND ($5::uuid IS NULL OR branch_id = $5) RETURNING *`,
-      [action, req.user.id, id, scope.businessId, scope.branchId],
-    )
-    if (!rows.length) {
-      return res.status(404).json({ error: 'Transfer not found.' })
-    }
-
+    let result
     if (action === 'approved') {
-      const tr = rows[0]
-      const paymentRef = `TRANSFER-${tr.id}-${Date.now().toString(36).toUpperCase()}`
-      await query(
-        `INSERT INTO payments (order_id, business_id, branch_id, received_by, method, amount, reference, paid_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
-        [null, scope.businessId, tr.branch_id || scope.branchId, req.user.id, 'pos', Number(tr.amount) || 0, paymentRef]
-      )
-      await logAudit({
-        userId: req.user.id,
-        actorName: req.user.full_name || req.user.email,
-        action: `Processed approved transfer: ${Number(tr.amount) || 0} to ${tr.to_phone || 'N/A'} (ref: ${paymentRef})`,
-        targetModule: 'Transfers',
-        ipAddress: getClientIp(req),
-        businessId: req.user?.businessId,
-        metadata: { transferId: tr.id, amount: tr.amount, reference: paymentRef },
+      result = await initiateOutboundPayout({
+        type: 'transfer',
+        payoutId: id,
+        businessId: scope.businessId,
+        branchId: scope.branchId,
+        approverId: req.user.id,
       })
+    } else {
+      const { rows } = await query(
+        `UPDATE transfers
+         SET status = 'rejected', manager_approval = 1, manager_approved_by = $1, approved_at = NOW()
+         WHERE id = $2 AND business_id = $3
+           AND ($4::uuid IS NULL OR branch_id = $4) AND status = 'pending'
+         RETURNING *`,
+        [req.user.id, id, scope.businessId, scope.branchId]
+      )
+      if (!rows.length) return res.status(404).json({ error: 'Pending transfer not found.' })
+      result = rows[0]
     }
 
     await logAudit({
        userId: req.user.id,
        actorName: req.user.full_name || req.user.email,
-       action: `${action === 'approved' ? 'Approved' : 'Rejected'} transfer ${id}`,
+       action: action === 'approved'
+         ? `Approved transfer ${id}; payout status is ${result.status}`
+         : `Rejected transfer ${id}`,
        targetModule: 'Transfers',
        ipAddress: getClientIp(req),
        businessId: req.user?.businessId,
     })
 
-    res.json(rows[0])
+    res.json(result)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.post('/transfers/:id/status', ...managerOrOwner, async (req, res) => {
+  try {
+    const scope = await getBranchContext(req, { requestedBranchId: req.body.branchId || req.query.branchId, allowOwnerAll: true })
+    const result = await checkOutboundPayoutStatus({
+      type: 'transfer',
+      payoutId: req.params.id,
+      businessId: scope.businessId,
+      branchId: scope.branchId,
+    })
+    res.json(result)
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
@@ -106,7 +198,7 @@ router.get('/withdrawals/pending', ...managerOrOwner, async (req, res) => {
       `SELECT w.*, u.full_name AS initiated_by_name
          FROM withdrawals w
          LEFT JOIN users u ON u.id = w.initiated_by
-        WHERE w.status = 'pending' AND w.business_id = $1
+        WHERE w.status IN ('pending', 'processing') AND w.business_id = $1
           AND ($2::uuid IS NULL OR w.branch_id = $2)
          ORDER BY w.created_at DESC`,
       [scope.businessId, scope.branchId]
@@ -128,6 +220,10 @@ router.get('/withdrawals/pending', ...managerOrOwner, async (req, res) => {
       amount: Number(w.amount),
       initiatedBy: w.initiated_by_name,
       createdAt: w.created_at,
+      method: w.payout_method,
+      status: w.status,
+      payoutReference: w.payout_reference || null,
+      providerStatus: w.provider_status || null,
     })))
   } catch (error) {
     res.status(500).json({ error: error.message })
@@ -141,47 +237,56 @@ router.post('/withdrawals/:id/approve', ...managerOrOwner, async (req, res) => {
     if (!['approved', 'rejected'].includes(action)) {
       return res.status(400).json({ error: 'Action must be "approved" or "rejected".' })
     }
-    const status = action === 'approved' ? 'completed' : 'cancelled'
     const scope = await getBranchContext(req, { requestedBranchId: req.body.branchId || req.query.branchId, allowOwnerAll: true })
-    const { rows } = await query(
-      `UPDATE withdrawals SET status = $1, approved_by = $2, approved_at = NOW()
-         WHERE id = $3 AND business_id = $4
-           AND ($5::uuid IS NULL OR branch_id = $5) RETURNING *`,
-      [status, req.user.id, id, scope.businessId, scope.branchId]
-    )
-    if (!rows.length) {
-      return res.status(404).json({ error: 'Withdrawal not found.' })
-    }
-
+    let result
     if (action === 'approved') {
-      const w = rows[0]
-      const paymentRef = `WITHDRAWAL-${w.id}-${Date.now().toString(36).toUpperCase()}`
-      await query(
-        `INSERT INTO payments (order_id, business_id, branch_id, received_by, method, amount, reference, paid_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
-        [null, scope.businessId, w.branch_id || scope.branchId, req.user.id, 'pos', Number(w.amount) || 0, paymentRef]
-      )
-      await logAudit({
-        userId: req.user.id,
-        actorName: req.user.full_name || req.user.email,
-        action: `Processed approved withdrawal: ${Number(w.amount) || 0} to ${w.phone_number || 'N/A'} (${w.purpose}) (ref: ${paymentRef})`,
-        targetModule: 'Withdrawals',
-        ipAddress: getClientIp(req),
-        businessId: req.user?.businessId,
-        metadata: { withdrawalId: w.id, amount: w.amount, reference: paymentRef },
+      result = await initiateOutboundPayout({
+        type: 'withdrawal',
+        payoutId: id,
+        businessId: scope.businessId,
+        branchId: scope.branchId,
+        approverId: req.user.id,
       })
+    } else {
+      const { rows } = await query(
+        `UPDATE withdrawals
+         SET status = 'cancelled', approved_by = $1, approved_at = NOW()
+         WHERE id = $2 AND business_id = $3
+           AND ($4::uuid IS NULL OR branch_id = $4) AND status = 'pending'
+         RETURNING *`,
+        [req.user.id, id, scope.businessId, scope.branchId]
+      )
+      if (!rows.length) return res.status(404).json({ error: 'Pending withdrawal not found.' })
+      result = rows[0]
     }
 
     await logAudit({
       userId: req.user.id,
       actorName: req.user.full_name || req.user.email,
-      action: `${action === 'approved' ? 'Approved' : 'Rejected'} withdrawal ${id}`,
+      action: action === 'approved'
+        ? `Approved withdrawal ${id}; payout status is ${result.status}`
+        : `Rejected withdrawal ${id}`,
       targetModule: 'Withdrawals',
       ipAddress: getClientIp(req),
       businessId: req.user?.businessId,
     })
 
-    res.json(rows[0])
+    res.json(result)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.post('/withdrawals/:id/status', ...managerOrOwner, async (req, res) => {
+  try {
+    const scope = await getBranchContext(req, { requestedBranchId: req.body.branchId || req.query.branchId, allowOwnerAll: true })
+    const result = await checkOutboundPayoutStatus({
+      type: 'withdrawal',
+      payoutId: req.params.id,
+      businessId: scope.businessId,
+      branchId: scope.branchId,
+    })
+    res.json(result)
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
@@ -346,7 +451,7 @@ router.get('/payrolls/pending', ...managerOrOwner, async (req, res) => {
       `SELECT s.*, u.full_name AS user_name
          FROM salary_payments s
          LEFT JOIN users u ON u.id = s.user_id
-         WHERE s.status = 'pending' AND s.business_id = $1
+         WHERE s.status IN ('pending', 'processing', 'failed') AND s.business_id = $1
            AND ($2::uuid IS NULL OR s.branch_id = $2)
          ORDER BY s.created_at DESC`,
       [scope.businessId, scope.branchId]
@@ -369,7 +474,9 @@ router.get('/payrolls/pending', ...managerOrOwner, async (req, res) => {
       netAmount: Number(s.net_amount) || 0,
       method: s.method,
       grossAmount: Number(s.gross_amount) || 0,
-      period: s.pay_period || '—',
+      period: s.pay_period || (s.pay_period_start ? new Date(s.pay_period_start).toISOString().slice(0, 7) : '—'),
+      status: s.status,
+      providerStatus: s.provider_status || null,
     })))
   } catch (error) {
     res.status(500).json({ error: error.message })
@@ -384,45 +491,68 @@ router.post('/payrolls/:id/approve', ...managerOrOwner, async (req, res) => {
     if (!['approved', 'rejected'].includes(action)) {
       return res.status(400).json({ error: 'Action must be "approved" or "rejected".' })
     }
-    const { rows } = await query(
-      `UPDATE salary_payments SET status = $1, approved_by = $2, approved_at = NOW()
-        WHERE id = $3 AND business_id = $4
-          AND ($5::uuid IS NULL OR branch_id = $5) RETURNING *`,
-      [action, req.user.id, id, scope.businessId, scope.branchId],
-    )
-    if (!rows.length) {
-      return res.status(404).json({ error: 'Payroll not found.' })
-    }
-
+    let result
     if (action === 'approved') {
-      const sp = rows[0]
-      const paymentRef = `SALARY-${sp.id}-${Date.now().toString(36).toUpperCase()}`
-      await query(
-        `INSERT INTO payments (order_id, business_id, branch_id, received_by, method, amount, reference, paid_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
-        [null, sp.business_id, sp.branch_id || scope.branchId, null, sp.method || 'mtn_momo', Number(sp.net_amount) || 0, paymentRef]
-      )
+      result = await initiateSalaryPayout({
+        salaryPaymentId: id,
+        businessId: scope.businessId,
+        branchId: scope.branchId,
+        approverId: req.user.id,
+      })
       await logAudit({
         userId: req.user.id,
         actorName: req.user.full_name || req.user.email,
-        action: `Processed approved salary payment for ${sp.name}: ${Number(sp.net_amount) || 0} sent (ref: ${paymentRef})`,
+        action: `Started ${result.method} salary payout for ${result.phone}: ${result.amount} (ref: ${result.reference})`,
         targetModule: 'Payroll',
         ipAddress: getClientIp(req),
         businessId: req.user?.businessId,
-        metadata: { salaryPaymentId: sp.id, amount: sp.net_amount, reference: paymentRef },
+        metadata: { salaryPaymentId: id, amount: result.amount, reference: result.reference, status: result.status },
       })
+    } else {
+      const { rows } = await query(
+        `UPDATE salary_payments SET status = 'rejected', approved_by = $1, approved_at = NOW()
+          WHERE id = $2 AND business_id = $3
+            AND ($4::uuid IS NULL OR branch_id = $4) AND status = 'pending'
+          RETURNING id, status`,
+        [req.user.id, id, scope.businessId, scope.branchId],
+      )
+      if (!rows.length) return res.status(404).json({ error: 'Pending payroll not found.' })
+      result = rows[0]
     }
 
     await logAudit({
        userId: req.user.id,
        actorName: req.user.full_name || req.user.email,
-       action: `${action === 'approved' ? 'Approved' : 'Rejected'} payroll ${id}`,
+       action: `${action === 'approved' ? 'Started payout for' : 'Rejected'} payroll ${id}`,
        targetModule: 'Payroll',
        ipAddress: getClientIp(req),
        businessId: req.user?.businessId,
     })
 
-    res.json(rows[0])
+    res.json(result)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.post('/payrolls/:id/status', ...managerOrOwner, async (req, res) => {
+  try {
+    const scope = await getBranchContext(req, { requestedBranchId: req.body.branchId || req.query.branchId, allowOwnerAll: true })
+    const result = await checkSalaryPayoutStatus({
+      salaryPaymentId: req.params.id,
+      businessId: scope.businessId,
+      branchId: scope.branchId,
+    })
+    await logAudit({
+      userId: req.user.id,
+      actorName: req.user.full_name || req.user.email,
+      action: `Checked salary payout status for payroll ${req.params.id}: ${result.status}`,
+      targetModule: 'Payroll',
+      ipAddress: getClientIp(req),
+      businessId: req.user?.businessId,
+      metadata: { salaryPaymentId: req.params.id, status: result.status, providerStatus: result.providerStatus },
+    })
+    res.json(result)
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
@@ -468,7 +598,8 @@ router.get('/reports/stock', ...managerOnly, async (req, res) => {
     const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: false })
     const { rows } = await query(
       `SELECT ROW_NUMBER() OVER (ORDER BY p.name ASC) AS seq,
-              p.name, p.category, p.selling_price, COALESCE(bs.quantity, 0) AS quantity, p.created_at
+              p.name, p.category, p.selling_price, p.stock_unit, p.low_stock_threshold,
+              COALESCE(bs.quantity, p.quantity, 0) AS quantity, p.created_at
        FROM products p
        LEFT JOIN branch_stock bs ON bs.product_id = p.id AND bs.branch_id = $2
        WHERE p.business_id = $1 AND p.branch_id = $2
@@ -481,6 +612,8 @@ router.get('/reports/stock', ...managerOnly, async (req, res) => {
       category: p.category || '—',
       price: Number(p.selling_price || 0),
       quantity: Number(p.quantity || 0),
+      unit: p.stock_unit || 'unit',
+      minStockLevel: Number(p.low_stock_threshold) || 0,
       createdAt: p.created_at,
     })))
   } catch (error) {
@@ -675,19 +808,12 @@ router.get('/reports/revenue', ...managerOnly, async (req, res) => {
   try {
     const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: false })
     const { from, to } = req.query
-    const clauses = ['o.business_id = $1', 'o.branch_id = $2', "o.status IN ('Paid', 'Served')"]
+    const clauses = ['o.business_id = $1', 'o.branch_id = $2', "LOWER(BTRIM(o.status::text)) IN ('paid', 'served')"]
     const params = [scope.businessId, scope.branchId]
     let idx = 3
     if (from) { clauses.push(`o.created_at >= $${idx++}`); params.push(from) }
     if (to) { clauses.push(`o.created_at < $${idx++}`); params.push(to) }
     const where = clauses.join(' AND ')
-
-    const refundClauses = ['r.business_id = $1', 'r.branch_id = $2', "r.status = 'approved'"]
-    const refundParams = [scope.businessId, scope.branchId]
-    let ridx = 3
-    if (from) { refundClauses.push(`r.created_at >= $${ridx++}`); refundParams.push(from) }
-    if (to) { refundClauses.push(`r.created_at < $${ridx++}`); refundParams.push(to) }
-    const refundWhere = refundClauses.join(' AND ')
 
     const { rows } = await query(
       `SELECT o.id, o.order_number, o.table_number, o.status, o.total_amount, o.source, o.created_at,
@@ -712,10 +838,6 @@ router.get('/reports/revenue', ...managerOnly, async (req, res) => {
       items: o.items || [],
       createdAt: o.created_at,
     }))
-    const { rows: refundRows } = await query(
-      `SELECT COALESCE(SUM(r.amount), 0) AS total FROM refunds r WHERE ${refundWhere}`,
-      refundParams
-    )
     const financialSummary = await getFinancialSummary(scope.businessId, scope.branchId)
     const totalRevenue = financialSummary.totalSales
     const bySource = { qr: 0, waiter: 0, other: 0 }

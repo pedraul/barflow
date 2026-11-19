@@ -1,3 +1,4 @@
+import { usePreferences } from '../context/PreferencesContext'
 import React from 'react'
 import { NavLink } from 'react-router-dom'
 
@@ -11,8 +12,9 @@ const LINKS = [
 ]
 
 export default function WaiterNav({ active }) {
+  const { t } = usePreferences()
   return (
-    <nav className="section-nav waiter-nav" aria-label="Waiter sections">
+    <nav className="section-nav waiter-nav" aria-label={t("Waiter sections")}>
       {LINKS.map((link) => (
         <NavLink
           key={link.key}
@@ -21,7 +23,7 @@ export default function WaiterNav({ active }) {
             `section-tab${isActive || active === link.key ? ' active' : ''}`
           }
         >
-          {link.label}
+          {t(link.label)}
         </NavLink>
       ))}
     </nav>

@@ -1,8 +1,7 @@
 import { Router } from 'express'
 import { query } from '../config/database.js'
 import authMiddleware from '../middleware/authMiddleware.js'
-import { initiatePayment, verifyPayment } from '../services/paymentService.js'
-import verifyProvider from '../middleware/verifyProvider.js'
+import { confirmCashPayment, initiatePayment, verifyPayment } from '../services/paymentService.js'
 import { getBranchContext } from '../middleware/branchContext.js'
 import { logAudit, getClientIp } from '../utils/audit.js'
 
@@ -64,13 +63,20 @@ router.post('/', authMiddleware, async (req, res) => {
 })
 
 // ===== Mobile Money integration =====
-// Initiate a momo payment (returns simulated USSD details or provider token)
+// Initiate a provider collection request.
 router.post('/momo/initiate', authMiddleware, async (req, res) => {
   try {
-    const { orderId, amount, method, customerPhone, customerName } = req.body
-    if (!orderId || !amount || !method) return res.status(400).json({ error: 'orderId, amount and method required' })
+    const { orderId, method, customerPhone } = req.body
+    if (!orderId || !method) return res.status(400).json({ error: 'orderId and method are required' })
 
-    const result = await initiatePayment({ orderId, amount, method, customerPhone, customerName })
+    const scope = await getBranchContext(req)
+    const { rows } = await query(
+      'SELECT id FROM orders WHERE id = $1 AND business_id = $2 AND branch_id = $3',
+      [orderId, scope.businessId, scope.branchId]
+    )
+    if (!rows.length) return res.status(404).json({ error: 'Order not found' })
+
+    const result = await initiatePayment({ orderId, method, customerPhone })
     res.json(result)
   } catch (error) {
     res.status(500).json({ error: error.message })
@@ -83,58 +89,23 @@ router.get('/momo/:paymentId/status', authMiddleware, async (req, res) => {
     const { paymentId } = req.params
     const scope = await getBranchContext(req)
     const { rows } = await query(
-      `SELECT id, reference, method, amount, paid_at, provider_status
-       FROM payments WHERE id = $1 AND business_id = $2 AND branch_id = $3`,
+      `SELECT id FROM payments WHERE id = $1 AND business_id = $2 AND branch_id = $3`,
       [paymentId, scope.businessId, scope.branchId]
     )
     if (!rows.length) return res.status(404).json({ error: 'Payment not found' })
-    res.json(rows[0])
+    res.json(await verifyPayment(paymentId))
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
 })
 
-// Provider webhook / callback (no auth, but verify signature if configured)
-router.post('/momo/callback', verifyProvider, async (req, res) => {
+router.post('/cash/:paymentId/confirm', authMiddleware, async (req, res) => {
   try {
-    // Expected payload: { reference, provider_txn_id, status, raw }
-    const { reference, provider_txn_id, status, raw } = req.body
-    if (!reference) return res.status(400).json({ error: 'reference required' })
-
-    const normalizedStatus = String(status || '').toUpperCase()
-
-    // Find payment by reference and update
-    const { rows } = await query('SELECT id, order_id FROM payments WHERE reference = $1', [reference])
-    if (!rows.length) return res.status(404).json({ error: 'Payment reference not found' })
-    const paymentId = rows[0].id
-
-    await query(
-      `UPDATE payments SET provider = $1, provider_txn_id = $2, provider_status = $3, provider_payload = $4, paid_at = CASE WHEN $3 IN ('COMPLETED', 'SUCCESS', 'PAID') THEN COALESCE(paid_at, NOW()) ELSE paid_at END WHERE id = $5`,
-      ['momo', provider_txn_id || null, normalizedStatus || null, JSON.stringify(raw || req.body), paymentId]
-    )
-
-    // If completed, finish the same receipt/order flow as manual confirmation.
-    if (['COMPLETED', 'SUCCESS', 'PAID'].includes(normalizedStatus)) {
-      const result = await verifyPayment(paymentId)
-
-      const orderLookup = await query('SELECT business_id FROM orders WHERE id = $1 LIMIT 1', [rows[0].order_id])
-      await logAudit({
-        userId: null,
-        actorName: 'Provider',
-        action: `Payment confirmed for order ${rows[0].order_id}`,
-        targetModule: 'Payments',
-        ipAddress: getClientIp(req),
-        businessId: orderLookup.rows[0]?.business_id || null,
-        metadata: { orderId: rows[0].order_id, provider: 'momo', status: normalizedStatus, reference },
-      })
-
-      return res.json({ ok: true, receipt: result.receipt })
-    }
-
-    res.json({ ok: true })
+    const scope = await getBranchContext(req)
+    const result = await confirmCashPayment(req.params.paymentId, scope)
+    res.json(result)
   } catch (error) {
-    console.error('Momo callback error:', error)
-    res.status(500).json({ error: error.message })
+    res.status(400).json({ error: error.message })
   }
 })
 

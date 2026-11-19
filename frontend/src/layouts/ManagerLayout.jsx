@@ -4,10 +4,12 @@ import Layout from '../components/Layout'
 import {
   LayoutDashboard, ShoppingBag, ChefHat, CheckCircle2, BarChart3,
   FileText, Printer, Utensils, GlassWater,
-  FileSpreadsheet, Bell, User, ArrowLeftRight, TrendingUp, Settings, LogOut, Wallet
+  FileSpreadsheet, Bell, User, ArrowLeftRight, TrendingUp, Settings, LogOut, Wallet, QrCode, Clock
 } from 'lucide-react'
 import { SidebarLink } from '../components/ui/SharedComponents'
 import { useAuth } from '../context/AuthContext'
+import { usePreferences } from '../context/PreferencesContext'
+import GrantedStaffLinks from '../components/GrantedStaffLinks'
 
 const MANAGER_LINKS = [
   { section: 'Manager', items: [
@@ -17,6 +19,10 @@ const MANAGER_LINKS = [
     { path: '/manager/orders', label: 'Orders', icon: <ShoppingBag size={18} /> },
     { path: '/manager/bar-menu', label: 'Bar menu', icon: <GlassWater size={18} /> },
     { path: '/manager/kitchen-menu', label: 'Kitchen menu', icon: <ChefHat size={18} /> },
+    { path: '/operator/qr-codes', label: 'Tables & QR Codes', icon: <QrCode size={18} /> },
+  ]},
+  { section: 'Staff', items: [
+    { path: '/manager/shifts', label: 'Shifts & performance', icon: <Clock size={18} /> },
   ]},
   { section: 'Finance', items: [
     { path: '/manager/transfer/transfers', label: 'Approve Transfers', icon: <CheckCircle2 size={18} /> },
@@ -37,6 +43,7 @@ const MANAGER_LINKS = [
 export default function ManagerLayout({ children }) {
   const navigate = useNavigate()
   const { logout, permissions } = useAuth()
+  const { t } = usePreferences()
 
   const handleLogout = async () => {
     await logout()
@@ -48,25 +55,26 @@ export default function ManagerLayout({ children }) {
       <nav className="flex-1 p-4 space-y-6 text-sm">
         {MANAGER_LINKS.map((section) => (
           <div key={section.section}>
-            <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">{section.section}</p>
+            <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">{t(section.section)}</p>
             <div className="space-y-1">
               {section.items.filter((item) => !item.perm || permissions[item.perm]).map((item) => (
-                <SidebarLink key={item.path} icon={item.icon} label={item.label} onClick={() => navigate(item.path)} />
+                <SidebarLink key={item.path} icon={item.icon} label={t(item.label)} onClick={() => navigate(item.path)} />
               ))}
             </div>
           </div>
         ))}
+        <GrantedStaffLinks showShifts={false} />
       </nav>
       <div className="p-4">
         <button type="button" className="sidebar-link sidebar-logout" onClick={handleLogout}>
-          <LogOut size={18} /> Logout
+          <LogOut size={18} /> {t('Logout')}
         </button>
       </div>
     </div>
   )
 
   return <Layout sidebar={sidebar} logoutButton={
-    <button type="button" className="mobile-logout-btn" onClick={handleLogout} title="Logout">
+    <button type="button" className="mobile-logout-btn" onClick={handleLogout} title={t('Logout')}>
       <LogOut size={20} />
     </button>
   }>{children}</Layout>

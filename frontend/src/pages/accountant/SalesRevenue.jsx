@@ -1,9 +1,11 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import { fetchAccountantSales, fetchRefunds } from '../../api/endpoints'
+import { usePreferences } from '../../context/PreferencesContext'
 
 const money = (value) => `${Number(value || 0).toLocaleString()} RWF`
 
 export default function SalesRevenue() {
+  const { t } = usePreferences()
   const [sales, setSales] = useState([])
   const [refunds, setRefunds] = useState([])
   const [loading, setLoading] = useState(true)
@@ -45,55 +47,55 @@ export default function SalesRevenue() {
 
       <div className="user-page-heading">
         <div>
-          <p className="eyebrow">Accountant workspace</p>
-          <h1>Sales & Revenue</h1>
-          <p>All paid/served orders and revenue figures. View only.</p>
+          <p className="eyebrow">{t('Accountant workspace')}</p>
+          <h1>{t('Sales & Revenue')}</h1>
+          <p>{t('All paid/served orders and revenue figures. View only.')}</p>
         </div>
       </div>
 
       <div className="user-info-grid">
         <div className="summary-card">
           <strong>{sales.length}</strong>
-          <span>Orders</span>
+          <span>{t('Orders')}</span>
         </div>
         <div className="summary-card">
           <strong>{money(totals.netRevenue)}</strong>
-          <span>Net Revenue</span>
+          <span>{t('Net Revenue')}</span>
         </div>
         <div className="summary-card">
           <strong>{money(totals.refundTotal)}</strong>
-          <span>Refunds</span>
+          <span>{t('Refunds')}</span>
         </div>
       </div>
 
       <section className="user-section">
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 16 }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 600 }}>
-            From
+            {t('From')}
             <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14 }} />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 600 }}>
-            To
+            {t('To')}
             <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14 }} />
           </label>
-          <button type="button" className="pay-action" style={{ padding: '10px 18px' }} onClick={load}>Apply</button>
+          <button type="button" className="pay-action" style={{ padding: '10px 18px' }} onClick={load}>{t('Apply')}</button>
         </div>
 
         {loading ? (
-          <p style={{ textAlign: 'center', color: 'var(--text-4)', marginTop: '2rem' }}>Loading sales…</p>
+          <p style={{ textAlign: 'center', color: 'var(--text-4)', marginTop: '2rem' }}>{t('Loading sales…')}</p>
         ) : sales.length === 0 ? (
-          <p style={{ textAlign: 'center', color: 'var(--text-4)', marginTop: '2rem' }}>No sales found.</p>
+          <p style={{ textAlign: 'center', color: 'var(--text-4)', marginTop: '2rem' }}>{t('No sales found.')}</p>
         ) : (
           <div className="user-table-wrap">
             <table className="user-table">
               <thead>
                 <tr>
-                  <th>Order</th>
-                  <th>Table</th>
-                  <th>Source</th>
-                  <th style={{ textAlign: 'right' }}>Total</th>
-                  <th>Status</th>
-                  <th style={{ textAlign: 'right' }}>Date</th>
+                  <th>{t('Order')}</th>
+                  <th>{t('Table')}</th>
+                  <th>{t('Source')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('Total')}</th>
+                  <th>{t('Status')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('Date')}</th>
                 </tr>
               </thead>
               <tbody>

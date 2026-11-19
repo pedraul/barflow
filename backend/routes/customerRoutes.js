@@ -176,7 +176,27 @@ router.get('/order/:orderId/status', async (req, res) => {
     if (!rows.length) {
       return res.status(404).json({ error: 'Order not found' })
     }
-    const order = rows[0]
+    let order = rows[0]
+    if (!['Paid', 'Cancelled'].includes(order.status)) {
+      const { rows: pendingPayments } = await query(
+        `SELECT id FROM payments
+         WHERE order_id = $1 AND paid_at IS NULL
+           AND method IN ('mtn_momo', 'airtel_money')
+           AND COALESCE(provider_status, 'PENDING') NOT IN ('FAILED', 'TF', 'CANCELLED')
+         ORDER BY created_at DESC LIMIT 1`,
+        [order.id]
+      )
+      if (pendingPayments.length) {
+        try {
+          await verifyPayment(pendingPayments[0].id)
+          const { rows: refreshed } = await query('SELECT status, source FROM orders WHERE id = $1', [order.id])
+          if (refreshed.length) order = { ...order, ...refreshed[0] }
+        } catch (verificationError) {
+          // Keep returning the current order state; provider status can be checked again on the next poll.
+          console.warn('Automatic order payment verification failed:', verificationError.message)
+        }
+      }
+    }
     let displayStatus = order.status
     if (order.source === 'qr' && order.status === 'Paid') {
       displayStatus = 'Served'
@@ -194,51 +214,36 @@ router.get('/order/:orderId/status', async (req, res) => {
  */
 router.post('/payment/initiate', async (req, res) => {
   const { orderId, method, customerPhone } = req.body
-  let resolvedCustomerPhone = customerPhone
   if (!orderId || !method) {
     return res.status(400).json({ error: 'orderId and method are required' })
   }
 
   try {
-    // Get order details
-    const orderResult = await query(
-      `SELECT id, total_amount, table_number, order_number FROM orders WHERE id = $1 AND status != 'Paid'`,
-      [orderId]
-    )
-    if (!orderResult.rows.length) {
-      return res.status(404).json({ error: 'Order not found or already paid' })
-    }
-
-    const order = orderResult.rows[0]
-
-    // If mobile money, phone is recommended but not required in demo mode
-    if ((method === 'mtn_momo' || method === 'airtel_money') && !resolvedCustomerPhone) {
-      resolvedCustomerPhone = `+250${Math.floor(100000000 + Math.random() * 900000000)}`
-    }
-
-    // Update customer phone on order
-    if (resolvedCustomerPhone) {
-      await query('UPDATE orders SET customer_phone = $1 WHERE id = $2', [resolvedCustomerPhone, orderId])
-    }
-
     const result = await initiatePayment({
-      orderId: order.id,
-      amount: Number(order.total_amount),
+      orderId,
       method,
-      customerPhone: resolvedCustomerPhone || '',
-      customerName: `Table ${order.table_number}`,
+      customerPhone: customerPhone || '',
     })
 
-await logAudit({
-       userId: req.user?.id,
-       actorName: req.user?.full_name || req.user?.email || 'Customer',
-       action: `Initiated payment for order ${orderId}: ${method}`,
-       targetModule: 'Payments',
-       ipAddress: getClientIp(req),
-       businessId: req.user?.businessId,
-     })
+    const { rows } = await query('SELECT business_id FROM orders WHERE id = $1', [orderId])
+    await logAudit({
+      userId: req.user?.id || null,
+      actorName: req.user?.full_name || req.user?.email || 'Customer',
+      action: `Initiated payment for order ${orderId}: ${method}`,
+      targetModule: 'Payments',
+      ipAddress: getClientIp(req),
+      businessId: rows[0]?.business_id || null,
+    })
 
     res.json(result)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.get('/payment/:paymentId/status', async (req, res) => {
+  try {
+    res.json(await verifyPayment(req.params.paymentId))
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
@@ -309,6 +314,78 @@ router.get('/orders/table', async (req, res) => {
 })
 
 /**
+ * POST /api/customer/orders/mine
+ * Status of the orders this customer's device placed (ids kept on the device).
+ * Body: { orderIds: [uuid], businessId }
+ * Returns { active: [...], closed: [ids] } — closed = paid, cancelled or unknown,
+ * so the device stops tracking them.
+ */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+router.post('/orders/mine', async (req, res) => {
+  const { businessId } = req.body || {}
+  const orderIds = Array.isArray(req.body?.orderIds)
+    ? [...new Set(req.body.orderIds.map(String))].filter((id) => UUID_RE.test(id)).slice(0, 25)
+    : []
+  if (!businessId || !UUID_RE.test(String(businessId))) {
+    return res.status(400).json({ error: 'businessId is required.' })
+  }
+  if (!orderIds.length) return res.json({ active: [], closed: [] })
+
+  try {
+    const { rows } = await query(
+      `SELECT o.id, o.order_number, o.status, o.total_amount, o.table_number, o.order_type, o.source, o.created_at,
+              (o.status = 'Paid' OR EXISTS (
+                 SELECT 1 FROM payments p WHERE p.order_id = o.id AND p.paid_at IS NOT NULL
+               )) AS is_paid,
+              (
+                SELECT COALESCE(json_agg(json_build_object(
+                  'productId', oi.product_id,
+                  'name', pr.name,
+                  'quantity', oi.quantity,
+                  'price', oi.unit_price,
+                  'lineTotal', oi.line_total,
+                  'imageUrl', pr.image_url
+                )), '[]')
+                FROM order_items oi JOIN products pr ON pr.id = oi.product_id
+                WHERE oi.order_id = o.id
+              ) AS items
+       FROM orders o
+       WHERE o.id = ANY($1::uuid[]) AND o.business_id = $2
+       ORDER BY o.created_at DESC`,
+      [orderIds, businessId]
+    )
+
+    const active = []
+    const openIds = new Set()
+    for (const o of rows) {
+      if (o.is_paid || o.status === 'Cancelled') continue
+      openIds.add(o.id)
+      active.push({
+        orderId: o.id,
+        orderNumber: o.order_number,
+        status: o.status,
+        total: Number(o.total_amount),
+        tableNumber: o.table_number,
+        orderType: o.order_type,
+        source: o.source,
+        createdAt: o.created_at,
+        items: (o.items || []).map((item) => ({
+          productId: item.productId,
+          name: item.name,
+          quantity: Number(item.quantity),
+          price: Number(item.price),
+          lineTotal: Number(item.lineTotal),
+          imageUrl: item.imageUrl || '',
+        })),
+      })
+    }
+    res.json({ active, closed: orderIds.filter((id) => !openIds.has(id)) })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+/**
  * POST /api/customer/orders/:id/add-items
  * Add items to an existing customer order
  * Body: { items: [{productId, quantity, name, price}], tableNumber }
@@ -356,7 +433,7 @@ router.post('/orders/:id/add-items', async (req, res) => {
 
 /**
  * POST /api/customer/payment/verify
- * Verify/simulate USSD payment confirmation
+ * Legacy status check; payment success is confirmed by the provider API.
  * Body: { paymentId }
  */
 router.post('/payment/verify', async (req, res) => {
@@ -367,23 +444,6 @@ router.post('/payment/verify', async (req, res) => {
 
   try {
     const result = await verifyPayment(paymentId)
-
-    if (result && result.status === 'completed') {
-      const { rows: orderRows } = await query(
-        `SELECT id, table_number, order_number FROM orders WHERE id = (SELECT order_id FROM receipts WHERE id = $1 LIMIT 1)`,
-        [paymentId]
-      )
-      const order = orderRows[0]
-await logAudit({
-         userId: null,
-         actorName: `Customer (Table ${order?.table_number || 'Unknown'})`,
-         action: `Payment verified for order ${order?.order_number || paymentId}`,
-         targetModule: 'Payments',
-         ipAddress: getClientIp(req),
-         businessId: req.user?.businessId,
-       })
-    }
-
     res.json(result)
   } catch (error) {
     res.status(500).json({ error: error.message })

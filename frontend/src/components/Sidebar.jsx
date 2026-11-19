@@ -1,7 +1,9 @@
+import { usePreferences } from '../context/PreferencesContext'
 import React from 'react'
 export default function Sidebar({ links, active, onSelect }) {
+  const { t } = usePreferences()
   return (
-    <nav className="app-sidebar" aria-label="Sidebar">
+    <nav className="app-sidebar" aria-label={t("Sidebar")}>
       {links.map((link) => (
         <button
           type="button"
@@ -9,7 +11,7 @@ export default function Sidebar({ links, active, onSelect }) {
           className={`sidebar-link${active === link.key ? ' active' : ''}`}
           onClick={() => onSelect?.(link.key)}
         >
-          {link.label}
+          {t(link.label)}
         </button>
       ))}
     </nav>

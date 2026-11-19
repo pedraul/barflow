@@ -23,10 +23,12 @@ import {
   LogOut,
   ChevronLeft
 } from 'lucide-react';
+import { usePreferences } from '../../context/PreferencesContext'
 
 const money = (value) => `${Number(value || 0).toLocaleString()}`
 
 export default function AccountantDashboard() {
+  const { t } = usePreferences()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState(null)
@@ -55,7 +57,7 @@ export default function AccountantDashboard() {
     return (
       <div className="flex-1 flex flex-col overflow-y-auto bg-slate-50">
         <main className="p-8 space-y-6 max-w-[1600px] mx-auto w-full">
-          <p style={{ textAlign: 'center', color: 'var(--text-4)', marginTop: '2rem' }}>Loading dashboard…</p>
+          <p style={{ textAlign: 'center', color: 'var(--text-4)', marginTop: '2rem' }}>{t('Loading dashboard…')}</p>
         </main>
       </div>
     )
@@ -65,7 +67,7 @@ export default function AccountantDashboard() {
     return (
       <div className="flex-1 flex flex-col overflow-y-auto bg-slate-50">
         <main className="p-8 space-y-6 max-w-[1600px] mx-auto w-full">
-          <p style={{ textAlign: 'center', color: 'var(--text-4)', marginTop: '2rem' }}>No dashboard data available.</p>
+          <p style={{ textAlign: 'center', color: 'var(--text-4)', marginTop: '2rem' }}>{t('No dashboard data available.')}</p>
         </main>
       </div>
     )
@@ -89,94 +91,94 @@ export default function AccountantDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
           
           {/* Total Revenue */}
-          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <button type="button" onClick={() => navigate('/accountant/sales-revenue')} className="w-full text-left bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between transition hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500">
             <div>
-              <div className="text-xs font-medium text-slate-500">Total Revenue</div>
+              <div className="text-xs font-medium text-slate-500">{t('Total Revenue')}</div>
               <div className="text-xl font-bold text-slate-900 mt-1">{money(revenue)}</div>
               <div className="text-[11px] text-emerald-600 font-medium flex items-center gap-0.5 mt-1">
-                <span>12.5</span> <span className="text-slate-400 font-normal">vs Apr 2026</span>
+                <span>{t('12.5')}</span> <span className="text-slate-400 font-normal">{t('vs Apr 2026')}</span>
               </div>
             </div>
             <div className="p-2.5 bg-emerald-50 rounded-lg text-emerald-600">
               <TrendingUp className="w-5 h-5" />
             </div>
-          </div>
+          </button>
 
-          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <button type="button" onClick={() => navigate('/accountant/sales-revenue')} className="w-full text-left bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between transition hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500">
             <div>
-              <div className="text-xs font-medium text-slate-500">Total Sales</div>
+              <div className="text-xs font-medium text-slate-500">{t('Total Sales')}</div>
               <div className="text-xl font-bold text-slate-900 mt-1">{money(totalSales)}</div>
             </div>
             <div className="p-2.5 bg-blue-50 rounded-lg text-blue-600">
               <BarChart3 className="w-5 h-5" />
             </div>
-          </div>
+          </button>
 
-          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <button type="button" onClick={() => navigate('/accountant/taxes')} className="w-full text-left bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between transition hover:border-amber-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-amber-500">
             <div>
-              <div className="text-xs font-medium text-slate-500">VAT Total</div>
+              <div className="text-xs font-medium text-slate-500">{t('VAT Total')}</div>
               <div className="text-xl font-bold text-slate-900 mt-1">{money(vatTotal)}</div>
             </div>
             <div className="p-2.5 bg-amber-50 rounded-lg text-amber-600">
               <Receipt className="w-5 h-5" />
             </div>
-          </div>
+          </button>
 
           {/* Total Expenses */}
-          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <button type="button" onClick={() => navigate('/accountant/reports')} className="w-full text-left bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between transition hover:border-rose-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-rose-500">
             <div>
-              <div className="text-xs font-medium text-slate-500">Total Expenses</div>
+              <div className="text-xs font-medium text-slate-500">{t('Total Expenses')}</div>
               <div className="text-xl font-bold text-slate-900 mt-1">{money(expenses)}</div>
               <div className="text-[11px] text-rose-600 font-medium flex items-center gap-0.5 mt-1">
-                <span>8.3</span> <span className="text-slate-400 font-normal">vs Apr 2026</span>
+                <span>{t('8.3')}</span> <span className="text-slate-400 font-normal">{t('vs Apr 2026')}</span>
               </div>
             </div>
             <div className="p-2.5 bg-rose-50 rounded-lg text-rose-600">
               <TrendingDown className="w-5 h-5" />
             </div>
-          </div>
+          </button>
 
           {/* Net Profit */}
-          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <button type="button" onClick={() => navigate('/accountant/profit')} className="w-full text-left bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between transition hover:border-indigo-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
             <div>
-              <div className="text-xs font-medium text-slate-500">Net Profit</div>
+              <div className="text-xs font-medium text-slate-500">{t('Net Profit')}</div>
               <div className="text-xl font-bold text-slate-900 mt-1">{money(profit)}</div>
               <div className="text-[11px] text-emerald-600 font-medium flex items-center gap-0.5 mt-1">
-                <span>15.7</span> <span className="text-slate-400 font-normal">vs Apr 2026</span>
+                <span>{t('15.7')}</span> <span className="text-slate-400 font-normal">{t('vs Apr 2026')}</span>
               </div>
             </div>
             <div className="p-2.5 bg-indigo-50 rounded-lg text-indigo-600">
               <CreditCard className="w-5 h-5" />
             </div>
-          </div>
+          </button>
 
           {/* Cash in Hand */}
-          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <button type="button" onClick={() => navigate('/accountant/payments')} className="w-full text-left bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between transition hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500">
             <div>
-              <div className="text-xs font-medium text-slate-500">Cash in Hand</div>
+              <div className="text-xs font-medium text-slate-500">{t('Cash in Hand')}</div>
               <div className="text-xl font-bold text-slate-900 mt-1">{money(cashInHand)}</div>
               <div className="text-[11px] text-emerald-600 font-medium flex items-center gap-0.5 mt-1">
-                <span>5.4</span> <span className="text-slate-400 font-normal">vs Apr 2026</span>
+                <span>{t('5.4')}</span> <span className="text-slate-400 font-normal">{t('vs Apr 2026')}</span>
               </div>
             </div>
             <div className="p-2.5 bg-blue-50 rounded-lg text-blue-600">
               <Receipt className="w-5 h-5" />
             </div>
-          </div>
+          </button>
 
           {/* Bank Balance */}
-          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <button type="button" onClick={() => navigate('/accountant/payments')} className="w-full text-left bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between transition hover:border-amber-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-amber-500">
             <div>
-              <div className="text-xs font-medium text-slate-500">Bank Balance</div>
+              <div className="text-xs font-medium text-slate-500">{t('Bank Balance')}</div>
               <div className="text-xl font-bold text-slate-900 mt-1">{money(bankBalance)}</div>
               <div className="text-[11px] text-emerald-600 font-medium flex items-center gap-0.5 mt-1">
-                <span>6.2</span> <span className="text-slate-400 font-normal">vs Apr 2026</span>
+                <span>{t('6.2')}</span> <span className="text-slate-400 font-normal">{t('vs Apr 2026')}</span>
               </div>
             </div>
             <div className="p-2.5 bg-amber-50 rounded-lg text-amber-600">
               <Building2 className="w-5 h-5" />
             </div>
-          </div>
+          </button>
 
         </div>
 
@@ -187,11 +189,11 @@ export default function AccountantDashboard() {
           <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-bold text-slate-800 text-base">Cash Flow Overview</h3>
+                <h3 className="font-bold text-slate-800 text-base">{t('Cash Flow Overview')}</h3>
                 <div className="flex items-center gap-4 text-xs mt-2">
-                  <span className="flex items-center gap-1.5"><span className="w-3 h-1 bg-emerald-500 rounded-full"></span> Revenue</span>
-                  <span className="flex items-center gap-1.5"><span className="w-3 h-1 bg-rose-400 rounded-full"></span> Expenses</span>
-                  <span className="flex items-center gap-1.5"><span className="w-3 h-1 bg-indigo-600 rounded-full"></span> Net Profit</span>
+                  <span className="flex items-center gap-1.5"><span className="w-3 h-1 bg-emerald-500 rounded-full"></span> {t('Revenue')}</span>
+                  <span className="flex items-center gap-1.5"><span className="w-3 h-1 bg-rose-400 rounded-full"></span> {t('Expenses')}</span>
+                  <span className="flex items-center gap-1.5"><span className="w-3 h-1 bg-indigo-600 rounded-full"></span> {t('Net Profit')}</span>
                 </div>
               </div>
               <select 
@@ -199,20 +201,20 @@ export default function AccountantDashboard() {
                 onChange={(e) => setCashFlowFilter(e.target.value)}
                 className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-50 text-slate-700"
               >
-                <option>This Month</option>
-                <option>Last Month</option>
-                <option>This Quarter</option>
+                <option value="This Month">{t('This Month')}</option>
+                <option value="Last Month">{t('Last Month')}</option>
+                <option value="This Quarter">{t('This Quarter')}</option>
               </select>
             </div>
 
             {/* Mock SVG Line Chart */}
             <div className="h-64 w-full pt-4 relative flex flex-col justify-between">
               <div className="absolute inset-0 flex flex-col justify-between text-slate-300 text-xs pointer-events-none">
-                <div className="border-b border-slate-100 flex justify-between"><span>8M</span></div>
-                <div className="border-b border-slate-100 flex justify-between"><span>6M</span></div>
-                <div className="border-b border-slate-100 flex justify-between"><span>4M</span></div>
-                <div className="border-b border-slate-100 flex justify-between"><span>2M</span></div>
-                <div className="border-b border-slate-200 flex justify-between"><span>0</span></div>
+                <div className="border-b border-slate-100 flex justify-between"><span>{t('8M')}</span></div>
+                <div className="border-b border-slate-100 flex justify-between"><span>{t('6M')}</span></div>
+                <div className="border-b border-slate-100 flex justify-between"><span>{t('4M')}</span></div>
+                <div className="border-b border-slate-100 flex justify-between"><span>{t('2M')}</span></div>
+                <div className="border-b border-slate-200 flex justify-between"><span>{t('0')}</span></div>
               </div>
 
               {/* SVG Curves */}
@@ -254,13 +256,13 @@ export default function AccountantDashboard() {
 
               {/* X Axis Labels */}
               <div className="flex justify-between text-[11px] text-slate-400 pt-2 z-10">
-                <span>01 May</span>
-                <span>06 May</span>
-                <span>11 May</span>
-                <span>16 May</span>
-                <span>21 May</span>
-                <span>26 May</span>
-                <span>31 May</span>
+                <span>{t('01 May')}</span>
+                <span>{t('06 May')}</span>
+                <span>{t('11 May')}</span>
+                <span>{t('16 May')}</span>
+                <span>{t('21 May')}</span>
+                <span>{t('26 May')}</span>
+                <span>{t('31 May')}</span>
               </div>
             </div>
           </div>
@@ -268,14 +270,14 @@ export default function AccountantDashboard() {
           {/* Expense by Category Donut Card */}
           <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-bold text-slate-800 text-base">Expense by Category</h3>
+              <h3 className="font-bold text-slate-800 text-base">{t('Expense by Category')}</h3>
               <select 
                 value={expenseFilter} 
                 onChange={(e) => setExpenseFilter(e.target.value)}
                 className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-50 text-slate-700"
               >
-                <option>This Month</option>
-                <option>Last Month</option>
+                <option value="This Month">{t('This Month')}</option>
+                <option value="Last Month">{t('Last Month')}</option>
               </select>
             </div>
 
@@ -291,35 +293,35 @@ export default function AccountantDashboard() {
                 </svg>
                 <div className="absolute flex flex-col items-center justify-center text-center">
                   <span className="text-xs font-bold text-slate-800">{money(expenses)}</span>
-                  <span className="text-[10px] text-slate-400">RWF</span>
+                  <span className="text-[10px] text-slate-400">{t('RWF')}</span>
                 </div>
               </div>
 
               {/* Donut Legend */}
               <div className="space-y-2 text-xs flex-1">
                 <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-indigo-600"></span> Purchases</span>
-                  <span className="font-semibold text-slate-700">42.5%</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-indigo-600"></span> {t('Purchases')}</span>
+                  <span className="font-semibold text-slate-700">{t('42.5%')}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-blue-500"></span> Salaries</span>
-                  <span className="font-semibold text-slate-700">23.1%</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-blue-500"></span> {t('Salaries')}</span>
+                  <span className="font-semibold text-slate-700">{t('23.1%')}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-500"></span> Utilities</span>
-                  <span className="font-semibold text-slate-700">12.4%</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-500"></span> {t('Utilities')}</span>
+                  <span className="font-semibold text-slate-700">{t('12.4%')}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-amber-500"></span> Rent</span>
-                  <span className="font-semibold text-slate-700">8.7%</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-amber-500"></span> {t('Rent')}</span>
+                  <span className="font-semibold text-slate-700">{t('8.7%')}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-purple-500"></span> Marketing</span>
-                  <span className="font-semibold text-slate-700">5.6%</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-purple-500"></span> {t('Marketing')}</span>
+                  <span className="font-semibold text-slate-700">{t('5.6%')}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-slate-300"></span> Other</span>
-                  <span className="font-semibold text-slate-700">7.7%</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-slate-300"></span> {t('Other')}</span>
+                  <span className="font-semibold text-slate-700">{t('7.7%')}</span>
                 </div>
               </div>
             </div>
@@ -334,19 +336,19 @@ export default function AccountantDashboard() {
           <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between">
             <div>
               <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-                <h3 className="font-bold text-slate-800 text-base">Recent Transactions</h3>
-                <button className="text-xs text-indigo-600 font-semibold hover:underline">View All</button>
+                <h3 className="font-bold text-slate-800 text-base">{t('Recent Transactions')}</h3>
+                <button className="text-xs text-indigo-600 font-semibold hover:underline">{t('View All')}</button>
               </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 font-semibold uppercase tracking-wider">
                     <tr>
-                      <th className="p-2 pl-5">Date</th>
-                      <th className="p-2">Description</th>
-                      <th className="p-2">Type</th>
-                      <th className="p-2 text-right">Amount</th>
-                      <th className="p-2 text-center">Status</th>
+                      <th className="p-2 pl-5">{t('Date')}</th>
+                      <th className="p-2">{t('Description')}</th>
+                      <th className="p-2">{t('Type')}</th>
+                      <th className="p-2 text-right">{t('Amount')}</th>
+                      <th className="p-2 text-center">{t('Status')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
@@ -354,8 +356,8 @@ export default function AccountantDashboard() {
                       data.recentTransactions.map((tx, idx) => (
                         <tr key={idx}>
                           <td className="p-2 pl-5 text-slate-500">{tx.date ? new Date(tx.date).toLocaleDateString() : '—'}</td>
-                          <td className="p-2 text-slate-900 font-semibold">{tx.orderNumber || 'Order'}</td>
-                          <td className="p-2 text-emerald-600">{tx.source === 'qr' ? 'QR Order' : tx.source === 'waiter' ? 'Waiter Order' : 'Order'}</td>
+                          <td className="p-2 text-slate-900 font-semibold">{tx.orderNumber || t('Order')}</td>
+                          <td className="p-2 text-emerald-600">{tx.source === 'qr' ? t('QR Order') : tx.source === 'waiter' ? t('Waiter Order') : t('Order')}</td>
                           <td className="p-2 text-right">{money(tx.total)}</td>
                           <td className="p-2 text-center">
                             <span className={`px-2.5 py-1 rounded-full text-[10px] font-semibold ${tx.status === 'Paid' || tx.status === 'Served' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
@@ -365,7 +367,7 @@ export default function AccountantDashboard() {
                         </tr>
                       ))
                     ) : (
-                      <tr><td colSpan={5} className="p-2 text-center text-slate-400">No recent transactions.</td></tr>
+                      <tr><td colSpan={5} className="p-2 text-center text-slate-400">{t('No recent transactions.')}</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -376,13 +378,13 @@ export default function AccountantDashboard() {
             <div className="p-4 bg-indigo-50/60 border-t border-indigo-100 flex items-center justify-between text-xs text-indigo-900">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-indigo-600" />
-                <span><strong>Reconciliation Status:</strong> You have {data.unreconciled?.total || 0} unreconciled transactions</span>
+                <span><strong>{t('Reconciliation Status:')}</strong> {t('You have')} {data.unreconciled?.total || 0} {t('unreconciled transactions')}</span>
               </div>
               <button 
                 onClick={() => navigate('/accountant/reconciliations')}
                 className="px-3 py-1 bg-white border border-indigo-200 rounded-lg text-indigo-600 font-semibold hover:bg-indigo-50 transition"
               >
-                Go to Reconciliation
+                {t('Go to Reconciliation')}
               </button>
             </div>
           </div>
@@ -390,8 +392,8 @@ export default function AccountantDashboard() {
           {/* Unreconciled Items Box */}
           <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-bold text-slate-800 text-base">Unreconciled Items</h3>
-              <button className="text-xs text-indigo-600 font-semibold hover:underline">View All</button>
+              <h3 className="font-bold text-slate-800 text-base">{t('Unreconciled Items')}</h3>
+              <button className="text-xs text-indigo-600 font-semibold hover:underline">{t('View All')}</button>
             </div>
 
             <div className="space-y-3 text-xs">
@@ -400,7 +402,7 @@ export default function AccountantDashboard() {
                   <div className="p-2 bg-rose-100 rounded-lg text-rose-600">
                     <FileText className="w-4 h-4" />
                   </div>
-                  <span className="font-medium text-slate-700">Unmatched Bank Transactions</span>
+                  <span className="font-medium text-slate-700">{t('Unmatched Bank Transactions')}</span>
                 </div>
                 <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700">{data.unreconciled?.unmatchedBank || 0}</span>
               </div>
@@ -410,7 +412,7 @@ export default function AccountantDashboard() {
                   <div className="p-2 bg-amber-100 rounded-lg text-amber-600">
                     <Receipt className="w-4 h-4" />
                   </div>
-                  <span className="font-medium text-slate-700">In System Only</span>
+                  <span className="font-medium text-slate-700">{t('In System Only')}</span>
                 </div>
                 <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">{data.unreconciled?.inSystemOnly || 0}</span>
               </div>
@@ -420,14 +422,14 @@ export default function AccountantDashboard() {
                   <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
                     <CreditCard className="w-4 h-4" />
                   </div>
-                  <span className="font-medium text-slate-700">In Statement Only</span>
+                  <span className="font-medium text-slate-700">{t('In Statement Only')}</span>
                 </div>
                 <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700">{data.unreconciled?.inStatementOnly || 0}</span>
               </div>
             </div>
 
             <div className="pt-2 flex items-center justify-between text-xs font-bold text-slate-800 border-t border-slate-100">
-              <span>Total Unreconciled</span>
+              <span>{t('Total Unreconciled')}</span>
               <span className="text-indigo-600 text-sm">{data.unreconciled?.total || 0}</span>
             </div>
 
@@ -435,8 +437,8 @@ export default function AccountantDashboard() {
             <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center gap-3 text-emerald-900 text-xs">
               <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
               <div>
-                <div className="font-bold">All Accounts Balanced</div>
-                <div className="text-[11px] text-emerald-700">Great job! All your accounts are balanced.</div>
+                <div className="font-bold">{t('All Accounts Balanced')}</div>
+                <div className="text-[11px] text-emerald-700">{t('Great job! All your accounts are balanced.')}</div>
               </div>
             </div>
           </div>
@@ -448,17 +450,17 @@ export default function AccountantDashboard() {
           
           {/* Monthly Summary */}
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
-            <h3 className="font-bold text-slate-800 text-sm">Monthly Summary</h3>
+            <h3 className="font-bold text-slate-800 text-sm">{t('Monthly Summary')}</h3>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="text-slate-400 font-semibold border-b border-slate-100">
                   <tr>
-                    <th className="pb-2">Month</th>
-                    <th className="pb-2">Revenue</th>
-                    <th className="pb-2">Expenses</th>
-                    <th className="pb-2">Net Profit</th>
-                    <th className="pb-2 text-right">Margin</th>
+                    <th className="pb-2">{t('Month')}</th>
+                    <th className="pb-2">{t('Revenue')}</th>
+                    <th className="pb-2">{t('Expenses')}</th>
+                    <th className="pb-2">{t('Net Profit')}</th>
+                    <th className="pb-2 text-right">{t('Margin')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -473,19 +475,19 @@ export default function AccountantDashboard() {
                       </tr>
                     ))
                   ) : (
-                    <tr><td colSpan={5} className="py-2.5 text-center text-slate-400">No monthly data yet.</td></tr>
+                    <tr><td colSpan={5} className="py-2.5 text-center text-slate-400">{t('No monthly data yet.')}</td></tr>
                   )}
                 </tbody>
               </table>
             </div>
 
             <div className="space-y-2">
-              <button type="button" onClick={() => navigate('/accountant/reports')} className="text-xs text-indigo-600 font-semibold hover:underline">View Full Report</button>
+              <button type="button" onClick={() => navigate('/accountant/reports')} className="text-xs text-indigo-600 font-semibold hover:underline">{t('View Full Report')}</button>
               <div className="flex flex-wrap gap-2 mt-2">
-                <button type="button" onClick={() => navigate('/accountant/reports?category=sales')} className="text-xs text-slate-600 border border-slate-200 rounded-lg px-3 py-2 hover:border-indigo-300">Revenue</button>
-                <button type="button" onClick={() => navigate('/accountant/reports?category=transfers')} className="text-xs text-slate-600 border border-slate-200 rounded-lg px-3 py-2 hover:border-indigo-300">Transfers</button>
-                <button type="button" onClick={() => navigate('/accountant/reports?category=refunds')} className="text-xs text-slate-600 border border-slate-200 rounded-lg px-3 py-2 hover:border-indigo-300">Refunds</button>
-                <button type="button" onClick={() => navigate('/accountant/reports?category=payroll')} className="text-xs text-slate-600 border border-slate-200 rounded-lg px-3 py-2 hover:border-indigo-300">Payrolls</button>
+                <button type="button" onClick={() => navigate('/accountant/reports?category=sales')} className="text-xs text-slate-600 border border-slate-200 rounded-lg px-3 py-2 hover:border-indigo-300">{t('Revenue')}</button>
+                <button type="button" onClick={() => navigate('/accountant/reports?category=transfers')} className="text-xs text-slate-600 border border-slate-200 rounded-lg px-3 py-2 hover:border-indigo-300">{t('Transfers')}</button>
+                <button type="button" onClick={() => navigate('/accountant/reports?category=refunds')} className="text-xs text-slate-600 border border-slate-200 rounded-lg px-3 py-2 hover:border-indigo-300">{t('Refunds')}</button>
+                <button type="button" onClick={() => navigate('/accountant/reports?category=payroll')} className="text-xs text-slate-600 border border-slate-200 rounded-lg px-3 py-2 hover:border-indigo-300">{t('Payrolls')}</button>
               </div>
             </div>
           </div>
@@ -493,21 +495,21 @@ export default function AccountantDashboard() {
           {/* Tax Summary */}
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-bold text-slate-800 text-sm">Tax Summary</h3>
-              <button className="text-xs text-indigo-600 font-semibold hover:underline">View Details</button>
+              <h3 className="font-bold text-slate-800 text-sm">{t('Tax Summary')}</h3>
+              <button className="text-xs text-indigo-600 font-semibold hover:underline">{t('View Details')}</button>
             </div>
 
             <div className="space-y-3 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-slate-500">VAT Collected (Output)</span>
+                <span className="text-slate-500">{t('VAT Collected (Output)')}</span>
                 <span className="font-bold text-slate-800">{money(data.taxSummary?.vatCollected || 0)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-slate-500">VAT Paid (Input)</span>
+                <span className="text-slate-500">{t('VAT Paid (Input)')}</span>
                 <span className="font-bold text-slate-800">{money(data.taxSummary?.vatPaid || 0)}</span>
               </div>
               <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                <span className="font-bold text-rose-600">VAT Payable</span>
+                <span className="font-bold text-rose-600">{t('VAT Payable')}</span>
                 <span className="font-bold text-rose-600 text-sm">{money(data.taxSummary?.vatPayable || 0)}</span>
               </div>
             </div>

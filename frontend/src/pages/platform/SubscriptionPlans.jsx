@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import { fetchPlans, createPlan, updatePlan } from '../../api/endpoints'
 import { useToast } from '../../context/ToastContext'
+import { usePreferences } from '../../context/PreferencesContext'
 
 export default function SubscriptionPlans() {
   const { showSuccess } = useToast()
+  const { t } = usePreferences()
   const [plans, setPlans] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -78,10 +80,10 @@ export default function SubscriptionPlans() {
       }
       resetForm()
       await load(false)
-      showSuccess('Changes saved successfully.')
+      showSuccess(t('Changes saved successfully.'))
     } catch (e) {
       console.error('Failed to save plan:', e)
-      alert('Failed to save plan.')
+      alert(t('Failed to save plan.'))
     } finally {
       setSaving(false)
     }
@@ -99,37 +101,37 @@ export default function SubscriptionPlans() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Subscription Plans</h1>
-          <p className="text-sm text-slate-500 mt-1">Manage pricing plans for businesses</p>
+          <h1 className="text-2xl font-bold text-slate-900">{t('Subscription Plans')}</h1>
+          <p className="text-sm text-slate-500 mt-1">{t('Manage pricing plans for businesses')}</p>
         </div>
         <button
           onClick={() => { showForm ? resetForm() : setShowForm(true) }}
           className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium"
         >
-          {showForm ? 'Cancel' : 'Add Plan'}
+          {showForm ? t('Cancel') : t('Add Plan')}
         </button>
       </div>
 
       {/* Form */}
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
-          <h2 className="font-bold text-slate-900">{editing ? 'Edit Plan' : 'New Plan'}</h2>
+          <h2 className="font-bold text-slate-900">{editing ? t('Edit Plan') : t('New Plan')}</h2>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Plan Name</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">{t('Plan Name')}</label>
               <input
                 type="text"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
-                placeholder="e.g. Standard Tier, Enterprise"
+                placeholder={t('e.g. Standard Tier, Enterprise')}
                 required
               />
             </div>
             
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Description</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">{t('Description')}</label>
               <input
                 type="text"
                 value={form.description}
@@ -141,20 +143,20 @@ export default function SubscriptionPlans() {
             {/* Annual Price Field */}
             <div className="sm:col-span-2 bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
               <div>
-                <label className="block text-sm font-bold text-indigo-950 mb-1">Annual Price (RWF)</label>
+                <label className="block text-sm font-bold text-indigo-950 mb-1">{t('Annual Price (RWF)')}</label>
                 <input
                   type="number"
                   value={form.priceYearly}
                   onChange={(e) => setForm({ ...form, priceYearly: e.target.value })}
                   className="w-full px-3 py-2 border border-indigo-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-semibold"
-                  placeholder="e.g. 480000"
+                  placeholder={t('e.g. 480000')}
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Features (one per line)</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">{t('Features (one per line)')}</label>
               <textarea
                 value={form.features}
                 onChange={(e) => setForm({ ...form, features: e.target.value })}
@@ -169,7 +171,7 @@ export default function SubscriptionPlans() {
             disabled={saving}
             className="px-6 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition"
           >
-            {saving ? 'Saving...' : editing ? 'Update Plan' : 'Create Plan'}
+            {saving ? t('Saving...') : editing ? t('Update Plan') : t('Create Plan')}
           </button>
         </form>
       )}
@@ -188,12 +190,12 @@ export default function SubscriptionPlans() {
                     <p className="text-sm text-slate-500 mt-1">{plan.description}</p>
                   </div>
                   {!plan.isActive && (
-                    <span className="px-2 py-0.5 text-[10px] font-semibold bg-slate-100 text-slate-500 rounded-full">Inactive</span>
+                    <span className="px-2 py-0.5 text-[10px] font-semibold bg-slate-100 text-slate-500 rounded-full">{t('Inactive')}</span>
                   )}
                 </div>
 
                 <div className="mb-4 space-y-1">
-                  <p className="text-2xl font-bold text-slate-900">{annualPrice.toLocaleString()} RWF <span className="text-xs font-normal text-slate-500">/ year</span></p>
+                  <p className="text-2xl font-bold text-slate-900">{annualPrice.toLocaleString()} RWF <span className="text-xs font-normal text-slate-500">{t('/ year')}</span></p>
                 </div>
 
                 <ul className="space-y-2 mb-6">
@@ -212,7 +214,7 @@ export default function SubscriptionPlans() {
                 onClick={() => handleEdit(plan)}
                 className="w-full py-2 text-sm font-semibold text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition mt-auto"
               >
-                Edit Plan
+                {t('Edit Plan')}
               </button>
             </div>
           )

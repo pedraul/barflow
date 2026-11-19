@@ -4,10 +4,12 @@ import { useOwner } from '../context/OwnerContext'
 import { updateAvatar, fetchMySalaryStatus } from '../api/endpoints'
 import { useNavigate, useLocation } from 'react-router-dom'
 import MenuQRWidget from '../components/MenuQRWidget'
+import { usePreferences } from '../context/PreferencesContext'
 
 export default function MyAccount() {
+  const { t } = usePreferences()
   const { user, updateUser } = useAuth()
-  const { activeBranchId } = useOwner()
+  const { activeBranchId, branches, fetchBranches, setActiveBranchId } = useOwner()
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const activeTab = (() => {
@@ -48,6 +50,20 @@ export default function MyAccount() {
   const [twoFactor, setTwoFactor] = useState(false)
   const [salaryStatus, setSalaryStatus] = useState(null)
   const [salaryLoading, setSalaryLoading] = useState(false)
+  const isOwner = String(user?.role || '').toLowerCase() === 'owner'
+  const addTablesPath = isOwner ? '/owner/table-qr' : String(user?.role || '').toLowerCase() === 'manager' ? '/operator/qr-codes' : null
+  const qrBranchId = isOwner
+    ? (activeBranchId && activeBranchId !== 'all' ? activeBranchId : branches.find((branch) => branch.isActive !== false)?.id || '')
+    : user?.branchId
+  const qrBranchName = branches.find((branch) => String(branch.id) === String(qrBranchId))?.name || user?.branch
+
+  useEffect(() => {
+    if (isOwner && !branches.length) {
+      fetchBranches().catch((error) => {
+        console.error('Failed to load branches for account QR codes:', error)
+      })
+    }
+  }, [isOwner, branches.length, fetchBranches])
 
   useEffect(() => {
     let active = true
@@ -62,16 +78,16 @@ export default function MyAccount() {
   const handleProfileSave = async (e) => {
     e.preventDefault()
     setEditing(false)
-    alert('Profile updated successfully')
+    alert(t('Profile updated successfully'))
   }
 
   const handlePasswordChange = (e) => {
     e.preventDefault()
     if (passwordForm.new !== passwordForm.confirm) {
-      alert('Passwords do not match')
+      alert(t('Passwords do not match'))
       return
     }
-    alert('Password changed successfully')
+    alert(t('Password changed successfully'))
     setPasswordForm({ current: '', new: '', confirm: '' })
   }
 
@@ -80,8 +96,8 @@ export default function MyAccount() {
   }
 
   const handleDeleteAccount = () => {
-    if (window.confirm('Are you sure? This action cannot be undone. All data will be permanently deleted.')) {
-      alert('Account deletion requested. We will process this within 48 hours.')
+    if (window.confirm(t('Are you sure? This action cannot be undone. All data will be permanently deleted.'))) {
+      alert(t('Account deletion requested. We will process this within 48 hours.'))
     }
   }
 
@@ -90,7 +106,7 @@ export default function MyAccount() {
     if (!file) return
 
     if (!file.type.startsWith('image/')) {
-      alert('Please select an image file.')
+      alert(t('Please select an image file.'))
       return
     }
 
@@ -103,9 +119,9 @@ export default function MyAccount() {
         const updated = await updateAvatar(base64)
         setProfile(prev => ({ ...prev, avatar: updated.avatar || base64 }))
         updateUser({ ...user, avatar: updated.avatar || base64 })
-        alert('Profile photo updated successfully.')
+        alert(t('Profile photo updated successfully.'))
       } catch (err) {
-        alert(err.message || 'Failed to upload photo.')
+        alert(err.message || t('Failed to upload photo.'))
       } finally {
         setUploading(false)
       }
@@ -121,23 +137,23 @@ export default function MyAccount() {
     if (!m || !/^\d{4}-\d{2}$/.test(m)) return m || '—'
     const [y, mo] = m.split('-')
     const names = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-    return `${names[Number(mo) - 1] || mo} ${y}`
+    return `${t(names[Number(mo) - 1] || mo)} ${y}`
   }
 
   const tabs = [
-    { id: 'profile', label: 'Profile' },
-    { id: 'security', label: 'Security' },
-    { id: 'notifications', label: 'Notifications' },
-    { id: 'activity', label: 'Salary Status' },
+    { id: 'profile', label: t('Profile') },
+    { id: 'security', label: t('Security') },
+    { id: 'notifications', label: t('Notifications') },
+    { id: 'activity', label: t('Salary Status') },
   ]
 
   return (
     <div className="page my-account-page">
       <div className="page-heading">
         <div>
-          <p className="eyebrow">My Account</p>
-          <h1>Account settings</h1>
-          <p>Manage your profile, security, and preferences</p>
+          <p className="eyebrow">{t('My Account')}</p>
+          <h1>{t('Account settings')}</h1>
+          <p>{t('Manage your profile, security, and preferences')}</p>
         </div>
       </div>
 
@@ -161,7 +177,7 @@ export default function MyAccount() {
             <div className="avatar-section">
               <div className="avatar-large">
                 {(profile.avatar || avatarPreview) ? (
-                  <img src={avatarPreview || profile.avatar} alt="Profile" />
+                  <img src={avatarPreview || profile.avatar} alt={t('Profile')} />
                 ) : (
                   <span className="avatar-initials">
                     {profile.fullName.split(' ').map(n => n[0]).join('')}
@@ -169,7 +185,7 @@ export default function MyAccount() {
                 )}
               </div>
               <button className="secondary-action" onClick={triggerFileInput} disabled={uploading}>
-                {uploading ? 'Uploading...' : 'Change photo'}
+                {uploading ? t('Uploading...') : t('Change photo')}
               </button>
               <input
                 ref={fileInputRef}
@@ -181,24 +197,24 @@ export default function MyAccount() {
             </div>
             <div className="profile-info">
               <h2>{profile.fullName}</h2>
-              <p className="role-badge">{profile.role}</p>
+              <p className="role-badge">{t(profile.role)}</p>
               <p className="text-sm">{profile.branch}</p>
-              <p className="text-sm">Member since {profile.dateJoined}</p>
-              <p className="text-sm">Last login: {profile.lastLogin}</p>
+              <p className="text-sm">{t('Member since')} {profile.dateJoined}</p>
+              <p className="text-sm">{t('Last login:')} {profile.lastLogin}</p>
             </div>
           </div>
 
           {editing ? (
             <form className="profile-form" onSubmit={handleProfileSave}>
               <div className="form-grid">
-                <label>Full name
+                <label>{t('Full name')}
                   <input
                     value={profile.fullName}
                     onChange={e => setProfile({...profile, fullName: e.target.value})}
                     required
                   />
                 </label>
-                <label>Email
+                <label>{t('Email')}
                   <input
                     type="email"
                     value={profile.email}
@@ -206,14 +222,14 @@ export default function MyAccount() {
                     required
                   />
                 </label>
-                <label>Phone
+                <label>{t('Phone')}
                   <input
                     type="tel"
                     value={profile.phone}
                     onChange={e => setProfile({...profile, phone: e.target.value})}
                   />
                 </label>
-                <label>Branch
+                <label>{t('Branch')}
                   <select
                     value={profile.branch}
                     onChange={e => setProfile({...profile, branch: e.target.value})}
@@ -225,32 +241,50 @@ export default function MyAccount() {
                 </label>
               </div>
               <div className="form-actions">
-                <button type="button" className="secondary-action" onClick={() => setEditing(false)}>Cancel</button>
-                <button type="submit" className="pay-action">Save changes</button>
+                <button type="button" className="secondary-action" onClick={() => setEditing(false)}>{t('Cancel')}</button>
+                <button type="submit" className="pay-action">{t('Save changes')}</button>
               </div>
             </form>
           ) : (
             <div className="profile-details">
               <div className="detail-grid">
-                <div><strong>Full name</strong><p>{profile.fullName}</p></div>
-                <div><strong>Email</strong><p>{profile.email}</p></div>
-                <div><strong>Phone</strong><p>{profile.phone}</p></div>
-                <div><strong>Role</strong><p>{profile.role}</p></div>
-                <div><strong>Branch</strong><p>{profile.branch}</p></div>
+                <div><strong>{t('Full name')}</strong><p>{profile.fullName}</p></div>
+                <div><strong>{t('Email')}</strong><p>{profile.email}</p></div>
+                <div><strong>{t('Phone')}</strong><p>{profile.phone}</p></div>
+                <div><strong>{t('Role')}</strong><p>{t(profile.role)}</p></div>
+                <div><strong>{t('Branch')}</strong><p>{profile.branch}</p></div>
               </div>
-              <button className="pay-action" onClick={() => setEditing(true)}>Edit profile</button>
+              <button className="pay-action" onClick={() => setEditing(true)}>{t('Edit profile')}</button>
             </div>
           )}
 
           <div className="account-menu-qr">
             <div>
-              <h2>Customer menu QR code</h2>
-              <p className="text-sm">Print this code or let customers scan it to open your menu and place an order.</p>
+              <h2>{t('Table QR codes')}</h2>
+              <p className="text-sm">{t('100 ready-to-use table QR codes, plus any additional table numbers registered to the selected branch.')}</p>
             </div>
+            {isOwner && (
+              <label className="account-table-qr-branch">
+                {t('Branch for these QR codes')}
+                <select
+                  value={qrBranchId}
+                  onChange={(event) => setActiveBranchId(event.target.value)}
+                  aria-label={t('Select branch for account QR codes')}
+                  disabled={!branches.length}
+                >
+                  {branches.filter((branch) => branch.isActive !== false).map((branch) => (
+                    <option key={branch.id} value={branch.id}>{branch.name}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             <MenuQRWidget
               embedded
               businessId={user?.businessId}
-              branchId={String(user?.role || '').toLowerCase() === 'owner' ? activeBranchId : user?.branchId}
+              businessSlug={user?.businessSlug}
+              branchId={qrBranchId}
+              branchName={qrBranchName}
+              addTablesPath={addTablesPath}
             />
           </div>
         </section>
@@ -260,9 +294,9 @@ export default function MyAccount() {
       {activeTab === 'security' && (
         <section className="account-section">
           <div className="section-card">
-            <h2>Change password</h2>
+            <h2>{t('Change password')}</h2>
             <form onSubmit={handlePasswordChange}>
-              <label>Current password
+              <label>{t('Current password')}
                 <input
                   type="password"
                   value={passwordForm.current}
@@ -270,7 +304,7 @@ export default function MyAccount() {
                   required
                 />
               </label>
-              <label>New password
+              <label>{t('New password')}
                 <input
                   type="password"
                   value={passwordForm.new}
@@ -279,7 +313,7 @@ export default function MyAccount() {
                   minLength={8}
                 />
               </label>
-              <label>Confirm new password
+              <label>{t('Confirm new password')}
                 <input
                   type="password"
                   value={passwordForm.confirm}
@@ -287,39 +321,40 @@ export default function MyAccount() {
                   required
                 />
               </label>
-              <button type="submit" className="pay-action">Update password</button>
+              <button type="submit" className="pay-action">{t('Update password')}</button>
             </form>
           </div>
 
           <div className="section-card">
-            <h2>Two-factor authentication</h2>
-            <p className="text-sm">Add an extra layer of security to your account</p>
+            <h2>{t('Two-factor authentication')}</h2>
+            <p className="text-sm">{t('Add an extra layer of security to your account')}</p>
             <div className="toggle-row">
-              <span>Enable two-factor auth</span>
+              <span>{t('Enable two-factor auth')}</span>
               <button
                 className={`toggle ${twoFactor ? 'active' : ''}`}
                 onClick={() => setTwoFactor(!twoFactor)}
+                aria-label={t('Enable two-factor auth')}
               >
-                {twoFactor ? 'On' : 'Off'}
+                {twoFactor ? t('On') : t('Off')}
               </button>
             </div>
             {twoFactor && (
               <div className="two-factor-setup">
-                <p>Scan this QR code with your authenticator app</p>
-                <div className="qr-placeholder">[QR Code]</div>
-                <p className="text-sm">Or enter this code manually: ABC123DEF456</p>
+                <p>{t('Scan this QR code with your authenticator app')}</p>
+                <div className="qr-placeholder">[{t('QR Code')}]</div>
+                <p className="text-sm">{t('Or enter this code manually:')} ABC123DEF456</p>
               </div>
             )}
           </div>
 
           <div className="section-card danger-zone">
-            <h2 className="text-red-600">Danger zone</h2>
-            <p className="text-sm">Permanently delete your account and all associated data</p>
+            <h2 className="text-red-600">{t('Danger zone')}</h2>
+            <p className="text-sm">{t('Permanently delete your account and all associated data')}</p>
             <button
               className="delete-action"
               onClick={handleDeleteAccount}
             >
-              Delete account
+              {t('Delete account')}
             </button>
           </div>
         </section>
@@ -329,20 +364,21 @@ export default function MyAccount() {
       {activeTab === 'notifications' && (
         <section className="account-section">
           <div className="section-card">
-            <h2>Email notifications</h2>
+            <h2>{t('Email notifications')}</h2>
             <div className="notification-list">
               {[
-                { key: 'emailReports', label: 'Daily sales report' },
-                { key: 'weeklyDigest', label: 'Weekly performance digest' },
-                { key: 'lowStock', label: 'Low stock alerts' },
+                { key: 'emailReports', label: t('Daily sales report') },
+                { key: 'weeklyDigest', label: t('Weekly performance digest') },
+                { key: 'lowStock', label: t('Low stock alerts') },
               ].map(item => (
                 <div key={item.key} className="toggle-row">
                   <span>{item.label}</span>
                   <button
                     className={`toggle ${notifications[item.key] ? 'active' : ''}`}
                     onClick={() => handleNotificationToggle(item.key)}
+                    aria-label={item.label}
                   >
-                    {notifications[item.key] ? 'On' : 'Off'}
+                    {notifications[item.key] ? t('On') : t('Off')}
                   </button>
                 </div>
               ))}
@@ -350,20 +386,21 @@ export default function MyAccount() {
           </div>
 
           <div className="section-card">
-            <h2>Push notifications</h2>
+            <h2>{t('Push notifications')}</h2>
             <div className="notification-list">
               {[
-                { key: 'pushAlerts', label: 'Real-time alerts' },
-                { key: 'dailySales', label: 'Sales milestones' },
-                { key: 'smsAlerts', label: 'SMS alerts (phone required)' },
+                { key: 'pushAlerts', label: t('Real-time alerts') },
+                { key: 'dailySales', label: t('Sales milestones') },
+                { key: 'smsAlerts', label: t('SMS alerts (phone required)') },
               ].map(item => (
                 <div key={item.key} className="toggle-row">
                   <span>{item.label}</span>
                   <button
                     className={`toggle ${notifications[item.key] ? 'active' : ''}`}
                     onClick={() => handleNotificationToggle(item.key)}
+                    aria-label={item.label}
                   >
-                    {notifications[item.key] ? 'On' : 'Off'}
+                    {notifications[item.key] ? t('On') : t('Off')}
                   </button>
                 </div>
               ))}
@@ -375,31 +412,31 @@ export default function MyAccount() {
       {/* Salary Status Tab (all users) */}
       {activeTab === 'activity' && (
         <section className="account-section">
-          <h2>Salary Status</h2>
-          <p className="text-sm text-slate-500">Your salary payment status for the last 12 months.</p>
+          <h2>{t('Salary Status')}</h2>
+          <p className="text-sm text-slate-500">{t('Your salary payment status for the last 12 months.')}</p>
 
           {salaryLoading ? (
-            <p className="text-sm text-slate-500">Loading salary status…</p>
+            <p className="text-sm text-slate-500">{t('Loading salary status…')}</p>
           ) : !salaryStatus ? (
-            <p className="text-sm text-slate-500">Unable to load salary status.</p>
+            <p className="text-sm text-slate-500">{t('Unable to load salary status.')}</p>
           ) : (
             <>
               <div className="salary-summary-grid">
                 <div className="salary-summary-card">
-                  <span className="salary-summary-label">Monthly Salary</span>
+                  <span className="salary-summary-label">{t('Monthly Salary')}</span>
                   <strong>{Number(salaryStatus.salary || 0).toLocaleString()} RWF</strong>
                 </div>
                 <div className="salary-summary-card">
-                  <span className="salary-summary-label">Paid</span>
-                  <strong className="salary-count-paid">{(salaryStatus.paidMonths || []).length} months</strong>
+                  <span className="salary-summary-label">{t('Paid')}</span>
+                  <strong className="salary-count-paid">{(salaryStatus.paidMonths || []).length} {t('months')}</strong>
                 </div>
                 <div className="salary-summary-card">
-                  <span className="salary-summary-label">Not Paid</span>
-                  <strong className="salary-count-unpaid">{(salaryStatus.notPaidMonths || []).length} months</strong>
+                  <span className="salary-summary-label">{t('Not Paid')}</span>
+                  <strong className="salary-count-unpaid">{(salaryStatus.notPaidMonths || []).length} {t('months')}</strong>
                 </div>
                 <div className="salary-summary-card">
-                  <span className="salary-summary-label">Pending</span>
-                  <strong className="salary-count-pending">{(salaryStatus.pendingMonths || []).length} months</strong>
+                  <span className="salary-summary-label">{t('Pending')}</span>
+                  <strong className="salary-count-pending">{(salaryStatus.pendingMonths || []).length} {t('months')}</strong>
                 </div>
               </div>
 
