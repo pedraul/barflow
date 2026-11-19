@@ -31,3 +31,20 @@ export async function migrate({ only } = {}) {
     console.log(`Applied migration: ${file}`)
   }
 }
+
+/**
+ * On a brand-new, empty database, create the full base schema from
+ * database/schema.sql (a schema-only snapshot that also records which
+ * migrations it already includes). Does nothing once tables exist.
+ */
+export async function ensureBaseSchema() {
+  const { rows } = await query("SELECT to_regclass('public.businesses') AS t")
+  if (rows[0]?.t) return false
+
+  const schemaPath = path.resolve(__dirname, '../database/schema.sql')
+  const sql = fs.readFileSync(schemaPath, 'utf8')
+  console.log('Empty database detected — creating base schema...')
+  await query(sql)
+  console.log('Base schema created.')
+  return true
+}

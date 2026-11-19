@@ -3,7 +3,7 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 
 import apiRouter from './routes/index.js'
-import { migrate } from './migrations/run.js'
+import { migrate, ensureBaseSchema } from './migrations/run.js'
 import { seed } from './seeders/seed.js'
 
 dotenv.config()
@@ -25,6 +25,8 @@ app.use('/api', apiRouter)
 // Prepare the database, then start the server
 async function start() {
   try {
+    await ensureBaseSchema()
+
     console.log('Ensuring branch data schema is up to date...')
     await migrate({
       only: [

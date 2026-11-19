@@ -18,5 +18,6 @@ backend/dist
 !backend/migrations/20261029_repair_branch_owned_stock.sql
 !backend/migrations/20261119_create_staff_shifts.sql
 !backend/migrations/20261120_create_user_permissions.sql
+!backend/database/schema.sql
 *.bak
 *.log

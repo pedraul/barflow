@@ -50,7 +50,7 @@ export async function seed() {
   const { rows: existingBiz } = await query('SELECT id FROM businesses LIMIT 1')
 
   if (!existingBiz.length) {
-    const business = (await query(`INSERT INTO businesses (name) VALUES ('BarFlow Demo') RETURNING id`)).rows[0]
+    const business = (await query(`INSERT INTO businesses (name, slug) VALUES ('BarFlow Demo', 'barflow-demo') RETURNING id`)).rows[0]
 
     const branchRows = await Promise.all(
       [
