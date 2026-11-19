@@ -113,8 +113,24 @@
   }
 
   .owner-subscription-page .billing-plan-card {
-    min-height: 25rem;
+    min-height: 18rem;
     touch-action: pan-x pan-y;
+  }
+
+  .owner-subscription-page .billing-plan-card ul {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .owner-subscription-page .billing-plan-card > .h-px {
+    display: none;
   }
 
   .owner-subscription-page input,
