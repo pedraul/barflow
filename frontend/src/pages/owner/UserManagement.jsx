@@ -17,7 +17,14 @@ export default function UserManagement() {
   const [resetPwId, setResetPwId] = useState(null)
   const [newPassword, setNewPassword] = useState('')
   const [message, setMessage] = useState('')
+  const [formError, setFormError] = useState('')
+  const [saving, setSaving] = useState(false)
   const activeBranches = branches.filter((branch) => branch.isActive)
+  // The branch the dropdown shows when the user hasn't picked one explicitly.
+  const defaultBranchId = activeBranchId !== 'all' && activeBranches.some((b) => b.id === activeBranchId)
+    ? activeBranchId
+    : activeBranches.length === 1 ? activeBranches[0].id : ''
+  const selectedBranch = form.branch || defaultBranchId
 
   useEffect(() => {
     loadUsers()
@@ -31,6 +38,7 @@ export default function UserManagement() {
   const openCreate = () => {
     setEditingUser(null)
     setForm({ username: '', fullName: '', email: '', phone: '', password: '', role: 'waiter', branch: '', salary: '', isActive: true, avatar: '' })
+    setFormError('')
     setShowModal(true)
   }
 
@@ -43,6 +51,8 @@ export default function UserManagement() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setMessage('')
+    setFormError('')
+    setSaving(true)
     try {
       if (editingUser) {
         const payload = {}
@@ -51,17 +61,22 @@ export default function UserManagement() {
         if (form.email !== editingUser.email) payload.email = form.email
         if (form.phone !== (editingUser.phone || '')) payload.phone = form.phone
         if (form.role !== editingUser.role) payload.role = form.role
-        payload.branch = form.branch || null
+        payload.branch = selectedBranch || null
         payload.salary = parseFloat(form.salary) || 0
         payload.isActive = form.isActive
         await updateUser(editingUser.id, payload)
       } else {
-        await createUser({ ...form, salary: parseFloat(form.salary) || 0 })
+        await createUser({ ...form, branch: selectedBranch, salary: parseFloat(form.salary) || 0 })
       }
       setShowModal(false)
       await loadUsers()
       setMessage(editingUser ? t('User updated successfully.') : t('Employee created successfully.'))
-    } catch (e) { setMessage(e.message) }
+    } catch (e) {
+      // Show the error inside the modal; the page-level message is hidden behind it.
+      setFormError(e.message || t('Request failed'))
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleResetPassword = async (id) => {
@@ -210,7 +225,7 @@ export default function UserManagement() {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t(activeBranches.length ? 'Branch *' : 'Branch')}</label>
-                <select required={activeBranches.length > 0} value={form.branch || (activeBranchId !== 'all' ? activeBranchId : activeBranches.length === 1 ? activeBranches[0].id : '')} onChange={(e) => setForm({ ...form, branch: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                <select required={activeBranches.length > 0} value={selectedBranch} onChange={(e) => setForm({ ...form, branch: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
                   <option value="">{activeBranches.length ? t('Select a branch') : t('Main Branch will be created automatically')}</option>
                   {activeBranches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
                 </select>
@@ -226,9 +241,10 @@ export default function UserManagement() {
                   <option value="false">{t('Inactive')}</option>
                 </select>
               </div>
+              {formError && <div role="alert" className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm font-medium">{formError}</div>}
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
                 <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border border-slate-200 text-slate-700 rounded-lg font-medium hover:bg-slate-50 transition">{t('Cancel')}</button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition">{editingUser ? t('Save Changes') : t('Create Employee')}</button>
+                <button type="submit" disabled={saving} className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-60">{saving ? t('Saving…') : editingUser ? t('Save Changes') : t('Create Employee')}</button>
               </div>
             </form>
           </div>
