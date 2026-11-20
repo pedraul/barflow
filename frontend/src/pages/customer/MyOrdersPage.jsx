@@ -23,9 +23,11 @@ export default function MyOrdersPage() {
   const { t } = usePreferences()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { businessId: ctxBusinessId } = useCustomer()
+  const { businessId: ctxBusinessId, tableNumber: ctxTable } = useCustomer()
   const businessId = searchParams.get('businessId') || ctxBusinessId
   const { orders, loaded } = useMyCustomerOrders(businessId)
+  // Table just scanned; otherwise the table of this device's orders.
+  const headerTable = searchParams.get('table') || orders.find((o) => o.tableNumber)?.tableNumber || ctxTable
 
   const menuParams = new URLSearchParams(searchParams)
   menuParams.set('browse', '1')
@@ -43,7 +45,7 @@ export default function MyOrdersPage() {
         <UtensilsCrossed className="text-orange-600" size={30} />
         <div className="min-w-0 flex-1">
           <h1 className="text-xl font-extrabold tracking-tight">{t('My orders')}</h1>
-          {searchParams.get('table') && <p className="text-sm text-slate-500">{t('Table')} {searchParams.get('table')}</p>}
+          {headerTable && <p className="text-sm text-slate-500">{t('Table')} {headerTable}</p>}
         </div>
         <button
           type="button"
@@ -68,7 +70,14 @@ export default function MyOrdersPage() {
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
                       <h2 className="text-lg font-bold">{t('Order')} #{String(order.orderNumber ?? '').padStart(3, '0')}</h2>
-                      <p className="text-xs text-slate-500">{new Date(order.createdAt).toLocaleTimeString()}</p>
+                      <p className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                        {order.tableNumber != null && order.tableNumber !== '' && (
+                          <span className="rounded-full bg-orange-50 px-2 py-0.5 font-semibold text-orange-700">
+                            {t('Table')} {order.tableNumber}
+                          </span>
+                        )}
+                        <span>{new Date(order.createdAt).toLocaleTimeString()}</span>
+                      </p>
                     </div>
                     <strong className="text-lg">{money(order.total)}</strong>
                   </div>

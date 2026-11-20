@@ -54,7 +54,11 @@ export default function AllOrdersPage({ eyebrow = 'Orders' }) {
   const [error, setError] = useState(null)
   const [searchParams] = useSearchParams()
   const requestedTab = searchParams.get('status')
-  const tab = STATUS_TABS.some((s) => s.key === requestedTab) ? requestedTab : 'active'
+  const isWaiter = String(user?.role || '').toLowerCase() === 'waiter'
+  // Waiters get the full picture (every waiter's and QR customer's orders, every
+  // status, paid included); kitchen and bar start on what still needs work.
+  const defaultTab = isWaiter ? 'all' : 'active'
+  const tab = STATUS_TABS.some((s) => s.key === requestedTab) ? requestedTab : defaultTab
   const resultsRef = useRef(null)
   const firstRender = useRef(true)
   const [period, setPeriod] = useState('today')
@@ -112,8 +116,6 @@ export default function AllOrdersPage({ eyebrow = 'Orders' }) {
     resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [tab])
 
-  const isWaiter = String(user?.role || '').toLowerCase() === 'waiter'
-
   return (
     <div className="page all-orders-page">
       <div className="user-page-heading">
@@ -130,7 +132,7 @@ export default function AllOrdersPage({ eyebrow = 'Orders' }) {
           return (
             <Link
               key={s.key}
-              to={s.key === 'active' ? '?' : `?status=${encodeURIComponent(s.key)}`}
+              to={s.key === defaultTab ? '?' : `?status=${encodeURIComponent(s.key)}`}
               replace
               aria-current={active ? 'page' : undefined}
               className={`order-status-link${active ? ' is-active' : ''}`}
