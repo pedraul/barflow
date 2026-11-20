@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useOwner } from '../../context/OwnerContext'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
@@ -351,12 +351,12 @@ export default function SystemSettings() {
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
 
         {/* 2. TOP BANNER HEADER */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-3 sm:px-6 shrink-0 shadow-xs">
+        <header className="owner-settings-header h-16 bg-white border-b border-slate-200 flex items-center justify-between px-3 sm:px-6 shrink-0 shadow-xs">
           <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             <button onClick={goBack} className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition" title={t('Back to Dashboard')}>
               <ArrowLeft size={22} />
             </button>
-            <button className="text-slate-600 hover:text-slate-900 transition">
+            <button type="button" className="owner-settings-menu text-slate-600 hover:text-slate-900 transition">
               <Menu size={20} />
             </button>
             <div className="flex flex-col min-w-0">
@@ -416,7 +416,7 @@ export default function SystemSettings() {
           </div>
 
           {/* RIGHT COLUMN: Settings Viewport Canvas */}
-          <div className="flex-1 w-full bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden min-w-0">
+          <div className="owner-settings-panel flex-1 w-full bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden min-w-0">
             {message && (
               <div className={`m-6 p-3 rounded-lg text-sm font-medium border ${message.startsWith('❌') ? 'bg-red-50 border-red-300 text-red-800' : 'bg-emerald-50 border-emerald-300 text-emerald-800'}`}>{message}</div>
             )}
@@ -834,7 +834,7 @@ function Field({ label, name, value, onChange, placeholder, readOnly = false }) 
 
 function SectionTitle({ title, subtitle }) {
   return (
-    <div className="space-y-1">
+    <div className="settings-section-title space-y-1">
       <h2 className="text-lg font-bold text-[#0F172A] tracking-tight">{title}</h2>
       <p className="text-xs text-slate-500">{subtitle}</p>
     </div>
@@ -852,10 +852,20 @@ function SidebarIcon({ icon, active = false }) {
 }
 
 function SubTabButton({ id, label, icon, active, onClick, showBar = false }) {
+  const ref = useRef(null)
+  // On phones the tabs are one swipeable row; keep the active one in view.
+  useEffect(() => {
+    if (active && ref.current && window.matchMedia?.('(max-width: 768px)').matches) {
+      ref.current.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' })
+    }
+  }, [active])
   return (
     <button
+      ref={ref}
+      type="button"
+      aria-current={active ? 'page' : undefined}
       onClick={() => onClick(id)}
-      className={`w-full relative flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition ${
+      className={`settings-tab w-full relative flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition ${active ? 'is-active ' : ''}${
         active
           ? 'text-slate-900 font-bold'
           : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'

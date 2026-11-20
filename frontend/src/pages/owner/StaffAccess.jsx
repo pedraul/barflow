@@ -1,7 +1,26 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { ShieldCheck } from 'lucide-react'
+import { Search, ShieldCheck } from 'lucide-react'
 import { fetchStaffPermissions, updateStaffPermissions } from '../../api/endpoints'
 import { usePreferences } from '../../context/PreferencesContext'
+
+/** Accessible on/off switch (a button, so global mobile input rules don't distort it). */
+function AccessSwitch({ checked, disabled, label, onChange }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      onClick={onChange}
+      className={`access-switch${checked ? ' is-on' : ''}${disabled ? ' is-busy' : ''}`}
+    >
+      <span className="access-switch-knob" />
+    </button>
+  )
+}
+
+const initials = (name) => String(name || '?').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase()
 
 /** Owner grants / revokes per-worker access. Each toggle saves immediately. */
 export default function StaffAccess() {
@@ -59,56 +78,101 @@ export default function StaffAccess() {
 
       {error && <div className="subscription-lock" style={{ padding: 12 }}>{t('Error:')} {t(error)}</div>}
 
-      <div className="mb-4 grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+      <div className="access-catalog">
         {catalog.map((p) => (
-          <div key={p.key} className="rounded-xl bg-white p-3 text-sm shadow-sm ring-1 ring-slate-200">
-            <div className="flex items-center gap-1.5 font-semibold text-slate-900"><ShieldCheck size={14} /> {t(p.label)}</div>
-            <div className="mt-1 text-xs text-slate-500">{t(p.description)}</div>
+          <div key={p.key} className="access-catalog-card">
+            <span className="access-catalog-icon"><ShieldCheck size={16} /></span>
+            <div className="min-w-0">
+              <div className="access-catalog-title">{t(p.label)}</div>
+              <div className="access-catalog-desc">{t(p.description)}</div>
+            </div>
           </div>
         ))}
       </div>
-      <p className="mb-4 text-xs text-slate-500">
+      <p className="access-note">
         {t('Granted staff act only within their own branch, cannot manage Manager accounts or themselves, and cannot change anyone’s branch.')}
       </p>
 
-      <input
-        type="search"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder={t('Search staff')}
-        className="mb-3 w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm"
-      />
+      <div className="access-search">
+        <Search size={16} aria-hidden="true" />
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={t('Search staff')}
+          aria-label={t('Search staff')}
+        />
+      </div>
 
-      <div className="overflow-x-auto rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
-        <table className="min-w-full divide-y divide-slate-200 text-sm">
-          <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+      {/* Phones: one card per worker, permissions listed with switches */}
+      <div className="access-cards">
+        {loading ? (
+          <div className="access-empty">{t('Loading...')}</div>
+        ) : visible.length === 0 ? (
+          <div className="access-empty">{t('No staff found.')}</div>
+        ) : visible.map((u) => (
+          <article key={u.id} className="access-card">
+            <header className="access-card-head">
+              <span className="access-avatar">{initials(u.name)}</span>
+              <div className="min-w-0">
+                <div className="access-card-name">{u.name}</div>
+                <div className="access-card-sub">{t(u.role)}{u.branch ? ` · ${u.branch}` : ''}</div>
+              </div>
+              <span className="access-count">{u.permissions.length}/{catalog.length}</span>
+            </header>
+            <ul className="access-card-list">
+              {catalog.map((p) => {
+                const k = `${u.id}:${p.key}`
+                return (
+                  <li key={p.key}>
+                    <span>{t(p.label)}</span>
+                    <AccessSwitch
+                      checked={u.permissions.includes(p.key)}
+                      disabled={savingKey === k}
+                      label={`${t(p.label)} — ${u.name}`}
+                      onChange={() => toggle(u, p.key)}
+                    />
+                  </li>
+                )
+              })}
+            </ul>
+          </article>
+        ))}
+      </div>
+
+      <div className="access-table-wrap">
+        <table className="access-table">
+          <thead>
             <tr>
-              <th className="px-3 py-2">{t('Worker')}</th>
-              <th className="px-3 py-2">{t('Role')}</th>
-              <th className="px-3 py-2">{t('Branch')}</th>
-              {catalog.map((p) => <th key={p.key} className="px-3 py-2 text-center">{t(p.label)}</th>)}
+              <th className="access-col-worker">{t('Worker')}</th>
+              <th>{t('Role')}</th>
+              <th>{t('Branch')}</th>
+              {catalog.map((p) => <th key={p.key} className="access-col-perm" title={t(p.description)}>{t(p.label)}</th>)}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody>
             {loading ? (
-              <tr><td colSpan={3 + catalog.length} className="px-3 py-8 text-center text-slate-500">{t('Loading...')}</td></tr>
+              <tr><td colSpan={3 + catalog.length} className="access-table-empty">{t('Loading...')}</td></tr>
             ) : visible.length === 0 ? (
-              <tr><td colSpan={3 + catalog.length} className="px-3 py-8 text-center text-slate-500">{t('No staff found.')}</td></tr>
+              <tr><td colSpan={3 + catalog.length} className="access-table-empty">{t('No staff found.')}</td></tr>
             ) : visible.map((u) => (
               <tr key={u.id}>
-                <td className="px-3 py-2 font-semibold text-slate-900">{u.name}</td>
-                <td className="px-3 py-2 capitalize">{t(u.role)}</td>
-                <td className="px-3 py-2">{u.branch || '—'}</td>
+                <td className="access-col-worker">
+                  <div className="access-worker">
+                    <span className="access-avatar">{initials(u.name)}</span>
+                    <span className="access-worker-name">{u.name}</span>
+                  </div>
+                </td>
+                <td><span className={`access-role role-${String(u.role || '').toLowerCase()}`}>{t(u.role)}</span></td>
+                <td className="access-branch">{u.branch || '—'}</td>
                 {catalog.map((p) => {
                   const k = `${u.id}:${p.key}`
                   return (
-                    <td key={p.key} className="px-3 py-2 text-center">
-                      <input
-                        type="checkbox"
-                        aria-label={`${p.label} — ${u.name}`}
-                        className="h-4 w-4 cursor-pointer"
+                    <td key={p.key} className="access-col-perm">
+                      <AccessSwitch
                         checked={u.permissions.includes(p.key)}
                         disabled={savingKey === k}
+                        label={`${t(p.label)} — ${u.name}`}
                         onChange={() => toggle(u, p.key)}
                       />
                     </td>

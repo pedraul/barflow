@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useOwner } from '../../context/OwnerContext'
-import { AlertTriangle, Download, ArrowLeft, CalendarDays, CheckCircle2, ShieldCheck } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Download, ShieldCheck } from 'lucide-react'
 import { usePreferences } from '../../context/PreferencesContext'
 
 const PAYMENT_METHODS = [
@@ -184,164 +184,261 @@ export default function Subscription() {
     URL.revokeObjectURL(url)
   }
 
-  const notice = (text, type) => (
-    <div className={`p-3 rounded-lg text-sm font-medium border ${type === 'warn' ? 'bg-amber-50 border-amber-300 text-amber-800' : 'bg-emerald-50 border-emerald-300 text-emerald-800'}`}>{text}</div>
-  )
+
+  const statusLabel = sub
+    ? (sub.isActive
+        ? t('Active')
+        : sub.unpaidAccessGranted
+          ? t('Admin access granted')
+          : sub.paymentStatus === 'pending' ? t('Awaiting payment') : t('Inactive'))
+    : ''
+  const statusTone = sub?.isActive ? 'ok' : sub?.unpaidAccessGranted ? 'info' : 'warn'
+
+  // Share of the current period still remaining, for the progress bar.
+  const periodProgress = (() => {
+    const start = sub?.startDate ? new Date(sub.startDate).getTime() : null
+    const end = (sub?.periodEnd || sub?.nextRenewalDate) ? new Date(sub.periodEnd || sub.nextRenewalDate).getTime() : null
+    if (!start || !end || end <= start) return null
+    const left = Math.min(1, Math.max(0, (end - Date.now()) / (end - start)))
+    return Math.round(left * 100)
+  })()
+
+  const stepIndex = step === 0 ? 0 : step === 1 ? 1 : 2
+  const steps = [t('Choose plan'), t('Approve payment'), t('Done')]
+
+  const cycles = [
+    { cycle: 'monthly', title: 'Monthly', period: 'per month', months: 1, features: ['Full platform features', 'All core business tools', 'Monthly renewal'] },
+    { cycle: 'quarterly', title: 'Quarterly', period: 'for 3 months', months: 3, features: ['Everything in Monthly', 'Three-month billing period', 'Reduced overall cost'] },
+    { cycle: 'annually', title: 'Annual', period: 'per year', months: 12, features: ['Everything in Quarterly', 'Twelve-month billing period', 'Best long-term value'] },
+  ]
+
+  const isError = message.startsWith('❌')
 
   return (
-    <div className="owner-subscription-page p-4 sm:p-8 space-y-5 sm:space-y-7 max-w-[1280px] mx-auto w-full bg-white min-h-full">
-      <div className="flex justify-between items-start gap-4">
-        <div>
-          <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wider">{t('Owner workspace')}</p>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950">{sub?.isActive ? t('Choose Your Subscription Plan') : t('Activate Your Subscription')}</h1>
-          <p className="text-sm sm:text-base text-slate-600 mt-2">
+    <div className="sub-page">
+      {/* Header */}
+      <header className="sub-header">
+        <div className="min-w-0">
+          <p className="sub-eyebrow">{t('Owner workspace')}</p>
+          <h1 className="sub-title">{sub?.isActive ? t('Subscription & billing') : t('Activate your subscription')}</h1>
+          <p className="sub-lead">
             {sub?.isActive
-              ? t('Select the perfect plan for your business. Upgrade or downgrade anytime.')
+              ? t('Manage your plan, renew early, and download receipts.')
               : t('Select a plan and approve the mobile-money payment request. Access activates automatically after the provider confirms payment.')}
           </p>
         </div>
-      </div>
+      </header>
 
-      {message && notice(message, message.startsWith('❌') ? 'warn' : 'ok')}
+      {message && (
+        <div role={isError ? 'alert' : 'status'} className={`sub-alert ${isError ? 'is-error' : 'is-ok'}`}>
+          {isError ? <AlertTriangle size={18} /> : <CheckCircle2 size={18} />}
+          <span>{message.replace(/^[❌✅]\s*/u, '')}</span>
+        </div>
+      )}
+
+      {/* Current subscription */}
+      {sub && (
+        <section className="sub-current" aria-label={t('Current subscription')}>
+          <div className="sub-current-main">
+            <div className="sub-current-icon"><ShieldCheck size={22} /></div>
+            <div className="min-w-0">
+              <span className="sub-current-label">{t('Current plan')}</span>
+              <div className="sub-current-plan">
+                {sub.plan || t('Free')}
+                <span className={`sub-status is-${statusTone}`}>{statusLabel}</span>
+              </div>
+            </div>
+          </div>
+          <dl className="sub-current-stats">
+            <div>
+              <dt>{t('Days remaining')}</dt>
+              <dd>{sub.daysRemaining ?? 0}</dd>
+            </div>
+            <div>
+              <dt>{t('Next renewal')}</dt>
+              <dd>{sub.nextRenewalDate ? new Date(sub.nextRenewalDate).toLocaleDateString() : '—'}</dd>
+            </div>
+          </dl>
+          {periodProgress != null && (
+            <div className="sub-progress" aria-hidden="true">
+              <span style={{ width: `${periodProgress}%` }} className={periodProgress < 20 ? 'is-low' : ''} />
+            </div>
+          )}
+        </section>
+      )}
 
       {sub && !sub.isActive && (
-        <div className="bg-amber-50 border border-amber-300 rounded-xl p-6">
-          <h2 className="text-amber-800 flex items-center gap-2 font-bold"><AlertTriangle size={18} /> {t('Subscription Not Active')}</h2>
-          <p className="text-slate-600 mt-1 text-sm">
+        <div className="sub-alert is-warn">
+          <AlertTriangle size={18} />
+          <span>
             {sub.unpaidAccessGranted
               ? t('A platform administrator has granted access without payment. This is separate from a paid subscription.')
-              : t('Complete payment below. The provider verifies it automatically and activates your subscription.')}
-          </p>
+              : t('Your subscription is not active. Complete payment below — it activates automatically once the provider confirms.')}
+          </span>
+        </div>
+      )}
+      {sub?.aboutToExpire && sub.isActive && (
+        <div className="sub-alert is-warn">
+          <AlertTriangle size={18} />
+          <span>{t('Your subscription expires soon. Renew now to avoid service interruption.')}</span>
         </div>
       )}
 
-      {sub && (
-        <div className="bg-slate-900 rounded-lg grid grid-cols-2 md:grid-cols-4 gap-0 p-4">
-          <div className="p-4 border-l border-white/15 first:border-l-0">
-            <span className="block text-slate-400 text-xs">{t('Current Plan')}</span>
-            <strong className="text-white text-base">{sub.plan || t('Free')}</strong>
-          </div>
-          <div className="p-4 border-l border-white/15">
-            <span className="block text-slate-400 text-xs">{t('Status')}</span>
-            <strong className="text-white text-base">{sub.isActive ? t('Active') : (sub.unpaidAccessGranted ? t('Admin access granted') : (sub.paymentStatus === 'pending' ? t('Awaiting payment') : t('Inactive')))}</strong>
-          </div>
-          <div className="p-4 border-l border-white/15">
-            <span className="block text-slate-400 text-xs">{t('Days Remaining')}</span>
-            <strong className="text-white text-base">{sub.daysRemaining ?? 0}</strong>
-          </div>
-          <div className="p-4 border-l border-white/15">
-            <span className="block text-slate-400 text-xs">{t('Next Renewal')}</span>
-            <strong className="text-white text-base">{sub.nextRenewalDate ? new Date(sub.nextRenewalDate).toLocaleDateString() : '—'}</strong>
-          </div>
-        </div>
-      )}
+      {/* Stepper */}
+      <ol className="sub-stepper" aria-label={t('Progress')}>
+        {steps.map((label, i) => (
+          <li key={label} className={i < stepIndex ? 'is-done' : i === stepIndex ? 'is-current' : ''} aria-current={i === stepIndex ? 'step' : undefined}>
+            <span className="sub-step-dot">{i < stepIndex ? <CheckCircle2 size={14} /> : i + 1}</span>
+            <span className="sub-step-label">{label}</span>
+          </li>
+        ))}
+      </ol>
 
-      {sub?.aboutToExpire && sub.isActive && notice(t('⚠ Your subscription expires soon. Renew now to avoid service interruption.'), 'warn')}
-
-      {step === 0 && <div className="rounded-xl border border-blue-100 bg-blue-50 px-6 py-4 flex flex-wrap gap-x-8 gap-y-3 text-sm"><strong>{t('All plans include')}</strong>{['All Core Features', '24/7 Support', 'Regular Updates', 'Secure & Reliable'].map((item) => <span key={item} className="inline-flex items-center gap-2"><CheckCircle2 size={16} className="text-blue-600" />{t(item)}</span>)}<span className="ml-auto inline-flex items-center gap-2 text-indigo-700"><ShieldCheck size={18} />{t('30-Day Money Back Guarantee')}</span></div>}
-
-      {/* STEP 0 — Select plan */}
+      {/* STEP 0 — choose plan, billing and payment */}
       {step === 0 && (
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 sm:p-6">
-          <h2 className="text-lg font-bold text-slate-900 mb-3">{t('1 · Choose a plan')}</h2>
-          <div className="subscription-plan-grid grid grid-cols-1 md:grid-cols-3 gap-3">
-            {availablePlans.map((plan) => {
-              const selected = String(selectedPlan?.id) === String(plan.id)
-              return (
-                <button key={plan.id} type="button" onClick={() => setSelectedPlan(plan)} aria-pressed={selected}
-                  className={`subscription-tier-card rounded-xl border px-4 py-3 text-left transition ${selected ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-100' : 'border-slate-200 bg-white hover:border-indigo-300'}`}>
-                  <span className="block font-bold text-slate-900">{plan.name}</span>
-                  <span className="mt-1 block text-xs text-slate-500">{t('From')} {formatCurr(plan.priceMonthly)} {t('per month')}</span>
-                </button>
-              )
-            })}
-          </div>
+        <>
+          {availablePlans.length > 1 && (
+            <section className="sub-card">
+              <h2 className="sub-card-title"><span className="sub-num">1</span>{t('Choose a plan')}</h2>
+              <div className="sub-tier-grid">
+                {availablePlans.map((plan) => {
+                  const selected = String(selectedPlan?.id) === String(plan.id)
+                  return (
+                    <button
+                      key={plan.id}
+                      type="button"
+                      onClick={() => setSelectedPlan(plan)}
+                      aria-pressed={selected}
+                      className={`sub-tier${selected ? ' is-selected' : ''}`}
+                    >
+                      <span className="sub-tier-name">{plan.name}</span>
+                      <span className="sub-tier-price">{formatCurr(plan.priceMonthly)}<small>{t('/month')}</small></span>
+                      <CheckCircle2 size={18} className="sub-tier-check" aria-hidden="true" />
+                    </button>
+                  )
+                })}
+              </div>
+            </section>
+          )}
 
-          <h2 className="mt-6 mb-1 text-lg font-bold text-slate-900">{t('2 · Choose your billing period')}</h2>
-          <p className="mb-4 text-sm text-slate-500">{t('Select a subscription that works best for your business.')}</p>
-          <div className="billing-plan-grid grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[
-              { cycle: 'monthly', title: 'Monthly Plan', period: 'per month', months: 1, features: ['Full platform features', 'All core business tools', 'Monthly renewal'], tone: 'violet' },
-              { cycle: 'quarterly', title: 'Quarterly Plan', period: 'for 3 months', months: 3, features: ['Everything in Monthly', 'Three-month billing period', 'Reduced overall cost'], tone: 'green' },
-              { cycle: 'annually', title: 'Annual Plan', period: 'per year', months: 12, features: ['Everything in Quarterly', 'Twelve-month billing period', 'Best long-term value'], tone: 'violet' },
-            ].map(({ cycle, title, period, months, features, tone }) => {
-              const plan = selectedPlan || availablePlans[0]
-              const total = amountFor(plan, cycle)
-              const full = Number(plan?.priceMonthly || 0) * months
-              const savePercent = full > 0 ? Math.round(((full - total) / full) * 100) : 0
-              const active = billingCycle === cycle
-              const popular = cycle === 'quarterly'
-              const accent = tone === 'green' ? 'text-emerald-700' : 'text-violet-700'
-              return (
-                <label key={cycle} data-selected={active} data-popular={popular} className={`billing-plan-card relative flex cursor-pointer flex-col rounded-2xl border p-5 text-center transition ${popular ? 'border-emerald-400 bg-emerald-50/60' : 'border-violet-200 bg-white'} ${active ? 'ring-2 ring-indigo-500 ring-offset-2' : 'hover:-translate-y-0.5 hover:shadow-md'}`}>
-                  {popular && <span className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-emerald-600 px-3 py-1 text-xs font-bold text-white shadow-sm">★ {t('Most Popular')}</span>}
-                  <input type="radio" name="billingCycle" value={cycle} checked={active} onChange={() => setBillingCycle(cycle)} className="sr-only" />
-                  <CalendarDays size={38} strokeWidth={2.2} className={`mx-auto mb-2 ${accent}`} />
-                  <span className="text-lg font-bold text-slate-900">{t(title)}</span>
-                  {savePercent > 0 && <span className="mx-auto mt-2 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800">{t('Save')} {savePercent}%</span>}
-                  <span className={`mt-2 text-2xl font-extrabold tracking-tight sm:text-3xl ${accent}`}>{formatCurr(total)}</span>
-                  <span className="text-sm text-slate-600">{t(period)}</span>
-                  {months > 1 && <span className="mt-1 text-xs text-slate-500">≈ {formatCurr(Math.round(total / months))}{t('/month')}</span>}
-                  <span className="my-4 h-px w-full bg-slate-200" />
-                  <ul className="mb-5 grid flex-1 content-start gap-2 text-left text-sm text-slate-700">
-                    {features.map((feature) => <li key={feature} className="flex items-start gap-2"><CheckCircle2 size={17} className={`mt-0.5 shrink-0 ${accent}`} />{t(feature)}</li>)}
-                    <li className="flex items-start gap-2"><CheckCircle2 size={17} className={`mt-0.5 shrink-0 ${accent}`} />{t('Automatic renewal reminders')}</li>
-                  </ul>
-                  <span className={`mt-auto rounded-xl px-4 py-2.5 text-sm font-bold transition ${active ? (popular ? 'bg-emerald-600 text-white' : 'bg-violet-700 text-white') : (popular ? 'border border-emerald-600 text-emerald-700' : 'border border-violet-600 text-violet-700')}`}>
-                    {active ? t('Selected') : `${t('Choose')} ${t(cycle === 'annually' ? 'Annual' : cycle === 'quarterly' ? 'Quarterly' : 'Monthly')}`}
-                  </span>
-                </label>
-              )
-            })}
-          </div>
+          <section className="sub-card">
+            <h2 className="sub-card-title">
+              <span className="sub-num">{availablePlans.length > 1 ? 2 : 1}</span>{t('Billing period')}
+            </h2>
+            <div className="sub-cycle-grid" role="radiogroup" aria-label={t('Billing period')}>
+              {cycles.map(({ cycle, title, period, months, features }) => {
+                const plan = selectedPlan || availablePlans[0]
+                const total = amountFor(plan, cycle)
+                const full = Number(plan?.priceMonthly || 0) * months
+                const savePercent = full > 0 ? Math.round(((full - total) / full) * 100) : 0
+                const active = billingCycle === cycle
+                const popular = cycle === 'quarterly'
+                return (
+                  <label key={cycle} className={`sub-cycle${active ? ' is-selected' : ''}${popular ? ' is-popular' : ''}`}>
+                    <input type="radio" name="billingCycle" value={cycle} checked={active} onChange={() => setBillingCycle(cycle)} className="sr-only" />
+                    {popular && <span className="sub-cycle-ribbon">{t('Most popular')}</span>}
+                    <div className="sub-cycle-head">
+                      <span className="sub-cycle-title">{t(title)}</span>
+                      <span className="sub-radio" aria-hidden="true" />
+                    </div>
+                    <div className="sub-cycle-price">{formatCurr(total)}</div>
+                    <div className="sub-cycle-period">
+                      {t(period)}
+                      {months > 1 && <> · ≈ {formatCurr(Math.round(total / months))}{t('/month')}</>}
+                    </div>
+                    {savePercent > 0 && <span className="sub-save">{t('Save')} {savePercent}%</span>}
+                    <ul className="sub-cycle-features">
+                      {[...features, 'Automatic renewal reminders'].map((feature) => (
+                        <li key={feature}><CheckCircle2 size={15} aria-hidden="true" />{t(feature)}</li>
+                      ))}
+                    </ul>
+                  </label>
+                )
+              })}
+            </div>
+            <div className="sub-includes">
+              {['All Core Features', '24/7 Support', 'Regular Updates', 'Secure & Reliable'].map((item) => (
+                <span key={item}><CheckCircle2 size={14} aria-hidden="true" />{t(item)}</span>
+              ))}
+            </div>
+          </section>
 
-          <h2 className="mt-7 mb-4 text-lg font-bold text-slate-900">{t('3 · Payment')}</h2>
-          <div className="payment-section-card rounded-2xl border border-slate-200 bg-slate-50/70 p-4 sm:p-5">
-          <h3 className="mb-3 text-sm font-semibold text-slate-700">{t('Choose payment method')}</h3>
-          <div className="payment-method-grid grid grid-cols-1 md:grid-cols-2 gap-3">
-            {PAYMENT_METHODS.map((m) => {
-              const selected = paymentMethod === m.id
-              return (
-                <label key={m.id} data-selected={selected} className="payment-method-card relative flex cursor-pointer items-center gap-3 rounded-2xl border p-4 transition">
-                  <input type="radio" name="pm" checked={selected} onChange={() => setPaymentMethod(m.id)} className="sr-only" />
-                  <span aria-hidden="true" className={`payment-provider-mark ${m.id === 'mtn_momo' ? 'payment-provider-mark--mtn' : 'payment-provider-mark--airtel'}`}>
-                    {m.id === 'mtn_momo' ? 'M' : 'A'}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-semibold">{t(m.label)}</span>
-                    <span className="mt-1 block text-xs opacity-75">{t(m.hint)}</span>
-                  </span>
-                  <CheckCircle2 aria-hidden="true" size={21} className="payment-method-check shrink-0" />
-                </label>
-              )
-            })}
-          </div>
+          <section className="sub-card">
+            <h2 className="sub-card-title">
+              <span className="sub-num">{availablePlans.length > 1 ? 3 : 2}</span>{t('Payment')}
+            </h2>
+            <div className="sub-method-grid" role="radiogroup" aria-label={t('Choose payment method')}>
+              {PAYMENT_METHODS.map((m) => {
+                const selected = paymentMethod === m.id
+                return (
+                  <label key={m.id} className={`sub-method${selected ? ' is-selected' : ''}`}>
+                    <input type="radio" name="pm" checked={selected} onChange={() => setPaymentMethod(m.id)} className="sr-only" />
+                    <span aria-hidden="true" className={`sub-method-mark ${m.id === 'mtn_momo' ? 'is-mtn' : 'is-airtel'}`}>
+                      {m.id === 'mtn_momo' ? 'MTN' : 'airtel'}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="sub-method-name">{t(m.label)}</span>
+                      <span className="sub-method-hint">{t(m.hint)}</span>
+                    </span>
+                    <span className="sub-radio" aria-hidden="true" />
+                  </label>
+                )
+              })}
+            </div>
 
-          <div className="payment-phone-field mt-4 grid gap-1.5">
-            <label className="font-semibold text-sm text-slate-700">{t('Mobile-money phone number')}</label>
-            <input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder={t('+250700000000')} className="payment-phone-input px-3 py-3 border border-slate-300 rounded-xl bg-white text-base focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" />
-          </div>
-          </div>
+            <label className="sub-field">
+              <span>{t('Mobile-money phone number')}</span>
+              <input
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder={t('+250700000000')}
+              />
+            </label>
+          </section>
 
-          <div className="subscription-payment-summary sticky bottom-0 z-10 -mx-4 mt-5 flex flex-wrap items-center gap-3 border-t border-slate-200 bg-white/95 px-4 pt-3 backdrop-blur sm:static sm:mx-0 sm:mt-4 sm:justify-end sm:border-0 sm:bg-transparent sm:p-0" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
-            <span className="font-semibold text-sm text-slate-700 sm:ml-auto">
-              {t('Amount due:')} <strong className="text-lg text-indigo-600">{formatCurr(amountFor())}</strong>
-              <span className="block text-xs font-normal text-slate-500">
+          <div className="sub-checkout">
+            <div className="sub-checkout-total">
+              <span>{t('Amount due')}</span>
+              <strong>{formatCurr(amountFor())}</strong>
+              <small>
+                {(selectedPlan?.name ? `${selectedPlan.name} · ` : '')}
                 {billingCycle === 'quarterly' ? t('for 3 months') : billingCycle === 'annually' ? t('for 12 months') : t('for 1 month')}
-              </span>
-            </span>
-            <button className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-800 text-white border border-indigo-600 px-5 py-3 rounded-xl font-semibold text-sm transition disabled:opacity-50" onClick={handleSelectPlan} disabled={loading}>
-              {t('Continue to Payment')}
+              </small>
+            </div>
+            <button type="button" className="sub-btn-primary" onClick={handleSelectPlan} disabled={loading}>
+              {loading ? t('Sending request…') : t('Continue to payment')}
             </button>
           </div>
-        </div>
+        </>
       )}
 
-      {/* STEP 1 — Provider confirmation */}
+      {/* STEP 1 — waiting for provider confirmation */}
       {step === 1 && pending && (
-        <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-          <h2 className="text-lg font-bold text-slate-900 mb-4">{t('3 · Payment status')}</h2>
-          <div className="grid gap-2 mt-4">
+        <section className={`sub-card sub-pending is-${pending.status}`}>
+          <div className="sub-pending-head">
+            {pending.status === 'pending' && <span className="sub-spinner" aria-hidden="true" />}
+            {pending.status === 'completed' && <CheckCircle2 size={28} className="text-emerald-600" />}
+            {pending.status === 'failed' && <AlertTriangle size={28} className="text-rose-600" />}
+            <div>
+              <h2 className="sub-card-title m-0">
+                {pending.status === 'failed'
+                  ? t('Payment not confirmed')
+                  : pending.status === 'completed' ? t('Payment confirmed') : t('Waiting for your approval')}
+              </h2>
+              <p className="sub-muted">
+                {pending.status === 'failed'
+                  ? t('The provider did not confirm this payment. No subscription was activated.')
+                  : pending.status === 'completed'
+                    ? t('Payment confirmed. Your subscription is active.')
+                    : `${t('Approve the payment prompt on')} ${pending.phoneNumber}. ${t('This page checks the status automatically.')}`}
+              </p>
+            </div>
+          </div>
+
+          <dl className="sub-details">
             {[
               ['Plan', pending.plan],
               ['Amount', formatCurr(pending.amount)],
@@ -349,44 +446,34 @@ export default function Subscription() {
               ['Phone', pending.phoneNumber || '—'],
               ['Reference', pending.reference || '—'],
             ].map(([k, v]) => (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-100 rounded-lg" key={k}>
-                <span className="text-slate-500 text-sm">{k}</span>
-                <strong className="text-slate-900 text-sm">{v}</strong>
-              </div>
+              <div key={k}><dt>{t(k)}</dt><dd>{v}</dd></div>
             ))}
-          </div>
+          </dl>
 
-          <div className={`mt-4 border rounded-lg p-4 ${pending.status === 'failed' ? 'border-red-300 bg-red-50' : 'border-blue-200 bg-blue-50'}`}>
-            <p className="font-semibold text-slate-900">
-              {pending.status === 'failed'
-                ? t('The provider did not confirm this payment. No subscription was activated.')
-                : pending.status === 'completed'
-                  ? t('Payment confirmed. Your subscription is active.')
-                  : `Approve the payment prompt on ${pending.phoneNumber}. This page checks payment status automatically.`}
-            </p>
-          </div>
-
-          <div className="flex justify-end gap-3 mt-4">
+          <div className="sub-actions">
             {pending.status !== 'pending' && (
-              <button
-                className="text-slate-700 bg-white border border-slate-300 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-slate-100 transition"
-                onClick={() => { setPending(null); setStep(0); setMessage('') }}
-              >
+              <button type="button" className="sub-btn-secondary" onClick={() => { setPending(null); setStep(0); setMessage('') }}>
                 {t('Choose another plan')}
               </button>
             )}
-            <button className="bg-indigo-600 hover:bg-indigo-800 text-white border border-indigo-600 px-4 py-2 rounded-lg font-semibold text-sm transition disabled:opacity-50" onClick={checkPayment} disabled={pending.status !== 'pending'}>
-              {pending.status === 'pending' ? t('Check status now') : pending.status === 'completed' ? t('Payment confirmed') : t('Payment failed')}
-            </button>
+            {pending.status === 'pending' && (
+              <button type="button" className="sub-btn-primary" onClick={checkPayment}>
+                {t('Check status now')}
+              </button>
+            )}
           </div>
-        </div>
+        </section>
       )}
 
+      {/* STEP 2 — receipt */}
       {step === 2 && receipt && (
-        <div className="bg-white border border-emerald-200 rounded-xl shadow-sm p-6">
-          <h2 className="text-lg font-bold text-emerald-800 mb-4">{t('Subscription payment confirmed')}</h2>
-          <p className="text-sm text-slate-600 mb-4">{t('Your provider-confirmed payment activated access for this subscription period.')}</p>
-          <div className="grid gap-2">
+        <section className="sub-card sub-receipt">
+          <div className="sub-receipt-head">
+            <CheckCircle2 size={40} className="text-emerald-500" />
+            <h2>{t('Subscription payment confirmed')}</h2>
+            <p className="sub-muted">{t('Your provider-confirmed payment activated access for this subscription period.')}</p>
+          </div>
+          <dl className="sub-details">
             {[
               ['Receipt', receipt.receiptNumber],
               ['Plan', receipt.plan],
@@ -394,38 +481,40 @@ export default function Subscription() {
               ['Payment method', receipt.paymentMethod],
               ['Access until', receipt.endDate ? new Date(receipt.endDate).toLocaleDateString() : '—'],
             ].map(([label, value]) => (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 rounded-lg" key={label}>
-                <span className="text-slate-500 text-sm">{label}</span>
-                <strong className="text-slate-900 text-sm">{value || '—'}</strong>
-              </div>
+              <div key={label}><dt>{t(label)}</dt><dd>{value || '—'}</dd></div>
             ))}
+          </dl>
+          <div className="sub-actions">
+            <button type="button" className="sub-btn-secondary" onClick={() => { setStep(0); setPending(null); setMessage('') }}>
+              {t('Back to plans')}
+            </button>
+            <button type="button" className="sub-btn-primary" onClick={downloadReceipt}>
+              <Download size={16} /> {t('Download receipt')}
+            </button>
           </div>
-          <button className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold text-sm" onClick={downloadReceipt}>
-            {t('Download receipt')}
-          </button>
-        </div>
+        </section>
       )}
 
-      {/* Quick renew / choose plan */}
-      {sub && (
-        <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-          <h2 className="text-lg font-bold text-slate-900 mb-4">{sub.isActive ? t('Renew Subscription') : t('Choose a Plan to Activate')}</h2>
-          <p className="mt-0 text-sm text-slate-500">
-            {sub.isActive
-              ? t('Pick a plan to extend your current subscription.')
-              : t('Pick a plan to activate your subscription.')}
-          </p>
-          <div className="flex flex-wrap gap-2 mt-4">
+      {/* Quick renew with the chosen billing period */}
+      {sub && step === 0 && availablePlans.length > 0 && (
+        <section className="sub-card sub-quick">
+          <div className="min-w-0">
+            <h2 className="sub-card-title m-0">{sub.isActive ? t('Quick renew') : t('Quick activate')}</h2>
+            <p className="sub-muted">
+              {t('Uses the billing period, payment method and phone number selected above.')}
+            </p>
+          </div>
+          <div className="sub-quick-buttons">
             {availablePlans.map((p) => (
-              <button key={p.id} className="text-slate-700 bg-white border border-slate-300 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-slate-100 transition" onClick={() => handleRenew(p)}>
+              <button key={p.id} type="button" className="sub-btn-secondary" onClick={() => handleRenew(p)} disabled={loading}>
                 {sub.isActive ? t('Renew') : t('Activate')} {p.name}
               </button>
             ))}
           </div>
-        </div>
+        </section>
       )}
 
-      {loading && <p className="text-center text-slate-400">{t('Loading…')}</p>}
+      {loading && !sub && <p className="sub-muted text-center">{t('Loading…')}</p>}
     </div>
   )
 }
