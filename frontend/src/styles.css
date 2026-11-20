@@ -10795,8 +10795,108 @@ svg {
   min-height: 0;
 }
 
+/* Keep the Start/End shift wording on phones; only the "On shift ·" prefix
+   next to the timer is dropped to save top-bar space. */
+.shift-control-slot {
+  flex-shrink: 0;
+}
+
+.shift-btn-start,
+.shift-btn-end,
+.shift-pill,
+.shift-label {
+  white-space: nowrap;
+}
+
+.shift-btn-start {
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.28);
+  transition: background 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+}
+.shift-btn-start:active,
+.shift-btn-end:active {
+  transform: scale(0.96);
+}
+
+.shift-pill {
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+.shift-timer {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Pulsing "live" dot shown while on shift (phones only, replaces the clock icon) */
+.shift-live-dot {
+  display: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #10b981;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
+  animation: shift-live-pulse 1.8s ease-out infinite;
+}
+@keyframes shift-live-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55); }
+  70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shift-live-dot { animation: none; }
+}
+
+.shift-label-short { display: none; }
+
 @media (max-width: 640px) {
-  .shift-label {
+  .shift-label-prefix,
+  .shift-clock-icon,
+  .shift-label-full {
+    display: none;
+  }
+  .shift-label-short,
+  .shift-live-dot {
+    display: inline-block;
+  }
+
+  /* Slim pill instead of the generic 44px-tall square mobile button */
+  .shift-control-slot .shift-btn-start {
+    min-height: 0 !important;
+    height: 34px;
+    padding: 0 14px 0 11px !important;
+    gap: 6px !important;
+    border-radius: 999px !important;
+    font-size: 13px !important;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .shift-control-slot .shift-pill {
+    height: 34px;
+    padding: 0 3px 0 10px !important;
+    gap: 6px !important;
+    font-size: 13px !important;
+  }
+
+  .shift-control-slot .shift-btn-end {
+    min-height: 0 !important;
+    height: 28px;
+    margin-left: 2px !important;
+    padding: 0 10px !important;
+    gap: 5px !important;
+    border-radius: 999px !important;
+    font-size: 12px !important;
+    font-weight: 700;
+  }
+
+  /* Let the branch badge give up space before the shift control does */
+  .app-topbar .branch-badge,
+  .mobile-topbar .branch-badge {
+    min-width: 0;
+    flex: 0 1 auto;
+  }
+}
+
+@media (max-width: 420px) {
+  .app-topbar .branch-badge-label,
+  .mobile-topbar .branch-badge-label {
     display: none;
   }
 }
