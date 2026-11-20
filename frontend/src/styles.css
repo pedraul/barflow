@@ -12746,3 +12746,36 @@ svg {
     border-bottom-color: var(--border);
   }
 }
+
+/* Waiter table picker — required choice */
+.waiter-table-required { color: #dc2626; }
+.waiter-table-picker.needs-choice {
+  border-color: #fdba74;
+  background: #fff7ed;
+}
+.waiter-table-picker-current.is-empty {
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+.waiter-table-manual-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.waiter-table-manual-row .waiter-table-manual { flex: 1; max-width: 200px; }
+.waiter-table-manual-row .waiter-table-chip.is-walkin {
+  width: auto !important;
+  padding: 0 18px;
+}
+:root[data-theme="dark"] .waiter-table-picker.needs-choice {
+  background: var(--warning-bg);
+  border-color: transparent;
+}
+:root[data-theme="dark"] .waiter-table-picker-current.is-empty {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.waiter-table-picker-hint.is-error { color: #b91c1c; font-weight: 600; }
+:root[data-theme="dark"] .waiter-table-picker-hint.is-error { color: var(--danger-text); }

@@ -4,6 +4,17 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { createWaiterOrder, fetchBranchTables } from '../../api/endpoints'
 
+// Table selection: '' = not chosen yet, WALK_IN = no table, otherwise the table number.
+const WALK_IN = 'walk-in'
+const normalizeStoredTable = (value) => {
+  const v = String(value || '').trim()
+  if (!v) return ''
+  if (v === WALK_IN) return WALK_IN
+  // Old builds stored "Walk-in customer" automatically; make the waiter choose again.
+  if (/^walk[ -]?in/i.test(v)) return ''
+  return v
+}
+
 const money = (v) =>
   'RWF ' +
   Number(v || 0).toLocaleString('en-US', {
@@ -35,6 +46,7 @@ export default function WaiterCart() {
   const chooseTable = (value) => {
     const next = String(value ?? '')
     setTable(next)
+    setError(null)
     try {
       if (next) sessionStorage.setItem('waiter_table', next)
       else sessionStorage.removeItem('waiter_table')
@@ -66,7 +78,7 @@ export default function WaiterCart() {
       const storedCart = JSON.parse(sessionStorage.getItem('waiter_cart') || '[]')
       const storedTable = sessionStorage.getItem('waiter_table') || ''
       setCart(storedCart)
-      setTable(storedTable)
+      setTable(normalizeStoredTable(storedTable))
     } catch {
       setCart([])
     }
@@ -99,10 +111,16 @@ export default function WaiterCart() {
       setError(t("Cart is empty."))
       return
     }
+    if (!table) {
+      setError(t("Select the table this order is for (or Walk-in) before placing it."))
+      document.querySelector('.waiter-table-picker')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      return
+    }
+    const tableLabel = table === WALK_IN ? 'Walk-in customer' : String(table).trim()
     setSubmitting(true)
     try {
       const result = await createWaiterOrder({
-        customer: String(table).trim() || 'Walk-in customer',
+        customer: tableLabel,
         items: cart.map((i) => ({
           productId: i.productId,
           name: i.name,
@@ -119,7 +137,7 @@ export default function WaiterCart() {
           order: {
             id: result.id,
             orderNumber: result.orderNumber,
-            tableNumber: result.tableNumber || String(table).trim() || 'Walk-in customer',
+            tableNumber: result.tableNumber || tableLabel,
             orderType: result.orderType,
             total: result.total,
             subtotal: result.subtotal,
@@ -175,56 +193,73 @@ export default function WaiterCart() {
           <span className="user-pending">{cartCount}{' '}{t("item(s)")}</span>
         </div>
 
-        <div className="waiter-table-picker">
+        <div className={`waiter-table-picker${!table ? ' needs-choice' : ''}`}>
           <div className="waiter-table-picker-head">
-            <span className="waiter-table-picker-title">{t("Order for table")}</span>
-            <span className="waiter-table-picker-current">
-              {table ? `${t("Table")} ${table}` : t("Walk-in customer")}
+            <span className="waiter-table-picker-title">{t("Order for table")} <span className="waiter-table-required">*</span></span>
+            <span className={`waiter-table-picker-current${!table ? ' is-empty' : ''}`}>
+              {!table ? t("Not selected") : table === WALK_IN ? t("Walk-in customer") : `${t("Table")} ${table}`}
             </span>
           </div>
 
           {!tablesLoaded ? (
             <p className="waiter-table-picker-hint">{t("Loading tables…")}</p>
           ) : tables.length > 0 ? (
-            <div className="waiter-table-grid" role="radiogroup" aria-label={t("Choose a table")}>
-              <button
-                type="button"
-                role="radio"
-                aria-checked={!table}
-                onClick={() => chooseTable('')}
-                className={`waiter-table-chip is-walkin${!table ? ' is-selected' : ''}`}
-              >
-                {t("Walk-in")}
-              </button>
-              {tables.map((tb) => {
-                const value = String(tb.tableNumber)
-                const selected = table === value
-                return (
-                  <button
-                    key={tb.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={selected}
-                    onClick={() => chooseTable(value)}
-                    className={`waiter-table-chip${selected ? ' is-selected' : ''}`}
-                  >
-                    {value}
-                  </button>
-                )
-              })}
-            </div>
+            <>
+              {!table && (
+                <p className={`waiter-table-picker-hint${error ? ' is-error' : ''}`} role={error ? 'alert' : undefined}>
+                  {error ? t("Select the table this order is for (or Walk-in) before placing it.") : t("Tap the table this order is for.")}
+                </p>
+              )}
+              <div className="waiter-table-grid" role="radiogroup" aria-label={t("Choose a table")}>
+                {tables.map((tb) => {
+                  const value = String(tb.tableNumber)
+                  const selected = table === value
+                  return (
+                    <button
+                      key={tb.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() => chooseTable(value)}
+                      className={`waiter-table-chip${selected ? ' is-selected' : ''}`}
+                    >
+                      {value}
+                    </button>
+                  )
+                })}
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={table === WALK_IN}
+                  onClick={() => chooseTable(WALK_IN)}
+                  className={`waiter-table-chip is-walkin${table === WALK_IN ? ' is-selected' : ''}`}
+                >
+                  {t("Walk-in")}
+                </button>
+              </div>
+            </>
           ) : (
             <>
-              <p className="waiter-table-picker-hint">{t("No tables are set up for this branch yet. Type the table number, or leave it empty for a walk-in customer.")}</p>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={table}
-                onChange={(e) => chooseTable(e.target.value)}
-                placeholder={t("e.g. 5")}
-                aria-label={t("Table number")}
-                className="waiter-cart-table-input waiter-table-manual"
-              />
+              <p className="waiter-table-picker-hint">{t("No tables are set up for this branch yet. Type the table number, or choose Walk-in.")}</p>
+              <div className="waiter-table-manual-row">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={table === WALK_IN ? '' : table}
+                  onChange={(e) => chooseTable(e.target.value.trim())}
+                  placeholder={t("e.g. 5")}
+                  aria-label={t("Table number")}
+                  className="waiter-cart-table-input waiter-table-manual"
+                />
+                <button
+                  type="button"
+                  aria-pressed={table === WALK_IN}
+                  onClick={() => chooseTable(WALK_IN)}
+                  className={`waiter-table-chip is-walkin${table === WALK_IN ? ' is-selected' : ''}`}
+                >
+                  {t("Walk-in")}
+                </button>
+              </div>
             </>
           )}
         </div>

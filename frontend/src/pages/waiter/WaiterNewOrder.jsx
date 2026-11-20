@@ -126,9 +126,7 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
   const change = (id, delta) => setCart((current) => current.map((item) => item.productId === id ? { ...item, quantity: item.quantity + delta } : item).filter((item) => item.quantity > 0))
   const proceed = () => {
     sessionStorage.setItem('waiter_cart', JSON.stringify(cart))
-    if (!sessionStorage.getItem('waiter_table')) {
-      sessionStorage.setItem('waiter_table', 'Walk-in customer')
-    }
+    // The waiter chooses the table (or Walk-in) on the cart page.
     navigate('/waiter/cart')
   }
 
