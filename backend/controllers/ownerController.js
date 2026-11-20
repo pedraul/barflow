@@ -284,7 +284,7 @@ export async function getUsers(req, res) {
 // POST /api/v1/owner/users
 export async function createUser(req, res) {
   try {
-    const { username, fullName, email, password, role, branch, salary, phone } = req.body
+    const { username, fullName, email, password, role, branch, salary, phone, isActive = true } = req.body
     const allowedRoles = new Set(['manager', 'accountant', 'waiter', 'kitchen', 'bar', 'operator'])
     if (!fullName || !email || !password || !role) {
       return res.status(400).json({ error: 'Name, email, password, and role are required.' })
@@ -340,9 +340,9 @@ export async function createUser(req, res) {
     }
 
     const { rows } = await query(
-      `INSERT INTO users (business_id, username, full_name, email, password_hash, role, branch_id, salary, phone)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id, full_name, email, username, role, phone, salary`,
-      [businessId, username || null, fullName, email, passwordHash, role, branchId, salary || 0, phone || '']
+      `INSERT INTO users (business_id, username, full_name, email, password_hash, role, branch_id, salary, phone, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id, full_name, email, username, role, phone, salary, is_active`,
+      [businessId, username || null, fullName, email, passwordHash, role, branchId, salary || 0, phone || '', isActive !== false]
     )
 
     await logAudit({

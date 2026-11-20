@@ -209,8 +209,8 @@ export default function UserManagement() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('Branch')}</label>
-                <select required={activeBranches.length > 0} value={form.branch || (activeBranchId !== 'all' ? activeBranchId : '')} onChange={(e) => setForm({ ...form, branch: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t(activeBranches.length ? 'Branch *' : 'Branch')}</label>
+                <select required={activeBranches.length > 0} value={form.branch || (activeBranchId !== 'all' ? activeBranchId : activeBranches.length === 1 ? activeBranches[0].id : '')} onChange={(e) => setForm({ ...form, branch: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
                   <option value="">{activeBranches.length ? t('Select a branch') : t('Main Branch will be created automatically')}</option>
                   {activeBranches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
                 </select>

@@ -9,7 +9,7 @@ import { createManagedTable, fetchManagedTables } from '../../api/endpoints'
 export default function QRCodeManager() {
   const { t } = usePreferences()
   const { user } = useAuth()
-  const { activeBranchId, branches, setActiveBranchId, fetchBranches } = useOwner()
+  const { activeBranchId, branches, setActiveBranchId, fetchBranches, createBranch } = useOwner()
   const [tableNumber, setTableNumber] = useState('')
   const [tables, setTables] = useState([])
   const [loading, setLoading] = useState(false)
@@ -17,6 +17,9 @@ export default function QRCodeManager() {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [printTableId, setPrintTableId] = useState(null)
+  const [showBranchForm, setShowBranchForm] = useState(false)
+  const [newBranch, setNewBranch] = useState({ name: '', address: '' })
+  const [savingBranch, setSavingBranch] = useState(false)
   const isOwner = String(user?.role || '').toLowerCase() === 'owner'
   const branchId = isOwner ? activeBranchId : user?.branchId
   const selectedBranch = branches.find((branch) => branch.id === branchId)
@@ -81,6 +84,27 @@ export default function QRCodeManager() {
     }
   }
 
+  const addBranch = async (event) => {
+    event.preventDefault()
+    const name = newBranch.name.trim()
+    if (!name) return
+    setError('')
+    setMessage('')
+    setSavingBranch(true)
+    try {
+      const branch = await createBranch({ name, address: newBranch.address.trim() })
+      await fetchBranches()
+      setActiveBranchId(branch.id)
+      setNewBranch({ name: '', address: '' })
+      setShowBranchForm(false)
+      setMessage(t('Branch created successfully.'))
+    } catch (err) {
+      setError(err.response?.data?.error || err.message || t('Could not create branch.'))
+    } finally {
+      setSavingBranch(false)
+    }
+  }
+
   const canManageTables = branchId && branchId !== 'all'
 
   return (
@@ -95,17 +119,22 @@ export default function QRCodeManager() {
 
       <section className="qr-controls no-print" aria-label={t("Table management")}>
         {isOwner ? (
-          <label className="qr-count-label">{t("Branch")}<select
-              value={activeBranchId || 'all'}
-              onChange={(event) => setActiveBranchId(event.target.value)}
-              aria-label={t("Select branch for table management")}
-            >
-              <option value="all">{t("Select a branch")}</option>
-              {branches.map((branch) => (
-                <option key={branch.id} value={branch.id}>{branch.name}</option>
-              ))}
-            </select>
-          </label>
+          <>
+            <label className="qr-count-label">{t("Branch")}<select
+                value={activeBranchId || 'all'}
+                onChange={(event) => setActiveBranchId(event.target.value)}
+                aria-label={t("Select branch for table management")}
+              >
+                <option value="all">{t("Select a branch")}</option>
+                {branches.filter((branch) => branch.isActive !== false).map((branch) => (
+                  <option key={branch.id} value={branch.id}>{branch.name}</option>
+                ))}
+              </select>
+            </label>
+            <button type="button" className="primary-btn" onClick={() => setShowBranchForm((open) => !open)} disabled={savingBranch}>
+              {showBranchForm ? t("Cancel") : t("Create branch")}
+            </button>
+          </>
         ) : (
           <p className="qr-count-label">{t("Branch:")}{' '}{user?.branch || selectedBranch?.name || t("Your assigned branch")}</p>
         )}
@@ -136,6 +165,31 @@ export default function QRCodeManager() {
         >{t("Print all QR codes")}</button>
         {tables.length > 0 && <span className="qr-operator">{tables.length}{' '}{t("table")}{tables.length === 1 ? '' : t("s")}</span>}
       </section>
+
+      {isOwner && showBranchForm && (
+        <form onSubmit={addBranch} className="qr-controls no-print" aria-label={t("Create branch")}>
+          <label className="qr-count-label">{t("Branch name")}<input
+              type="text"
+              value={newBranch.name}
+              onChange={(event) => setNewBranch((current) => ({ ...current, name: event.target.value }))}
+              required
+              maxLength={120}
+              disabled={savingBranch}
+            />
+          </label>
+          <label className="qr-count-label">{t("Address")}<input
+              type="text"
+              value={newBranch.address}
+              onChange={(event) => setNewBranch((current) => ({ ...current, address: event.target.value }))}
+              maxLength={250}
+              disabled={savingBranch}
+            />
+          </label>
+          <button type="submit" className="primary-btn" disabled={savingBranch || !newBranch.name.trim()}>
+            {savingBranch ? t("Creating…") : t("Create branch")}
+          </button>
+        </form>
+      )}
 
       {!canManageTables && (
         <p className="no-print" role="status">{t("Select a branch to add tables and print its QR codes.")}</p>
