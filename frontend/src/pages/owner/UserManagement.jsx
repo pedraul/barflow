@@ -93,7 +93,7 @@ export default function UserManagement() {
   return (
     <div className="staff-registry-page p-6 space-y-6">
       <div className="staff-registry-header flex justify-between items-center">
-        <div>
+        <div className="staff-registry-intro">
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{t('Owner workspace')}</p>
           <h1 className="text-2xl font-black text-slate-900">{t('Staff Registry')}</h1>
           <p className="text-sm text-slate-500">{t('Create, edit, activate/deactivate and reset passwords for all staff accounts.')}</p>
@@ -138,7 +138,7 @@ export default function UserManagement() {
                       {u.isActive !== false ? t('Active') : t('Inactive')}
                     </span>
                   </td>
-                  <td className="p-2">
+                  <td className="staff-registry-actions p-2">
                     <div className="flex items-center gap-2">
                       <button onClick={() => openEdit(u)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition" title={t('Edit')}><Edit3 size={16} /></button>
                       <button onClick={() => handleDelete(u)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition" title={t('Delete')}><Trash2 size={16} /></button>
