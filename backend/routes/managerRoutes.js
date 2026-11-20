@@ -10,6 +10,7 @@ import {
   initiateOutboundPayout,
 } from '../services/outboundPayoutService.js'
 import { getBranchContext } from '../middleware/branchContext.js'
+import { requireGrant } from '../utils/staffPermissions.js'
 
 const router = Router()
 
@@ -83,7 +84,8 @@ router.get('/tables', ...managerOrOwner, async (req, res) => {
   }
 })
 
-router.post('/tables', ...managerOrOwner, async (req, res) => {
+// Owners can always add tables; managers only when the owner granted 'manage_tables'.
+router.post('/tables', ...managerOrOwner, requireGrant('manage_tables'), async (req, res) => {
   const tableNumber = Number(req.body.tableNumber)
   if (!Number.isSafeInteger(tableNumber) || tableNumber <= 0) {
     return res.status(400).json({ error: 'Enter a whole table number greater than zero.' })

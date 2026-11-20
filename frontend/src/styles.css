@@ -12779,3 +12779,32 @@ svg {
 
 .waiter-table-picker-hint.is-error { color: #b91c1c; font-weight: 600; }
 :root[data-theme="dark"] .waiter-table-picker-hint.is-error { color: var(--danger-text); }
+
+/* Staff access: role-limited permissions */
+.access-roles-tag {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 11px;
+  font-weight: 700;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.access-na { color: #cbd5e1; font-weight: 700; }
+:root[data-theme="dark"] .access-roles-tag { background: var(--warning-bg); color: var(--warning-text); }
+:root[data-theme="dark"] .access-na { color: var(--text-4); }
+
+/* Tables & QR: note for managers without the "Add tables" grant */
+.qr-access-note {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1e40af;
+  font-size: 14px;
+  line-height: 1.5;
+}
+:root[data-theme="dark"] .qr-access-note { background: var(--info-bg); border-color: transparent; color: var(--info-text); }

@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useOwner } from '../../context/OwnerContext'
 import { buildTableMenuUrl } from '../../config/tableMenuUrl'
 import { createManagedTable, fetchManagedTables } from '../../api/endpoints'
+import useMyGrants from '../../hooks/useMyGrants'
 
 export default function QRCodeManager() {
   const { t } = usePreferences()
@@ -106,6 +107,10 @@ export default function QRCodeManager() {
   }
 
   const canManageTables = branchId && branchId !== 'all'
+  // Owners can always add tables; managers only once the owner grants "Add tables".
+  const { has: hasGrant, loaded: grantsLoaded } = useMyGrants()
+  const mayAddTables = isOwner || hasGrant('manage_tables')
+  const canAddTables = canManageTables && mayAddTables
 
   return (
     <div className="page qr-manager">
@@ -138,22 +143,24 @@ export default function QRCodeManager() {
         ) : (
           <p className="qr-count-label">{t("Branch:")}{' '}{user?.branch || selectedBranch?.name || t("Your assigned branch")}</p>
         )}
-        <form onSubmit={addTable} className="flex flex-wrap items-end gap-3">
-          <label className="qr-count-label">{t("Table number")}<input
-              type="number"
-              min="1"
-              step="1"
-              value={tableNumber}
-              onChange={(event) => setTableNumber(event.target.value)}
-              aria-label={t("Table number")}
-              required
-              disabled={!canManageTables || saving}
-            />
-          </label>
-          <button type="submit" className="primary-btn" disabled={!canManageTables || saving}>
-            {saving ? t("Adding…") : t("Add table")}
-          </button>
-        </form>
+        {mayAddTables && (
+          <form onSubmit={addTable} className="flex flex-wrap items-end gap-3">
+            <label className="qr-count-label">{t("Table number")}<input
+                type="number"
+                min="1"
+                step="1"
+                value={tableNumber}
+                onChange={(event) => setTableNumber(event.target.value)}
+                aria-label={t("Table number")}
+                required
+                disabled={!canAddTables || saving}
+              />
+            </label>
+            <button type="submit" className="primary-btn" disabled={!canAddTables || saving}>
+              {saving ? t("Adding…") : t("Add table")}
+            </button>
+          </form>
+        )}
         <button
           type="button"
           className="primary-btn"
@@ -194,6 +201,11 @@ export default function QRCodeManager() {
       {!canManageTables && (
         <p className="no-print" role="status">{t("Select a branch to add tables and print its QR codes.")}</p>
       )}
+      {!isOwner && grantsLoaded && !mayAddTables && (
+        <p className="qr-access-note no-print" role="status">
+          {t("You can view and print the QR codes of existing tables. To add new tables, ask the owner to grant you the “Add tables” access.")}
+        </p>
+      )}
       {error && <p className="error-box no-print" role="alert">{t(error)}</p>}
       {message && <p className="success-box no-print" role="status">{message}</p>}
 
@@ -229,7 +241,7 @@ export default function QRCodeManager() {
           })}
         </div>
       ) : canManageTables && !loading ? (
-        <p className="no-print">{t("No tables have been added for this branch. Add a table number to generate its printable QR code.")}</p>
+        <p className="no-print">{mayAddTables ? t("No tables have been added for this branch. Add a table number to generate its printable QR code.") : t("No tables have been added for this branch yet.")}</p>
       ) : null}
     </div>
   )

@@ -9,8 +9,17 @@ export const GRANTABLE_PERMISSIONS = [
   { key: 'edit_employees', label: 'Edit & deactivate employees', description: 'Change staff details, role or status in their own branch.' },
   { key: 'reset_passwords', label: 'Reset passwords', description: 'Set a new password for staff in their own branch.' },
   { key: 'view_staff_performance', label: 'View shifts & performance', description: 'See staff shifts and performance for their branch.' },
+  // `roles` limits who may receive a permission; omitted = any non-owner role.
+  { key: 'manage_tables', label: 'Add tables', description: 'Add new tables (and their QR codes) to their branch. Managers only.', roles: ['manager'] },
 ]
 export const GRANTABLE_KEYS = new Set(GRANTABLE_PERMISSIONS.map((p) => p.key))
+
+/** True when `permission` may be granted to a worker with `role`. */
+export function canReceivePermission(permission, role) {
+  const def = GRANTABLE_PERMISSIONS.find((p) => p.key === permission)
+  if (!def) return false
+  return !def.roles || def.roles.includes(String(role || '').toLowerCase())
+}
 
 // Roles a non-owner (even with grants) may create or manage.
 // Owner and Manager accounts stay under the owner's control.
@@ -29,7 +38,8 @@ export async function getUserGrants(req) {
     'SELECT permission FROM user_permissions WHERE user_id = $1 AND business_id = $2',
     [req.user.id, req.user.businessId]
   )
-  req._grants = new Set(rows.map((r) => r.permission))
+  // Ignore grants that don't fit the worker's current role (e.g. a former manager).
+  req._grants = new Set(rows.map((r) => r.permission).filter((p) => canReceivePermission(p, req.user.role)))
   return req._grants
 }
 

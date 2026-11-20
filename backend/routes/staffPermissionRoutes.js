@@ -3,7 +3,7 @@ import { query, pool } from '../config/database.js'
 import authMiddleware from '../middleware/authMiddleware.js'
 import roleMiddleware from '../middleware/roleMiddleware.js'
 import { logAudit, getClientIp } from '../utils/audit.js'
-import { GRANTABLE_PERMISSIONS, GRANTABLE_KEYS, getUserGrants } from '../utils/staffPermissions.js'
+import { GRANTABLE_PERMISSIONS, GRANTABLE_KEYS, getUserGrants, canReceivePermission } from '../utils/staffPermissions.js'
 
 const router = Router()
 const ownerOnly = [authMiddleware, roleMiddleware('owner')]
@@ -39,7 +39,7 @@ router.get('/', ...ownerOnly, async (req, res) => {
         name: r.full_name,
         role: r.role,
         branch: r.branch_name || '',
-        permissions: r.permissions.filter((p) => GRANTABLE_KEYS.has(p)),
+        permissions: r.permissions.filter((p) => GRANTABLE_KEYS.has(p) && canReceivePermission(p, r.role)),
       })),
     })
   } catch (error) {
@@ -65,6 +65,11 @@ router.put('/:userId', ...ownerOnly, async (req, res) => {
     )
     if (!users.length) return res.status(404).json({ error: 'User not found.' })
     if (users[0].role.toLowerCase() === 'owner') return res.status(400).json({ error: 'The owner already has full access.' })
+    const notAllowed = [...next].filter((p) => !canReceivePermission(p, users[0].role))
+    if (notAllowed.length) {
+      const labels = notAllowed.map((p) => GRANTABLE_PERMISSIONS.find((d) => d.key === p)?.label || p)
+      return res.status(400).json({ error: `${labels.join(', ')} can't be granted to a ${users[0].role}.` })
+    }
 
     await client.query('BEGIN')
     const { rows: current } = await client.query(

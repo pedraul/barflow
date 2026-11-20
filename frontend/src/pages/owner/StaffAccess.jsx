@@ -20,6 +20,10 @@ function AccessSwitch({ checked, disabled, label, onChange }) {
   )
 }
 
+// Some permissions are limited to certain roles (e.g. "Add tables" is managers only).
+const canHave = (permission, user) =>
+  !permission.roles || permission.roles.includes(String(user?.role || '').toLowerCase())
+
 const initials = (name) => String(name || '?').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase()
 
 /** Owner grants / revokes per-worker access. Each toggle saves immediately. */
@@ -83,7 +87,10 @@ export default function StaffAccess() {
           <div key={p.key} className="access-catalog-card">
             <span className="access-catalog-icon"><ShieldCheck size={16} /></span>
             <div className="min-w-0">
-              <div className="access-catalog-title">{t(p.label)}</div>
+              <div className="access-catalog-title">
+                {t(p.label)}
+                {p.roles && <span className="access-roles-tag">{p.roles.map((r) => t(r.charAt(0).toUpperCase() + r.slice(1))).join(', ')} {t('only')}</span>}
+              </div>
               <div className="access-catalog-desc">{t(p.description)}</div>
             </div>
           </div>
@@ -118,10 +125,10 @@ export default function StaffAccess() {
                 <div className="access-card-name">{u.name}</div>
                 <div className="access-card-sub">{t(u.role)}{u.branch ? ` · ${u.branch}` : ''}</div>
               </div>
-              <span className="access-count">{u.permissions.length}/{catalog.length}</span>
+              <span className="access-count">{u.permissions.length}/{catalog.filter((p) => canHave(p, u)).length}</span>
             </header>
             <ul className="access-card-list">
-              {catalog.map((p) => {
+              {catalog.filter((p) => canHave(p, u)).map((p) => {
                 const k = `${u.id}:${p.key}`
                 return (
                   <li key={p.key}>
@@ -167,6 +174,13 @@ export default function StaffAccess() {
                 <td className="access-branch">{u.branch || '—'}</td>
                 {catalog.map((p) => {
                   const k = `${u.id}:${p.key}`
+                  if (!canHave(p, u)) {
+                    return (
+                      <td key={p.key} className="access-col-perm">
+                        <span className="access-na" title={t('Not available for this role')}>—</span>
+                      </td>
+                    )
+                  }
                   return (
                     <td key={p.key} className="access-col-perm">
                       <AccessSwitch
