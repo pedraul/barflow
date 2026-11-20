@@ -11008,3 +11008,253 @@ svg {
   background: rgba(255, 255, 255, 0.22);
   color: #fff;
 }
+
+/* ============================================================
+   Shifts & Performance — phone layout (cards instead of tables)
+   ============================================================ */
+.shifts-mobile-list { display: none; }
+
+@media (max-width: 640px) {
+  .shifts-desktop-table { display: none !important; }
+  .shifts-mobile-list {
+    display: grid;
+    gap: 12px;
+  }
+
+  /* Filters: two per row, full width controls */
+  .shifts-page .shifts-filters {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px !important;
+  }
+  .shifts-page .shifts-filters label,
+  .shifts-page .shifts-filters select,
+  .shifts-page .shifts-filters input {
+    width: 100%;
+  }
+  .shifts-page .shifts-filters > button {
+    grid-column: 1 / -1;
+    justify-content: center;
+  }
+
+  /* Stat tiles: compact 2-column grid */
+  .shifts-page .shifts-stats {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+  .shifts-page .shifts-stat {
+    padding: 12px 14px !important;
+    border-radius: 14px !important;
+    min-width: 0;
+  }
+  .shifts-page .shifts-stat-label {
+    font-size: 10.5px !important;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .shifts-page .shifts-stat-value {
+    font-size: 20px !important;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .shifts-page .shifts-section-title {
+    font-size: 17px !important;
+    margin-top: 4px;
+  }
+}
+
+.shifts-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.shifts-card.is-selected {
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.shifts-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.shifts-card-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shifts-card-sub {
+  margin-top: 2px;
+  font-size: 13px;
+  color: #64748b;
+  text-transform: capitalize;
+}
+
+.shifts-badge {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.shifts-badge.is-on {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.shifts-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #e2e8f0;
+  border: 1px solid #e2e8f0;
+}
+.shifts-card-grid > div {
+  min-width: 0;
+  padding: 8px 10px;
+  background: #f8fafc;
+}
+.shifts-card-grid dt {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.shifts-card-grid dd {
+  margin: 2px 0 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shifts-card-times {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.shifts-card-times > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+}
+.shifts-card-times span { color: #64748b; }
+.shifts-card-times strong {
+  color: #0f172a;
+  font-weight: 600;
+  text-align: right;
+}
+
+.shifts-card-note {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fffbeb;
+  color: #78350f;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.shifts-card-note span {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #92400e;
+}
+
+.shifts-card-action {
+  width: 100%;
+  margin-top: 12px;
+  min-height: 40px !important;
+  border-radius: 10px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 14px;
+  font-weight: 600;
+}
+.shifts-card.is-selected .shifts-card-action {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+
+.shifts-empty {
+  padding: 28px 16px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
+  text-align: center;
+  font-size: 14px;
+  color: #64748b;
+  background: #fff;
+}
+
+/* Dark mode */
+:root[data-theme="dark"] .shifts-card,
+:root[data-theme="dark"] .shifts-empty {
+  background: var(--surface);
+  border-color: var(--border);
+}
+:root[data-theme="dark"] .shifts-card-name,
+:root[data-theme="dark"] .shifts-card-grid dd,
+:root[data-theme="dark"] .shifts-card-times strong { color: var(--text); }
+:root[data-theme="dark"] .shifts-card-sub,
+:root[data-theme="dark"] .shifts-card-grid dt,
+:root[data-theme="dark"] .shifts-card-times span,
+:root[data-theme="dark"] .shifts-empty { color: var(--text-3); }
+:root[data-theme="dark"] .shifts-card-grid {
+  background: var(--border);
+  border-color: var(--border);
+}
+:root[data-theme="dark"] .shifts-card-grid > div { background: var(--surface-2); }
+:root[data-theme="dark"] .shifts-badge {
+  background: var(--surface-3);
+  color: var(--text-2);
+}
+:root[data-theme="dark"] .shifts-badge.is-on {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+:root[data-theme="dark"] .shifts-card-note {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+}
+:root[data-theme="dark"] .shifts-card-note span { color: var(--warning-text); }
+:root[data-theme="dark"] .shifts-card-action {
+  background: var(--info-bg);
+  border-color: var(--border-2);
+  color: var(--info-text);
+}
+:root[data-theme="dark"] .shifts-card.is-selected .shifts-card-action {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}

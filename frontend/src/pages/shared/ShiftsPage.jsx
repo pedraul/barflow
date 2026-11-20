@@ -101,7 +101,7 @@ export default function ShiftsPage() {
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-end gap-3">
+      <div className="shifts-filters mb-4 flex flex-wrap items-end gap-3">
         <label className="text-sm">
           <span className="mb-1 block font-medium text-slate-600">{t('Period')}</span>
           <select value={period} onChange={(e) => setPeriod(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2">
@@ -137,7 +137,7 @@ export default function ShiftsPage() {
 
       {error && <div className="subscription-lock" style={{ padding: 12 }}>{t('Error:')} {t(error)}</div>}
 
-      <div className="mb-6 grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
+      <div className="shifts-stats mb-6 grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
         {[
           ['Staff worked', totals.staff],
           ['On shift now', totals.onShift],
@@ -146,15 +146,50 @@ export default function ShiftsPage() {
           ['Orders taken', totals.orders],
           ['Order value', money(totals.sales)],
         ].map(([label, value]) => (
-          <div key={label} className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t(label)}</div>
-            <div className="mt-1 text-xl font-bold text-slate-900">{value}</div>
+          <div key={label} className="shifts-stat rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+            <div className="shifts-stat-label text-xs font-semibold uppercase tracking-wide text-slate-500">{t(label)}</div>
+            <div className="shifts-stat-value mt-1 text-xl font-bold text-slate-900">{value}</div>
           </div>
         ))}
       </div>
 
-      <h2 className="mb-2 text-lg font-semibold text-slate-900">{t('Performance by worker')}</h2>
-      <div className="mb-8 overflow-x-auto rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
+      <h2 className="shifts-section-title mb-2 text-lg font-semibold text-slate-900">{t('Performance by worker')}</h2>
+      <div className="shifts-mobile-list mb-8">
+        {performance.length === 0 ? (
+          <div className="shifts-empty">{loading ? t('Loading...') : t('No shifts recorded in this period.')}</div>
+        ) : performance.map((p) => (
+          <article key={p.userId} className={`shifts-card${staffId === p.userId ? ' is-selected' : ''}`}>
+            <header className="shifts-card-head">
+              <div className="min-w-0">
+                <div className="shifts-card-name">{p.userName}</div>
+                <div className="shifts-card-sub">{t(p.role)}{isOwner && p.branchName ? ` · ${p.branchName}` : ''}</div>
+              </div>
+              {p.onShift
+                ? <span className="shifts-badge is-on">{t('On shift')}</span>
+                : <span className="shifts-badge">{t('Off')}</span>}
+            </header>
+            <dl className="shifts-card-grid">
+              <div><dt>{t('Shifts')}</dt><dd>{p.shiftsCount}</dd></div>
+              <div><dt>{t('Total time')}</dt><dd>{formatDuration(p.totalMinutes)}</dd></div>
+              <div><dt>{t('Avg shift')}</dt><dd>{formatDuration(p.avgShiftMinutes)}</dd></div>
+              <div><dt>{t('Orders taken')}</dt><dd>{p.ordersCount}</dd></div>
+              <div><dt>{t('Orders / hour')}</dt><dd>{p.ordersPerHour}</dd></div>
+              <div><dt>{t('Order value')}</dt><dd>{money(p.salesTotal)}</dd></div>
+              <div><dt>{t('Orders prepared')}</dt><dd>{p.ordersPrepared}</dd></div>
+              <div><dt>{t('Actions')}</dt><dd>{p.activityCount}</dd></div>
+            </dl>
+            <button
+              type="button"
+              onClick={() => setStaffId(staffId === p.userId ? '' : p.userId)}
+              className="shifts-card-action"
+            >
+              {staffId === p.userId ? t('Show all') : t('View shifts')}
+            </button>
+          </article>
+        ))}
+      </div>
+
+      <div className="shifts-desktop-table mb-8 overflow-x-auto rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
         <table className="min-w-full divide-y divide-slate-200">
           <thead className="bg-slate-50">
             <tr>
@@ -209,11 +244,43 @@ export default function ShiftsPage() {
         </table>
       </div>
 
-      <h2 className="mb-2 text-lg font-semibold text-slate-900">
+      <h2 className="shifts-section-title mb-2 text-lg font-semibold text-slate-900">
         {t('Shift log')}
         {staffId && <span className="ml-2 text-sm font-normal text-slate-500">({performance.find((p) => p.userId === staffId)?.userName})</span>}
       </h2>
-      <div className="overflow-x-auto rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
+      <div className="shifts-mobile-list">
+        {shifts.length === 0 ? (
+          <div className="shifts-empty">{loading ? t('Loading...') : t('No shifts recorded in this period.')}</div>
+        ) : shifts.map((s) => (
+          <article key={s.id} className="shifts-card">
+            <header className="shifts-card-head">
+              <div className="min-w-0">
+                <div className="shifts-card-name">{s.userName}</div>
+                <div className="shifts-card-sub">{t(s.role)}{isOwner && s.branchName ? ` · ${s.branchName}` : ''}</div>
+              </div>
+              {s.isOpen
+                ? <span className="shifts-badge is-on">{t('In progress')}</span>
+                : <span className="shifts-badge">{formatDuration(s.durationMinutes)}</span>}
+            </header>
+            <div className="shifts-card-times">
+              <div><span>{t('Started')}</span><strong>{dateTime(s.startedAt)}</strong></div>
+              <div><span>{t('Ended')}</span><strong>{s.isOpen ? '—' : dateTime(s.endedAt)}</strong></div>
+            </div>
+            <dl className="shifts-card-grid">
+              <div><dt>{t('Duration')}</dt><dd>{formatDuration(s.durationMinutes)}</dd></div>
+              <div><dt>{t('Orders')}</dt><dd>{s.ordersCount}</dd></div>
+              <div><dt>{t('Order value')}</dt><dd>{money(s.salesTotal)}</dd></div>
+              <div><dt>{t('Prepared')}</dt><dd>{s.ordersPrepared}</dd></div>
+              <div><dt>{t('Actions')}</dt><dd>{s.activityCount}</dd></div>
+            </dl>
+            {s.endNote && (
+              <p className="shifts-card-note"><span>{t('Handover note')}</span>{s.endNote}</p>
+            )}
+          </article>
+        ))}
+      </div>
+
+      <div className="shifts-desktop-table overflow-x-auto rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
         <table className="min-w-full divide-y divide-slate-200">
           <thead className="bg-slate-50">
             <tr>
