@@ -91,19 +91,19 @@ export default function UserManagement() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="staff-registry-page p-6 space-y-6">
+      <div className="staff-registry-header flex justify-between items-center">
         <div>
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{t('Owner workspace')}</p>
           <h1 className="text-2xl font-black text-slate-900">{t('Staff Registry')}</h1>
           <p className="text-sm text-slate-500">{t('Create, edit, activate/deactivate and reset passwords for all staff accounts.')}</p>
         </div>
-        <div className="flex items-center gap-3">
-          <select value={activeBranchId} onChange={(e) => setActiveBranchId(e.target.value)} className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
+        <div className="staff-registry-controls flex items-center gap-3">
+          <select value={activeBranchId} onChange={(e) => setActiveBranchId(e.target.value)} className="staff-registry-branch border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
             <option value="all">{t('All branches')}</option>
             {branches.filter((branch) => branch.name?.toLowerCase() !== 'main branch').map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
           </select>
-          <button onClick={openCreate} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition shadow-sm">
+          <button onClick={openCreate} className="staff-registry-create flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition shadow-sm">
             <Plus size={18} /> {t('Register New Employee')}
           </button>
         </div>
@@ -111,9 +111,9 @@ export default function UserManagement() {
 
       {message && <div className="p-4 bg-blue-50 border border-blue-200 text-blue-800 rounded-xl text-sm font-medium">{message}</div>}
 
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
+      <div className="staff-registry-table-card bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+        <div className="staff-registry-table-scroll overflow-x-auto">
+          <table className="staff-registry-table w-full text-xs">
             <thead>
               <tr className="border-b border-slate-200">
                 {['Name', 'Username', 'Email', 'Phone', 'Role', 'Branch', 'Salary', 'Status', 'Actions'].map((h) => (
@@ -128,7 +128,7 @@ export default function UserManagement() {
                   <td className="p-2 text-slate-600">{u.username || '—'}</td>
                   <td className="p-2 text-slate-600">{u.email}</td>
                   <td className="p-2 text-slate-600">{u.phone || '—'}</td>
-                  <td className="sticky right-0 z-10 min-w-[176px] bg-white p-2 shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.5)] group-hover:bg-slate-50">
+                  <td className="p-2">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-medium role-pill role-${u.role}`}>{u.role}</span>
                   </td>
                   <td className="p-2 text-slate-600">{u.branchName || u.branch || '—'}</td>
