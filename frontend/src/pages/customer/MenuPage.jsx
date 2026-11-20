@@ -27,6 +27,8 @@ export default function MenuPage() {
   const [cartNotice, setCartNotice] = useState('')
 
   const isFreshScan = !!searchParams.get('table')
+  // The table from the scanned QR wins over any table remembered from an earlier scan.
+  const scannedTable = searchParams.get('table') || tableNumber
   const businessId = searchParams.get('businessId') || undefined
   const branchId = searchParams.get('branchId') || undefined
 
@@ -111,7 +113,11 @@ export default function MenuPage() {
     {cartNotice && <div role="status" aria-live="polite" className="customer-cart-toast"><CheckCircle2 size={19} />{cartNotice}</div>}
     <header className="customer-menu-header customer-store-header sticky top-0 z-30 flex items-center gap-4 border-b border-slate-200 bg-white px-5 py-3 md:px-8">
       <div className="customer-menu-brand flex shrink-0 items-center gap-3"><UtensilsCrossed className="text-orange-600" size={34} /><div><h1 className="font-extrabold tracking-tight text-xl">{menu?.businessName || t("BARFLOW")}</h1><p className="text-[10px] font-semibold tracking-[.2em] text-slate-500">{t("RESTAURANT & BAR")}</p></div></div>
-      {isFreshScan && <span className="hidden rounded-full bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-700 sm:inline-flex">{t("Table")}{' '}{tableNumber}</span>}
+      {scannedTable && (
+        <span className="customer-table-badge inline-flex shrink-0 items-center whitespace-nowrap rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-sm font-bold text-orange-700">
+          {t("Table")}{' '}{scannedTable}
+        </span>
+      )}
       <div className="customer-store-search relative ml-auto flex min-w-0 flex-1">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={19} />
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("Search the menu")} aria-label={t("Search the menu")} className="w-full rounded-l-lg border border-slate-400 bg-white py-3 pl-10 pr-3 outline-none focus:border-slate-700" />

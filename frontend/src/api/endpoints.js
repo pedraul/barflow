@@ -385,6 +385,12 @@ export async function fetchManagedTables(branchId) {
   return data
 }
 
+// Tables in the signed-in staff member's branch (any role).
+export async function fetchBranchTables() {
+  const { data } = await api.get('/orders/tables')
+  return data
+}
+
 export async function createManagedTable(tableNumber, branchId) {
   const { data } = await api.post('/manager/tables', { tableNumber, branchId })
   return data

@@ -98,6 +98,25 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 })
 
+// GET /api/orders/tables
+// Read-only list of the dining tables in the caller's branch, so waiters can
+// pick the table an order is for. (Declared before /:id so it isn't shadowed.)
+router.get('/tables', authMiddleware, async (req, res) => {
+  try {
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: false })
+    const { rows } = await query(
+      `SELECT id, table_number
+       FROM dining_tables
+       WHERE business_id = $1 AND branch_id = $2
+       ORDER BY table_number`,
+      [scope.businessId, scope.branchId]
+    )
+    res.json(rows.map((row) => ({ id: row.id, tableNumber: row.table_number })))
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ error: error.message })
+  }
+})
+
 // GET /api/orders/:id
 // Full order detail (header + line items) for any authenticated role.
 router.get('/:id', authMiddleware, async (req, res) => {

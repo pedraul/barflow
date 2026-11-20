@@ -2,7 +2,7 @@ import { usePreferences } from '../../context/PreferencesContext'
 import React, { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { createWaiterOrder } from '../../api/endpoints'
+import { createWaiterOrder, fetchBranchTables } from '../../api/endpoints'
 
 const money = (v) =>
   'RWF ' +
@@ -19,6 +19,27 @@ export default function WaiterCart() {
   const [table, setTable] = useState('')
   const [error, setError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const [tables, setTables] = useState([])
+  const [tablesLoaded, setTablesLoaded] = useState(false)
+
+  // Branch tables (the same ones that have printed QR codes) for the picker.
+  useEffect(() => {
+    let cancelled = false
+    fetchBranchTables()
+      .then((list) => { if (!cancelled) setTables(Array.isArray(list) ? list : []) })
+      .catch(() => { if (!cancelled) setTables([]) })
+      .finally(() => { if (!cancelled) setTablesLoaded(true) })
+    return () => { cancelled = true }
+  }, [])
+
+  const chooseTable = (value) => {
+    const next = String(value ?? '')
+    setTable(next)
+    try {
+      if (next) sessionStorage.setItem('waiter_table', next)
+      else sessionStorage.removeItem('waiter_table')
+    } catch { /* storage unavailable */ }
+  }
 
   useEffect(() => {
     const storedBiz = sessionStorage.getItem('waiter_business_id') || ''
@@ -154,26 +175,59 @@ export default function WaiterCart() {
           <span className="user-pending">{cartCount}{' '}{t("item(s)")}</span>
         </div>
 
-        <label style={{ display: 'block', fontWeight: 600, marginBottom: 8 }}>{t("Table number")}</label>
-        <input
-          type="text"
-          inputMode="numeric"
-          value={table}
-          onChange={(e) => setTable(e.target.value)}
-          placeholder={t("e.g. 5")}
-          aria-label={t("Table number")}
-          className="waiter-cart-table-input"
-          style={{
-            padding: '10px 14px',
-            borderRadius: 8,
-            border: '1px solid var(--border)',
-            fontSize: 16,
-            marginBottom: 16,
-            boxSizing: 'border-box',
-            width: '100%',
-            maxWidth: 160,
-          }}
-        />
+        <div className="waiter-table-picker">
+          <div className="waiter-table-picker-head">
+            <span className="waiter-table-picker-title">{t("Order for table")}</span>
+            <span className="waiter-table-picker-current">
+              {table ? `${t("Table")} ${table}` : t("Walk-in customer")}
+            </span>
+          </div>
+
+          {!tablesLoaded ? (
+            <p className="waiter-table-picker-hint">{t("Loading tables…")}</p>
+          ) : tables.length > 0 ? (
+            <div className="waiter-table-grid" role="radiogroup" aria-label={t("Choose a table")}>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={!table}
+                onClick={() => chooseTable('')}
+                className={`waiter-table-chip is-walkin${!table ? ' is-selected' : ''}`}
+              >
+                {t("Walk-in")}
+              </button>
+              {tables.map((tb) => {
+                const value = String(tb.tableNumber)
+                const selected = table === value
+                return (
+                  <button
+                    key={tb.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => chooseTable(value)}
+                    className={`waiter-table-chip${selected ? ' is-selected' : ''}`}
+                  >
+                    {value}
+                  </button>
+                )
+              })}
+            </div>
+          ) : (
+            <>
+              <p className="waiter-table-picker-hint">{t("No tables are set up for this branch yet. Type the table number, or leave it empty for a walk-in customer.")}</p>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={table}
+                onChange={(e) => chooseTable(e.target.value)}
+                placeholder={t("e.g. 5")}
+                aria-label={t("Table number")}
+                className="waiter-cart-table-input waiter-table-manual"
+              />
+            </>
+          )}
+        </div>
 
         <div className="waiter-cart-layout" style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
           <div style={{ flex: 1, minWidth: 0 }}>

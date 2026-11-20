@@ -11258,3 +11258,111 @@ svg {
   border-color: #2563eb;
   color: #fff;
 }
+
+/* ============================================================
+   Waiter cart — table picker
+   ============================================================ */
+.waiter-table-picker {
+  margin-bottom: 18px;
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+.waiter-table-picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.waiter-table-picker-title {
+  font-weight: 700;
+  color: #0f172a;
+}
+.waiter-table-picker-current {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #c2410c;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.waiter-table-picker-hint {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: #64748b;
+}
+.waiter-table-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+  gap: 8px;
+  max-height: 232px;
+  overflow-y: auto;
+  padding: 2px;
+}
+.waiter-table-chip {
+  min-height: 48px !important;
+  width: 100% !important;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #0f172a;
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+.waiter-table-chip:hover { border-color: #94a3b8; }
+.waiter-table-chip:active { transform: scale(0.96); }
+.waiter-table-chip.is-walkin {
+  grid-column: span 2;
+  font-size: 14px;
+  color: #475569;
+}
+.waiter-table-chip.is-selected {
+  background: #ea580c;
+  border-color: #ea580c;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(234, 88, 12, 0.3);
+}
+.waiter-table-manual {
+  width: 100%;
+  max-width: 180px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+
+:root[data-theme="dark"] .waiter-table-picker {
+  background: var(--surface-2);
+  border-color: var(--border);
+}
+:root[data-theme="dark"] .waiter-table-picker-title { color: var(--text); }
+:root[data-theme="dark"] .waiter-table-picker-hint { color: var(--text-3); }
+:root[data-theme="dark"] .waiter-table-chip {
+  background: var(--surface);
+  border-color: var(--border-2);
+  color: var(--text);
+}
+:root[data-theme="dark"] .waiter-table-chip.is-walkin { color: var(--text-2); }
+:root[data-theme="dark"] .waiter-table-chip.is-selected {
+  background: #ea580c;
+  border-color: #ea580c;
+  color: #fff;
+}
+:root[data-theme="dark"] .waiter-table-picker-current {
+  background: var(--warning-bg);
+  border-color: transparent;
+  color: var(--warning-text);
+}
+:root[data-theme="dark"] .waiter-table-manual {
+  background: var(--surface);
+  border-color: var(--border-2);
+  color: var(--text);
+}
