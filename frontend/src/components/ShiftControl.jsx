@@ -41,7 +41,7 @@ function ShiftModal({ onClose, children, labelledBy }) {
 }
 
 /**
- * Start / end shift button for every staff role except Owner.
+ * Start / end shift button for floor staff (waiter, kitchen, bar, operator).
  * `compact` hides the label text (used in the mobile top bar).
  */
 export default function ShiftControl({ compact = false, floating = false }) {
@@ -59,7 +59,8 @@ export default function ShiftControl({ compact = false, floating = false }) {
   const noteRef = useRef(null)
 
   const role = String(user?.role || '').toLowerCase()
-  const enabled = Boolean(user) && role !== 'owner' && !['platform_admin', 'super_admin'].includes(role)
+  // Shifts are only tracked for floor staff; owners, managers, accountants and admins don't clock in.
+  const enabled = Boolean(user) && !['owner', 'manager', 'accountant', 'platform_admin', 'super_admin'].includes(role)
 
   const refresh = useCallback(async () => {
     try {
