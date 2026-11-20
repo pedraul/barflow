@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { RefreshCw, Search } from 'lucide-react'
 import { fetchOrders } from '../../api/endpoints'
 import { useAuth } from '../../context/AuthContext'
@@ -51,7 +52,11 @@ export default function AllOrdersPage({ eyebrow = 'Orders' }) {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [tab, setTab] = useState('active')
+  const [searchParams] = useSearchParams()
+  const requestedTab = searchParams.get('status')
+  const tab = STATUS_TABS.some((s) => s.key === requestedTab) ? requestedTab : 'active'
+  const resultsRef = useRef(null)
+  const firstRender = useRef(true)
   const [period, setPeriod] = useState('today')
   const [search, setSearch] = useState('')
   const [mineOnly, setMineOnly] = useState(false)
@@ -101,6 +106,12 @@ export default function AllOrdersPage({ eyebrow = 'Orders' }) {
     })
   }, [orders, tab, search, mineOnly, user?.id])
 
+  // When a status link is chosen, bring its orders into view (skip on first load).
+  useEffect(() => {
+    if (firstRender.current) { firstRender.current = false; return }
+    resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [tab])
+
   const isWaiter = String(user?.role || '').toLowerCase() === 'waiter'
 
   return (
@@ -113,18 +124,23 @@ export default function AllOrdersPage({ eyebrow = 'Orders' }) {
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        {STATUS_TABS.map((s) => (
-          <button
-            key={s.key}
-            type="button"
-            onClick={() => setTab(s.key)}
-            className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${tab === s.key ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
-          >
-            {t(s.label)} ({counts[s.key] || 0})
-          </button>
-        ))}
-      </div>
+      <nav className="order-status-links" aria-label={t('Order status')}>
+        {STATUS_TABS.map((s) => {
+          const active = tab === s.key
+          return (
+            <Link
+              key={s.key}
+              to={s.key === 'active' ? '?' : `?status=${encodeURIComponent(s.key)}`}
+              replace
+              aria-current={active ? 'page' : undefined}
+              className={`order-status-link${active ? ' is-active' : ''}`}
+            >
+              <span>{t(s.label)}</span>
+              <span className="order-status-count">{counts[s.key] || 0}</span>
+            </Link>
+          )
+        })}
+      </nav>
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="relative min-w-[220px] flex-1">
@@ -155,6 +171,7 @@ export default function AllOrdersPage({ eyebrow = 'Orders' }) {
         </button>
       </div>
 
+      <div ref={resultsRef} className="order-results-anchor" />
       {error && <div className="subscription-lock" style={{ padding: 12 }}>{t('Error:')} {t(error)}</div>}
 
       {loading && orders.length === 0 ? (

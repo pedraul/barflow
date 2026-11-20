@@ -10906,3 +10906,105 @@ svg {
     display: none;
   }
 }
+
+/* ============================================================
+   All Orders — status filter links (waiter / kitchen / bar)
+   ============================================================ */
+.order-status-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.order-status-link {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  width: auto !important;
+  min-height: 0 !important;
+  padding: 6px 8px 6px 12px;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #334155 !important;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none !important;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.order-status-link:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+.order-status-link.is-active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+}
+
+.order-status-count {
+  min-width: 22px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.order-status-link.is-active .order-status-count {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+.order-results-anchor {
+  scroll-margin-top: 72px;
+}
+
+/* Phones: one swipeable row instead of a tall stack of buttons */
+@media (max-width: 640px) {
+  .order-status-links {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin: 0 -14px 16px;
+    padding: 2px 14px 6px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .order-status-links::-webkit-scrollbar {
+    display: none;
+  }
+  .order-status-link {
+    flex-shrink: 0;
+    padding: 8px 8px 8px 14px;
+    font-size: 14px;
+  }
+}
+
+:root[data-theme="dark"] .order-status-link {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text-2) !important;
+}
+:root[data-theme="dark"] .order-status-link:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-2);
+}
+:root[data-theme="dark"] .order-status-link.is-active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff !important;
+}
+:root[data-theme="dark"] .order-status-count {
+  background: var(--surface-3);
+  color: var(--text-2);
+}
+:root[data-theme="dark"] .order-status-link.is-active .order-status-count {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
