@@ -1,17 +1,36 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { X } from 'lucide-react'
-import { orderTableText } from '../../components/OrderTableHeading'
+import { orderTableText, orderWaiterText } from '../../components/OrderTableHeading'
 import { useOwner } from '../../context/OwnerContext'
 import { usePreferences } from '../../context/PreferencesContext'
 import OrderStatusBadge from '../../components/OrderStatusBadge'
 
 const fmt = (v) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'RWF', minimumFractionDigits: 0 }).format(v || 0)
 
+const PAYMENT_METHOD_LABELS = {
+  cash: 'Cash',
+  pos: 'POS / Card',
+  card: 'POS / Card',
+  mtn_momo: 'MTN Mobile Money',
+  momo: 'MTN Mobile Money',
+  mtn: 'MTN Mobile Money',
+  airtel_money: 'Airtel Money',
+  airtel: 'Airtel Money',
+  qr: 'QR Payment',
+  bank: 'Bank transfer',
+  unknown: 'Not recorded',
+}
+const paymentMethodLabel = (method) => {
+  const key = String(method || 'unknown').trim().toLowerCase()
+  return PAYMENT_METHOD_LABELS[key] || key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
 export default function OwnerRevenue() {
   const { t } = usePreferences()
   const [revenue, setRevenue] = useState(null)
   const [logs, setLogs] = useState([])
+  const [logSummary, setLogSummary] = useState(null)
   const [loading, setLoading] = useState(false)
   const [revenueLoading, setRevenueLoading] = useState(true)
   const [revenueError, setRevenueError] = useState('')
@@ -65,6 +84,12 @@ export default function OwnerRevenue() {
       try {
         const res = await fetchRevenueLogs()
         setLogs(res.logs || [])
+        setLogSummary({
+          byMethod: res.byMethod || [],
+          totalPaid: res.totalPaid || 0,
+          refunds: res.refunds || 0,
+          netReceived: res.netReceived || 0,
+        })
       } catch (e) { /* ignore */ }
       finally { setLoading(false) }
     }
@@ -86,8 +111,6 @@ export default function OwnerRevenue() {
   ] : []
   const activeCard = cards.find((c) => c.view === activeView)
 
-  const logTypeClass = (t) =>
-    t === 'received' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : t === 'stock_sold' ? 'bg-blue-100 text-blue-800 border-blue-300' : 'bg-amber-100 text-amber-800 border-amber-300'
 
   return (
     <div className="p-6 space-y-6 max-w-[1400px] mx-auto w-full">
@@ -179,24 +202,55 @@ export default function OwnerRevenue() {
         </button>
         {viewLogs && (
           <div id="revenue-log-details" className="px-6 pb-6">
-          {logs.length === 0 ? <p className="text-slate-400 mt-4">{t('No logs recorded.')}</p> : (
+          {logSummary && (
+            <div className="mt-4 space-y-3">
+              <div className="flex flex-wrap gap-2">
+                {(logSummary.byMethod || []).map((m) => (
+                  <div key={m.method} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t(paymentMethodLabel(m.method))}</p>
+                    <p className="text-base font-extrabold text-slate-900">{fmt(m.amount)}</p>
+                    <p className="text-[11px] text-slate-500">{m.orders} {t('order(s)')}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="text-sm text-slate-600">
+                {t('Total paid')}: <strong className="text-slate-900">{fmt(logSummary.totalPaid)}</strong>
+                {logSummary.refunds > 0 && (
+                  <>
+                    {' · '}{t('Refunds')}: <strong className="text-red-700">−{fmt(logSummary.refunds)}</strong>
+                    {' · '}{t('Net received')}: <strong className="text-emerald-700">{fmt(logSummary.netReceived)}</strong>
+                  </>
+                )}
+              </p>
+            </div>
+          )}
+          {logs.length === 0 ? <p className="text-slate-400 mt-4">{t('No payments recorded yet.')}</p> : (
             <div className="border border-slate-200 rounded-lg overflow-x-auto mt-4">
               <table className="w-full text-xs border-collapse">
                 <thead>
                   <tr>
-                    <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">{t('Type')}</th>
-                    <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">{t('Description')}</th>
-                    <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-right">{t('Amount')}</th>
-                    <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-right">{t('Date')}</th>
+                    <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">{t('Table')}</th>
+                    <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">{t('Order')}</th>
+                    <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-left">{t('Payment method')}</th>
+                    <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-right">{t('Amount paid')}</th>
+                    <th className="bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider p-2 border-b border-slate-200 text-right">{t('Paid on')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {logs.map((log) => (
                     <tr key={log.id} className="hover:bg-indigo-50">
-                      <td className="p-2"><span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${logTypeClass(log.type)}`}>{log.type.replace('_', ' ')}</span></td>
-                      <td className="p-2 text-slate-600">{log.description || '—'}</td>
-                      <td className="p-2 text-right font-semibold text-slate-900">{fmt(log.amount)}</td>
-                      <td className="p-2 text-right text-slate-400">{new Date(log.createdAt).toLocaleDateString()}</td>
+                      <td className="p-2">
+                        <div className="font-extrabold text-slate-900 uppercase tracking-wide">{orderTableText(log, t)}</div>
+                        {orderWaiterText(log, t) && <div className="text-[10px] font-semibold text-slate-500">{orderWaiterText(log, t)}</div>}
+                      </td>
+                      <td className="p-2 font-semibold text-slate-900">{log.orderNumber || '—'}</td>
+                      <td className="p-2">
+                        <span className="inline-block rounded-full border border-slate-300 bg-white px-2 py-0.5 text-[11px] font-bold text-slate-700">
+                          {t(paymentMethodLabel(log.paymentMethod))}
+                        </span>
+                      </td>
+                      <td className="p-2 text-right font-extrabold text-slate-900">{fmt(log.amount)}</td>
+                      <td className="p-2 text-right text-slate-500">{new Date(log.createdAt).toLocaleString()}</td>
                     </tr>
                   ))}
                 </tbody>

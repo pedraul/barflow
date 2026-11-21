@@ -1186,75 +1186,85 @@ export async function getRevenueDetails(req, res) {
 // GET /api/v1/owner/revenue/logs
 export async function getRevenueLogs(req, res) {
   try {
-    const businessId = req.user?.businessId
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
+    const businessId = scope.businessId
     const page = Math.max(1, parseInt(req.query.page) || 1)
     const limit = Math.min(100, Math.max(10, parseInt(req.query.limit) || 50))
     const offset = (page - 1) * limit
-    const { type } = req.query
-
-    let countSql = 'SELECT COUNT(*) AS total FROM revenue_logs WHERE business_id = $1'
-    let sql = `SELECT * FROM revenue_logs WHERE business_id = $1`
-    const params = [businessId]
-
-    if (type) {
-      sql += ` AND type = $${params.length + 1}`
-      countSql += ` AND type = $${params.length + 1}`
-      params.push(type)
+    if (!businessId) {
+      return res.json({ logs: [], byMethod: [], totalPaid: 0, pagination: { page, limit, total: 0, totalPages: 1 } })
     }
 
-    const { rows: countResult } = await query(countSql, params)
-    const total = parseInt(countResult[0].total) || 0
+    const params = scope.branchId ? [businessId, scope.branchId] : [businessId]
+    const branchFilter = scope.branchId ? ' AND o.branch_id = $2' : ''
+    // One row per paid order: what was actually paid, how, and when.
+    const paidOrdersFrom = `
+      FROM orders o
+      LEFT JOIN LATERAL (
+        SELECT p.method::text AS method, p.paid_at
+        FROM payments p
+        WHERE p.order_id = o.id AND p.paid_at IS NOT NULL
+        ORDER BY p.paid_at DESC
+        LIMIT 1
+      ) pay ON TRUE
+      LEFT JOIN branches b ON b.id = o.branch_id
+      WHERE o.business_id = $1${branchFilter}
+        AND ${ORDER_NOT_CANCELLED_SQL}
+        AND (LOWER(BTRIM(o.status::text)) = 'paid' OR pay.paid_at IS NOT NULL)`
+    // Payment records can contain duplicates, so the amount is the order total that was settled.
+    const methodExpr = `COALESCE(NULLIF(o.payment_method::text, ''), pay.method, 'unknown')`
+    const amountExpr = 'COALESCE(o.total_amount, 0)'
+    const paidAtExpr = 'COALESCE(pay.paid_at, o.completed_at, o.created_at)'
 
-    sql += ' ORDER BY created_at DESC LIMIT $' + (params.length + 1) + ' OFFSET $' + (params.length + 2)
-    params.push(limit, offset)
+    const refundFilter = scope.branchId ? ' AND branch_id = $2' : ''
+    const [{ rows: countRows }, { rows: methodRows }, { rows }, { rows: refundRows }] = await Promise.all([
+      query(`SELECT COUNT(*) AS total, COALESCE(SUM(${amountExpr}), 0) AS total_paid ${paidOrdersFrom}`, params),
+      query(
+        `SELECT ${methodExpr} AS method, COUNT(*) AS orders, COALESCE(SUM(${amountExpr}), 0) AS amount
+         ${paidOrdersFrom}
+         GROUP BY 1
+         ORDER BY amount DESC`,
+        params
+      ),
+      query(
+        `SELECT o.id, o.order_number, o.table_number, o.table_name, o.status, o.source, o.total_amount,
+                ${amountExpr} AS amount_paid, ${methodExpr} AS method, ${paidAtExpr} AS paid_at,
+                b.name AS branch_name,
+                (SELECT u.full_name FROM users u WHERE u.id = o.user_id) AS waiter_name
+         ${paidOrdersFrom}
+         ORDER BY ${paidAtExpr} DESC
+         LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+        [...params, limit, offset]
+      ),
+      query(
+        `SELECT COALESCE(SUM(amount), 0) AS refunds FROM refunds
+         WHERE business_id = $1 AND LOWER(BTRIM(status::text)) = 'approved'${refundFilter}`,
+        params
+      ),
+    ])
 
-    const { rows } = await query(sql, params)
-
-    if (total === 0) {
-      const { rows: orderLogs } = await query(
-        `SELECT o.id, o.order_number, o.total_amount, o.status, o.created_at,
-                COALESCE(SUM(oi.quantity * p.selling_price), 0) AS sold_value
-         FROM orders o
-         LEFT JOIN order_items oi ON oi.order_id = o.id
-         LEFT JOIN products p ON p.id = oi.product_id
-         WHERE o.status IN ('Paid', 'Served') AND o.business_id = $1
-         GROUP BY o.id, o.order_number, o.total_amount, o.status, o.created_at
-         ORDER BY o.created_at DESC
-         LIMIT $2 OFFSET $3`,
-        [businessId, limit, offset]
-      )
-
-      const logs = orderLogs.map((o) => ({
-        id: o.id,
-        type: 'received',
-        description: `Order ${o.order_number || o.id.slice(0, 8)} — ${o.status}`,
-        amount: Number(o.total_amount) || 0,
-        referenceId: o.id,
-        createdAt: new Date(o.created_at).toISOString(),
-      }))
-
-      const { rows: countRows } = await query(
-        `SELECT COUNT(*) AS total FROM orders WHERE status IN ('Paid', 'Served') AND business_id = $1`,
-        [businessId]
-      )
-      const computedTotal = parseInt(countRows[0].total) || 0
-
-      return res.json({
-        logs,
-        pagination: { page, limit, total: computedTotal, totalPages: Math.ceil(computedTotal / limit) || 1 },
-      })
-    }
-
+    const total = parseInt(countRows[0].total) || 0
     res.json({
       logs: rows.map((r) => ({
         id: r.id,
-        type: r.type,
-        description: r.description,
-        amount: Number(r.amount),
-        referenceId: r.reference_id,
-        createdAt: new Date(r.created_at).toISOString(),
+        type: 'received',
+        orderNumber: r.order_number,
+        tableNumber: r.table_number,
+        customer: r.table_name,
+        source: r.source,
+        status: r.status,
+        waiterName: r.source === 'waiter' ? r.waiter_name || '' : '',
+        branchName: r.branch_name,
+        orderTotal: Number(r.total_amount) || 0,
+        amount: Number(r.amount_paid) || 0,
+        paymentMethod: r.method,
+        createdAt: new Date(r.paid_at).toISOString(),
       })),
-      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      byMethod: methodRows.map((m) => ({ method: m.method, orders: Number(m.orders) || 0, amount: Number(m.amount) || 0 })),
+      totalPaid: Number(countRows[0].total_paid) || 0,
+      refunds: Number(refundRows[0].refunds) || 0,
+      netReceived: Math.max(0, (Number(countRows[0].total_paid) || 0) - (Number(refundRows[0].refunds) || 0)),
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) || 1 },
     })
   } catch (error) {
     res.status(500).json({ error: error.message })
