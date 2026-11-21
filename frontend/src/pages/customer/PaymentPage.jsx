@@ -1,4 +1,6 @@
 import { usePreferences } from '../../context/PreferencesContext'
+import OrderStatusBadge from '../../components/OrderStatusBadge'
+import OrderTableHeading from '../../components/OrderTableHeading'
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useCustomer } from '../../context/CustomerContext'
@@ -220,11 +222,12 @@ export default function PaymentPage() {
                     setLookupTable('')
                   }}
                 >
+                  <OrderTableHeading order={order} style={{ marginBottom: 8 }} />
                   <div style={styles.orderOptionHeader}>
                     <span style={styles.orderOptionNumber}>{t("Order")}{' '}{order.orderNumber}</span>
-                    <span style={styles.orderOptionStatus}>{order.status}</span>
+                    <OrderStatusBadge status={order.status} />
                   </div>
-                  <p style={styles.orderOptionDetail}>{t("Table")}{' '}{order.tableNumber} • {order.items.length}{' '}{t("item")}{order.items.length !== 1 ? t("s") : ''}</p>
+                  <p style={styles.orderOptionDetail}>{order.items.length}{' '}{t("item")}{order.items.length !== 1 ? t("s") : ''}</p>
                   <p style={styles.orderOptionTotal}>{formatCurrency(order.total)}</p>
                 </div>
               ))}
@@ -511,9 +514,9 @@ export default function PaymentPage() {
 
       {/* Order Summary */}
       <div style={styles.orderCard}>
+        <OrderTableHeading order={activeOrder} size="lg" block={false} style={{ marginBottom: 10 }} />
         <p style={styles.orderLabel}>{t("Order")}{' '}{activeOrder.orderNumber}</p>
         <p style={styles.orderAmount}>{formatCurrency(activeOrder.total || activeOrder.total_amount)}</p>
-        <p style={styles.orderTable}>{t("Table")}{' '}{activeOrder.tableNumber}</p>
       </div>
 
       <button

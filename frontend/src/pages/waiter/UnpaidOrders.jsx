@@ -1,4 +1,7 @@
 import { usePreferences } from '../../context/PreferencesContext'
+import OrderStatusBadge from '../../components/OrderStatusBadge'
+import OrderTableHeading, { orderTableText } from '../../components/OrderTableHeading'
+import { orderCardStyle } from '../../utils/orderStatus'
 import React, { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
@@ -88,16 +91,14 @@ export default function WaiterUnpaidOrders() {
             <div
               key={order.id}
               className="section-card"
-              style={{ borderLeft: '4px solid #f59e0b' }}
+              style={orderCardStyle(order.status)}
             >
+              <OrderTableHeading order={order} size="lg" style={{ marginBottom: 10 }} />
               <div className="section-title-row" style={{ marginBottom: 14 }}>
                 <div>
-                  <p className="text-sm text-slate-500">{t("Order")}{' '}{formatOrderNumber(order.orderNumber)}</p>
-                  <h2 className="text-lg font-bold text-slate-900">{getOrderLocation(order)}</h2>
+                  <h2 className="text-lg font-bold text-slate-900">{t("Order")}{' '}{formatOrderNumber(order.orderNumber)}</h2>
                 </div>
-                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold ${statusStyle(order.status)}`}>
-                  {order.status}
-                </span>
+                <OrderStatusBadge status={order.status} />
               </div>
 
               <div className="mb-4">

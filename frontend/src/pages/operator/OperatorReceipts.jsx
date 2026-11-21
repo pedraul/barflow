@@ -1,4 +1,7 @@
 import { usePreferences } from '../../context/PreferencesContext'
+import OrderStatusBadge from '../../components/OrderStatusBadge'
+import OrderTableHeading from '../../components/OrderTableHeading'
+import { orderCardStyle } from '../../utils/orderStatus'
 import BackButton from '../../components/BackButton'
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
@@ -198,12 +201,12 @@ export default function OperatorReceipts() {
               ) : receipts.length === 0 ? (
                 <div className="text-center text-slate-400 py-8">{t("No receipts")}</div>
               ) : receipts.map((receipt) => (
-                <div key={receipt.id} className="border border-slate-100 rounded-xl p-4 bg-slate-50/40 hover:bg-slate-50 transition space-y-3">
+                <div key={receipt.id} className="border border-slate-100 rounded-xl p-4 transition space-y-3" style={orderCardStyle(receipt.status)}>
+                  <OrderTableHeading order={receipt} />
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-900 text-sm">{receipt.orderNumber}</span>
-                      <span className="text-xs text-slate-500 font-medium">{t("Table")}{' '}{receipt.tableNumber}</span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${receipt.status === 'Served' || receipt.status === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>{receipt.status}</span>
+                      <span className="font-bold text-slate-900 text-sm">{t("Order")} {receipt.orderNumber}</span>
+                      <OrderStatusBadge status={receipt.status} />
                     </div>
                     <span className="text-[11px] text-slate-400 font-medium">{receipt.createdAt}</span>
                   </div>

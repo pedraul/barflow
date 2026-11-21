@@ -1,5 +1,7 @@
 import React from 'react'
 import { usePreferences } from '../../context/PreferencesContext'
+import OrderTableHeading from '../OrderTableHeading'
+import { orderCardStyle } from '../../utils/orderStatus'
 
 export function SidebarLink({ icon, label, badge, badgeColor, status, active, onClick, className = '' }) {
   const { t } = usePreferences()
@@ -55,20 +57,20 @@ export function StatCard({ label, value, linkText, onClick }) {
   )
 }
 
-export function OrderListItem({ id, type, typeColor = "bg-blue-100 text-blue-600 font-bold", station, table, time, items, total, onView, onProcess }) {
+export function OrderListItem({ order, id, type, typeColor = "bg-blue-100 text-blue-600 font-bold", station, table, time, items, total, onView, onProcess }) {
   const { t } = usePreferences()
   return (
-    <div className="border border-slate-100 rounded-xl p-4 bg-slate-50/40 hover:bg-slate-50 transition space-y-3">
+    <div className="border border-slate-100 rounded-xl p-4 transition space-y-3" style={order ? orderCardStyle(order.status) : undefined}>
+      {order ? <OrderTableHeading order={order} /> : table ? <OrderTableHeading order={{ customerName: table }} /> : null}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <span className="font-bold text-slate-900 text-sm">{id}</span>
+          <span className="font-bold text-slate-900 text-sm">{t('Order')} {id}</span>
           <span className={`text-[10px] px-1.5 py-0.5 rounded ${typeColor}`}>{type}</span>
           {station && (
             <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold">
               {t('Sent to')} {station === 'both' ? t('Kitchen + Bar') : station.charAt(0).toUpperCase() + station.slice(1)}
             </span>
           )}
-          <span className="text-xs text-slate-500 font-medium">{table}</span>
         </div>
         <span className="text-[11px] text-slate-400 font-medium">{time}</span>
       </div>

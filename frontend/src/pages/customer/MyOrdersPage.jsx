@@ -2,6 +2,8 @@ import React, { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useCustomer } from '../../context/CustomerContext'
 import { usePreferences } from '../../context/PreferencesContext'
+import OrderTableHeading from '../../components/OrderTableHeading'
+import { orderCardStyle } from '../../utils/orderStatus'
 import useMyCustomerOrders from '../../hooks/useMyCustomerOrders'
 
 const money = (value) => `${Number(value || 0).toLocaleString('en-RW')} RWF`
@@ -64,16 +66,12 @@ export default function MyOrdersPage() {
             {orders.map((order) => {
               const current = stepIndex(order.status)
               return (
-                <article key={order.orderId} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <article key={order.orderId} className="rounded-xl border border-slate-200 p-5 shadow-sm" style={orderCardStyle(order.status)}>
+                  <OrderTableHeading order={order} size="lg" style={{ marginBottom: 12 }} />
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
-                      <h2 className="text-lg font-bold">{t('Order')} #{String(order.orderNumber ?? '').padStart(3, '0')}</h2>
+                      <h2 className="text-lg font-bold">{t('Order')} {String(order.orderNumber ?? '').padStart(3, '0')}</h2>
                       <p className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                        {order.tableNumber != null && order.tableNumber !== '' && (
-                          <span className="rounded-full bg-orange-50 px-2 py-0.5 font-semibold text-orange-700">
-                            {t('Table')} {order.tableNumber}
-                          </span>
-                        )}
                         <span>{new Date(order.createdAt).toLocaleTimeString()}</span>
                       </p>
                     </div>

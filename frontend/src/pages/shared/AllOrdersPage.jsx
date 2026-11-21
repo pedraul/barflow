@@ -3,6 +3,9 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { fetchOrders } from '../../api/endpoints'
 import { useAuth } from '../../context/AuthContext'
 import { usePreferences } from '../../context/PreferencesContext'
+import OrderStatusBadge from '../../components/OrderStatusBadge'
+import OrderTableHeading, { orderTableText } from '../../components/OrderTableHeading'
+import { orderCardStyle } from '../../utils/orderStatus'
 import { getOrderLocation } from '../../utils/orderDisplay'
 
 const ACTIVE_STATUSES = ['Open', 'Preparing', 'Ready', 'Served']
@@ -31,7 +34,7 @@ const STATUS_STYLES = {
 }
 
 const money = (v) => `RWF ${Number(v || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}`
-const orderNo = (n) => `#${String(n ?? 0).padStart(3, '0')}`
+const orderNo = (n) => String(n ?? 0).padStart(3, '0')
 
 function periodStart(period) {
   if (period === 'all') return null
@@ -181,15 +184,13 @@ export default function AllOrdersPage({ eyebrow = 'Orders' }) {
       ) : (
         <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
           {visible.map((o) => (
-            <div key={o.id} className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+            <div key={o.id} className="rounded-xl p-4 shadow-sm ring-1 ring-slate-200" style={orderCardStyle(o.status)}>
+              <OrderTableHeading order={o} style={{ marginBottom: 10 }} />
               <div className="mb-2 flex items-start justify-between gap-2">
                 <div>
-                  <div className="text-xl font-bold text-slate-900">{orderNo(o.orderNumber)}</div>
-                  <div className="text-sm font-medium text-slate-600">{getOrderLocation(o)}</div>
+                  <div className="text-lg font-bold text-slate-900">{t('Order')} {orderNo(o.orderNumber)}</div>
                 </div>
-                <span className={`rounded-md px-2 py-1 text-xs font-semibold ${STATUS_STYLES[o.status] || 'bg-slate-100 text-slate-700'}`}>
-                  {t(o.status)}
-                </span>
+                <OrderStatusBadge status={o.status} />
               </div>
 
               <div className="mb-2 flex flex-wrap gap-1.5 text-[11px] font-semibold uppercase tracking-wide">

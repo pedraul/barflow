@@ -1,4 +1,6 @@
 import { usePreferences } from '../../context/PreferencesContext'
+import OrderStatusBadge from '../../components/OrderStatusBadge'
+import OrderTableHeading, { orderTableText, orderWaiterText } from '../../components/OrderTableHeading'
 import BackButton from '../../components/BackButton'
 import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
@@ -7,7 +9,7 @@ import { useOwner } from '../../context/OwnerContext'
 import { fetchOperatorDashboard, routeOrder, updateOperatorOrderStatus, fetchQRCodes, fetchKitchenOrders, fetchBarOrders } from '../../api/endpoints'
 import QRCode from '../../components/QRCode'
 import { buildTableMenuUrl } from '../../config/tableMenuUrl'
-import { ChefHat, CheckCircle2, FileText, Printer, GlassWater, FileSpreadsheet, User, LogOut } from 'lucide-react'
+import { ChefHat, CheckCircle2, FileText, Printer, GlassWater, FileSpreadsheet, User, LogOut, X } from 'lucide-react'
 import { SidebarLink, StatCard, OrderListItem, StepIcon, StepLine, QuickActionButton } from '../../components/ui/SharedComponents'
 import { getOrderLocation } from '../../utils/orderDisplay'
 import { isDrinkCategory } from '../../utils/orderStation'
@@ -510,9 +512,9 @@ export default function OperatorDashboard() {
                 <div className="space-y-2 max-h-56 overflow-y-auto">
                   {kitchenOrders.map((o) => (
                     <div key={o.id} className="flex justify-between items-center border border-slate-100 rounded-lg px-3 py-2 text-sm">
-                      <span className="font-semibold text-slate-800">{o.orderNumber}</span>
-                      <span className="text-slate-500">{getOrderLocation(o)}</span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${o.status === 'Ready' ? 'bg-emerald-100 text-emerald-700' : o.status === 'Preparing' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{o.status}</span>
+                      <span className="flex flex-col"><span className="font-extrabold text-slate-900 uppercase tracking-wide">{orderTableText(o, t)}</span>{orderWaiterText(o, t) && <span className="text-[10px] font-semibold text-slate-500">{orderWaiterText(o, t)}</span>}</span>
+                      <span className="text-slate-500">{t('Order')} {o.orderNumber}</span>
+                      <OrderStatusBadge status={o.status} />
                     </div>
                   ))}
                 </div>
@@ -531,9 +533,9 @@ export default function OperatorDashboard() {
                 <div className="space-y-2 max-h-56 overflow-y-auto">
                   {barOrders.map((o) => (
                     <div key={o.id} className="flex justify-between items-center border border-slate-100 rounded-lg px-3 py-2 text-sm">
-                      <span className="font-semibold text-slate-800">{o.orderNumber}</span>
-                      <span className="text-slate-500">{getOrderLocation(o)}</span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${o.status === 'Ready' ? 'bg-emerald-100 text-emerald-700' : o.status === 'Preparing' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{o.status}</span>
+                      <span className="flex flex-col"><span className="font-extrabold text-slate-900 uppercase tracking-wide">{orderTableText(o, t)}</span>{orderWaiterText(o, t) && <span className="text-[10px] font-semibold text-slate-500">{orderWaiterText(o, t)}</span>}</span>
+                      <span className="text-slate-500">{t('Order')} {o.orderNumber}</span>
+                      <OrderStatusBadge status={o.status} />
                     </div>
                   ))}
                 </div>
@@ -557,6 +559,7 @@ export default function OperatorDashboard() {
                   return (
                     <OrderListItem
                       key={order.id}
+                      order={order}
                       id={String(order.orderNumber)}
                       type={order.source === 'qr' ? 'QR' : 'WAITER'}
                       typeColor={typeColor}
@@ -579,6 +582,7 @@ export default function OperatorDashboard() {
               {selectedOrder ? (
                 <>
                   <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-5">
+                    <OrderTableHeading order={selectedOrder} size="lg" />
                     <div className="flex items-center gap-2">
                       <h2 className="font-bold text-slate-900 text-lg">{t("Process Order")}{' '}<span className="text-blue-600">{selectedOrder.orderNumber}</span></h2>
                       <span className="bg-blue-100 text-blue-600 text-[10px] font-bold px-1.5 py-0.5 rounded">{selectedOrder.source === 'qr' ? t("QR") : t("WAITER")}</span>
@@ -778,7 +782,7 @@ export default function OperatorDashboard() {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center p-4 border-b border-slate-200">
               <h2 className="text-lg font-bold text-slate-900">{t("Table QR Codes")}</h2>
-              <button aria-label={t('Close')} onClick={() => setQrOpen(false)} className="text-slate-400 hover:text-slate-600 text-2xl">×</button>
+              <button aria-label={t('Close')} title={t('Close')} onClick={() => setQrOpen(false)} className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><X size={20} /></button>
             </div>
             <div className="p-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -1,4 +1,5 @@
 import React from 'react'
+import { Moon, Sun } from 'lucide-react'
 import { LANGUAGES, usePreferences } from '../context/PreferencesContext'
 
 export default function AppPreferences() {
@@ -26,7 +27,8 @@ export default function AppPreferences() {
         aria-pressed={dark}
         title={t(dark ? 'Light mode' : 'Dark mode')}
       >
-        <span>{t(dark ? 'Light mode' : 'Dark mode')}</span>
+        {dark ? <Sun size={18} strokeWidth={2.2} aria-hidden="true" /> : <Moon size={18} strokeWidth={2.2} aria-hidden="true" />}
+        <span className="sr-only">{t(dark ? 'Light mode' : 'Dark mode')}</span>
       </button>
     </aside>
   )

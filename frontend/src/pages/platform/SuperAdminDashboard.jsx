@@ -404,9 +404,6 @@ export default function SuperAdminDashboard() {
               <BusinessDetail label={t('Status')} value={t(viewing.isSuspended ? 'Suspended' : viewing.isVerified ? 'Active' : 'Pending')} />
               <BusinessDetail label={t('Registered')} value={viewing.createdAt ? new Date(viewing.createdAt).toLocaleString() : '—'} />
             </div>
-            <div className="flex justify-end px-6 pb-6">
-              <button onClick={() => setViewing(null)} className="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50">{t('Close')}</button>
-            </div>
           </div>
         </div>
       )}

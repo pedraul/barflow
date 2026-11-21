@@ -4,6 +4,7 @@ import OrderRestockModal from '../../components/OrderRestockModal'
 import * as api from '../../api/endpoints'
 import { getOrderLocation } from '../../utils/orderDisplay'
 import { usePreferences } from '../../context/PreferencesContext'
+import OrderStatusBadge from '../../components/OrderStatusBadge'
 
 const money = (v) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'RWF', minimumFractionDigits: 0 }).format(v || 0)
 
@@ -133,9 +134,7 @@ export default function OwnerWaiterOrders() {
                       <td className="p-2 font-semibold text-slate-900">{o.orderNumber || o.id.slice(0, 8)}</td>
                       <td className="p-2 text-slate-700">{getOrderLocation({ ...o, source: o.source || 'waiter', waiterName: waiters.find((waiter) => waiter.id === selectedWaiter)?.name })}</td>
                       <td className="p-2">
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${o.status === 'Paid' || o.status === 'Served' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : o.status === 'Cancelled' ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-amber-100 text-amber-800 border-amber-300'}`}>
-                          {t(o.status)}
-                        </span>
+                        <OrderStatusBadge status={o.status} />
                       </td>
                       <td className="p-2 text-slate-700 capitalize">{o.source || t('waiter')}</td>
                       <td className="p-2 text-right font-semibold text-slate-900">{money(o.total)}</td>

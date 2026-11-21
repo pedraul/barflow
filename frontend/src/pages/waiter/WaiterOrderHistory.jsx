@@ -1,4 +1,7 @@
 import { usePreferences } from '../../context/PreferencesContext'
+import OrderStatusBadge from '../../components/OrderStatusBadge'
+import OrderTableHeading, { orderTableText } from '../../components/OrderTableHeading'
+import { orderCardStyle } from '../../utils/orderStatus'
 import React, { useEffect, useState } from 'react'
 import * as api from '../../api/endpoints'
 import { useAuth } from '../../context/AuthContext'
@@ -142,18 +145,15 @@ export default function WaiterOrderHistory() {
             <div
               key={order.id}
               style={{
-                backgroundColor: 'white',
                 borderRadius: '12px',
                 padding: '20px',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                borderLeft: `4px solid ${statusColor(order.status)}`,
+                ...orderCardStyle(order.status),
               }}
             >
+              <OrderTableHeading order={order} size="lg" style={{ marginBottom: 10 }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <span style={{ fontSize: '24px', fontWeight: '700', color: '#1a1a2e' }}>{formatOrderNumber(order.orderNumber)}</span>
-                <span style={{ backgroundColor: '#e9ecef', padding: '6px 12px', borderRadius: '6px', fontSize: '14px', fontWeight: '600' }}>
-                  {getOrderLocation(order)}
-                </span>
+                <span style={{ fontSize: '18px', fontWeight: '700', color: '#1a1a2e' }}>{t('Order')} {formatOrderNumber(order.orderNumber)}</span>
               </div>
 
               <div style={{ borderTop: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', padding: '8px 0', marginBottom: '12px' }}>
@@ -168,7 +168,7 @@ export default function WaiterOrderHistory() {
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '14px', fontWeight: 600 }}>
                 <span>{t("Total:")}{' '}{formatCurrency(order.total)}</span>
-                <span style={{ color: statusColor(order.status) }}>{order.status}</span>
+                <OrderStatusBadge status={order.status} />
               </div>
 
               <div style={{ fontSize: '12px', color: '#94a3b8' }}>

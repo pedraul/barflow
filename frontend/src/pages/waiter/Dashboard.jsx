@@ -1,4 +1,7 @@
 import { usePreferences } from '../../context/PreferencesContext'
+import OrderStatusBadge from '../../components/OrderStatusBadge'
+import OrderTableHeading, { orderTableText } from '../../components/OrderTableHeading'
+import { orderCardStyle } from '../../utils/orderStatus'
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
@@ -103,11 +106,12 @@ export default function WaiterDashboard() {
         ) : (
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 p-4">
             {readyOrders.map((order) => (
-              <article key={order.id} className="rounded-lg border border-slate-200 p-4">
+              <article key={order.id} className="rounded-lg border border-slate-200 p-4" style={orderCardStyle(order.status)}>
+                <OrderTableHeading order={order} style={{ marginBottom: 10 }} />
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h3 className="font-bold text-slate-900">{t("Order")}{' '}{order.orderNumber || order.id}</h3>
-                    <p className="mt-1 text-sm text-slate-500">{getOrderLocation(order)} · {order.source === 'qr' ? t("QR order") : t("Waiter order")}</p>
+                    <p className="mt-1 text-sm text-slate-500">{order.source === 'qr' ? t("QR order") : t("Waiter order")}</p>
                   </div>
                   <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">{t("Ready")}</span>
                 </div>
@@ -140,8 +144,8 @@ export default function WaiterDashboard() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-slate-200">
-                  <th className="text-left p-2 font-semibold text-slate-500 text-xs uppercase tracking-wider">{t("Order")}</th>
                   <th className="text-left p-2 font-semibold text-slate-500 text-xs uppercase tracking-wider">{t("Table")}</th>
+                  <th className="text-left p-2 font-semibold text-slate-500 text-xs uppercase tracking-wider">{t("Order")}</th>
                   <th className="text-left p-2 font-semibold text-slate-500 text-xs uppercase tracking-wider">{t("Items")}</th>
                   <th className="text-left p-2 font-semibold text-slate-500 text-xs uppercase tracking-wider">{t("Total")}</th>
                   <th className="text-left p-2 font-semibold text-slate-500 text-xs uppercase tracking-wider">{t("Status")}</th>
@@ -150,14 +154,12 @@ export default function WaiterDashboard() {
               <tbody className="divide-y divide-slate-100">
                 {waiterOrders.slice().reverse().map((order) => (
                   <tr key={order.id} className="hover:bg-slate-50 transition">
+                    <td className="p-2 font-extrabold text-slate-900 uppercase tracking-wide">{orderTableText(order, t)}</td>
                     <td className="p-2 font-medium text-slate-900">{order.orderNumber || order.order_number || '—'}</td>
-                    <td className="p-2 text-slate-600">{getOrderLocation(order)}</td>
                     <td className="p-2 text-slate-600">{(order.items || []).map((i) => `${i.name} ×${i.quantity}`).join(', ') || '—'}</td>
                     <td className="p-2 font-medium text-slate-900">{money(order.total)}</td>
                     <td className="p-2">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-medium ${order.status === 'Paid' ? 'bg-emerald-100 text-emerald-800' : order.status === 'Served' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
-                        {order.status}
-                      </span>
+                      <OrderStatusBadge status={order.status} />
                     </td>
                   </tr>
                 ))}

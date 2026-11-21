@@ -1,4 +1,5 @@
 import { usePreferences } from '../../context/PreferencesContext'
+import OrderTableHeading from '../../components/OrderTableHeading'
 import React, { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useCustomer } from '../../context/CustomerContext'
@@ -62,6 +63,7 @@ export default function CartPage() {
     return (
       <div className="customer-cart-page" style={styles.container}>
         <div className="customer-order-confirmation" style={styles.successContainer}>
+          <OrderTableHeading order={order} size="lg" block={false} style={{ marginBottom: 12 }} />
           <span className="customer-order-number">{t("ORDER")}{' '}{order.orderNumber}</span>
           <h1 className="customer-order-confirmation-title" style={styles.successTitle}>
             {currentOrder ? t("Order Placed!") : 'Order Sent to ' + destinationLabel + '!'}

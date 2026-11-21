@@ -1,4 +1,7 @@
 import { usePreferences } from '../../context/PreferencesContext'
+import OrderStatusBadge from '../../components/OrderStatusBadge'
+import OrderTableHeading from '../../components/OrderTableHeading'
+import { orderCardStyle } from '../../utils/orderStatus'
 import React, { useEffect, useMemo, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useCustomer } from '../../context/CustomerContext'
@@ -141,11 +144,12 @@ export default function MenuPage() {
             {activeOrders.map((order) => {
               const served = String(order.status || '').toLowerCase() === 'served'
               return (
-                <div key={order.orderId} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-white p-4">
+                <div key={order.orderId} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 p-4" style={orderCardStyle(order.status)}>
                   <div>
-                    <p className="font-semibold text-slate-900">{t("Order")}{' '}{order.orderNumber}{' '}{t("· Table")}{' '}{order.tableNumber}</p>
+                    <OrderTableHeading order={order} block={false} style={{ marginBottom: 6 }} />
+                    <p className="font-semibold text-slate-900">{t("Order")}{' '}{order.orderNumber}</p>
                     <p className="mt-1 text-sm text-slate-600">{(order.items || []).map((item) => `${item.name} ×${item.quantity}`).join(', ')}</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-800">{money(order.total)} · <span className={served ? 'text-emerald-700' : 'text-amber-700'}>{order.status}</span></p>
+                    <p className="mt-1 text-sm font-semibold text-slate-800">{money(order.total)} · <OrderStatusBadge status={order.status} /></p>
                   </div>
                   {served && (
                     <button

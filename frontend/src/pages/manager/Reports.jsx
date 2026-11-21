@@ -158,7 +158,7 @@ export default function ManagerReports() {
       case 'transfers': return ['ID', 'From', 'To', 'Amount', 'Description', 'Status', 'Approval', 'Created']
       case 'payrolls': return ['Employee', 'Role', 'Salary', 'Status', 'Paid In', 'Not Paid In']
       case 'refunds': return ['ID', 'Order', 'Amount', 'Reason', 'Status', 'Created']
-      case 'revenue': return ['Order #', 'Table', 'Status', 'Source', 'Total', 'Date']
+      case 'revenue': return ['Order', 'Table', 'Status', 'Source', 'Total', 'Date']
       default: return []
     }
   }

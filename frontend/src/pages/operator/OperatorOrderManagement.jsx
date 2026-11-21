@@ -1,10 +1,12 @@
 import { usePreferences } from '../../context/PreferencesContext'
+import OrderStatusBadge from '../../components/OrderStatusBadge'
+import OrderTableHeading, { orderTableText, orderWaiterText } from '../../components/OrderTableHeading'
 import BackButton from '../../components/BackButton'
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { fetchOperatorOrders, fetchReadyOrders, routeOrder, updateOperatorOrderStatus, markOrderAsPaid } from '../../api/endpoints'
 import { getOrderLocation } from '../../utils/orderDisplay'
-import { ChefHat, CheckCircle2, FileText, Printer, GlassWater, FileSpreadsheet, User, LogOut } from 'lucide-react'
+import { ChefHat, CheckCircle2, FileText, Printer, GlassWater, FileSpreadsheet, User, LogOut, X } from 'lucide-react'
 const MONEY = (v) => `${Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
 
 function SidebarLink({ icon, label, badge, badgeColor, status, active, onClick }) {
@@ -307,7 +309,7 @@ export default function OperatorOrderManagement() {
               ) : (
                 <table className="w-full min-w-[1000px] text-xs">
                   <thead className="bg-slate-50 border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
-                    <tr><th className="px-3 py-2 font-medium">{t("Order")}</th><th className="px-3 py-2 font-medium">{t("Table / Source")}</th><th className="px-3 py-2 font-medium">{t("Items")}</th><th className="px-3 py-2 font-medium">{t("Status")}</th><th className="px-3 py-2 font-medium">{t("Total")}</th><th className="px-3 py-2 font-medium">{t("Created")}</th><th className="px-3 py-2 font-medium text-right">{t("Actions")}</th></tr>
+                    <tr><th className="px-3 py-2 font-medium">{t("Table / Source")}</th><th className="px-3 py-2 font-medium">{t("Order")}</th><th className="px-3 py-2 font-medium">{t("Items")}</th><th className="px-3 py-2 font-medium">{t("Status")}</th><th className="px-3 py-2 font-medium">{t("Total")}</th><th className="px-3 py-2 font-medium">{t("Created")}</th><th className="px-3 py-2 font-medium text-right">{t("Actions")}</th></tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
                     {displayOrders.map((order) => {
@@ -329,10 +331,10 @@ export default function OperatorOrderManagement() {
                       const isReady = statusKey === 'ready'
                       const statusStyle = statusKey === 'ready' ? 'bg-emerald-100 text-emerald-700' : statusKey === 'preparing' ? 'bg-amber-100 text-amber-700' : statusKey === 'open' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'
                       return <tr key={order.id} className="hover:bg-slate-50 align-top cursor-pointer" onClick={() => setSelectedOrder(order)}>
+                        <td className="px-3 py-2"><div className="font-extrabold text-slate-900 uppercase tracking-wide">{orderTableText(order, t)}</div>{orderWaiterText(order, t) && <div className="text-[10px] font-semibold text-slate-500">{orderWaiterText(order, t)}</div>}<span className={`inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded ${order.source === 'qr' ? 'bg-blue-100 text-blue-700' : 'bg-violet-100 text-violet-700'}`}>{String(order.source || 'other').toUpperCase()}</span></td>
                         <td className="px-3 py-2 font-semibold text-slate-900">{order.orderNumber || '—'}</td>
-                        <td className="px-3 py-2"><div>{getOrderLocation(order)}</div><span className={`inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded ${order.source === 'qr' ? 'bg-blue-100 text-blue-700' : 'bg-violet-100 text-violet-700'}`}>{String(order.source || 'other').toUpperCase()}</span></td>
                         <td className="px-3 py-2 max-w-xs"><div className="space-y-1">{(order.items || []).map((item, idx) => <div key={idx} className="truncate">{item.name} <span className="text-slate-400">×{item.quantity}</span></div>)}</div></td>
-                        <td className="px-3 py-2"><span className={`inline-flex px-2 py-1 rounded-full text-[10px] ${statusStyle}`}>{status || t("Unknown")}</span>{order.station && <span className={`ml-1 inline-flex items-center gap-0.5 px-2 py-1 rounded-full text-[10px] font-bold ${stationBadge}`}>{stationLabel}</span>}</td>
+                        <td className="px-3 py-2"><OrderStatusBadge status={status || 'Unknown'} />{order.station && <span className={`ml-1 inline-flex items-center gap-0.5 px-2 py-1 rounded-full text-[10px] font-bold ${stationBadge}`}>{stationLabel}</span>}</td>
                         <td className="px-3 py-2 font-semibold text-slate-900">{MONEY(order.total)}</td>
                         <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{order.createdAt}</td>
                         <td className="px-3 py-2 text-right"><div className="flex justify-end flex-wrap gap-2" onClick={(e) => e.stopPropagation()}><button onClick={() => setSelectedOrder(order)} className="text-xs border border-slate-300 text-slate-700 px-2.5 py-1.5 rounded-md hover:bg-white">{t("View")}</button>{isOpen && <><button onClick={() => handleRoute(order.id, 'kitchen')} disabled={actionLoading || order.station === 'kitchen' || order.station === 'both'} title={order.station === 'kitchen' || order.station === 'both' ? t("Already sent to Kitchen") : undefined} className="text-xs bg-emerald-600 text-white px-2.5 py-1.5 rounded-md disabled:opacity-50 disabled:cursor-not-allowed">{t("Kitchen")}</button><button onClick={() => handleRoute(order.id, 'bar')} disabled={actionLoading || order.station === 'bar' || order.station === 'both'} title={order.station === 'bar' || order.station === 'both' ? t("Already sent to Bar") : undefined} className="text-xs bg-purple-600 text-white px-2.5 py-1.5 rounded-md disabled:opacity-50 disabled:cursor-not-allowed">{t("Bar")}</button><button onClick={() => handleRoute(order.id, 'both')} disabled={actionLoading || order.station === 'both' || order.station === 'kitchen' || order.station === 'bar'} title={order.station ? `${t('Already sent to')} ${order.station === 'both' ? t('Kitchen + Bar') : order.station.charAt(0).toUpperCase() + order.station.slice(1)}` : undefined} className="text-xs bg-amber-600 text-white px-2.5 py-1.5 rounded-md disabled:opacity-50 disabled:cursor-not-allowed">{t("Both")}</button></>}{isReady && <><button onClick={() => handleStatus(order.id, 'Served')} disabled={actionLoading} className="text-xs bg-emerald-600 text-white px-2.5 py-1.5 rounded-md disabled:opacity-50">{t("Serve")}</button><button onClick={() => handleStatus(order.id, 'Paid')} disabled={actionLoading} className="text-xs bg-blue-600 text-white px-2.5 py-1.5 rounded-md disabled:opacity-50">{t("Serve & Pay")}</button></>}{['ready', 'served', 'paid'].includes(statusKey) && <button onClick={() => navigate(`/operator/receipt/${order.id}`)} className="text-xs border border-slate-300 text-slate-700 px-2.5 py-1.5 rounded-md">{t("Receipt")}</button>}</div></td>
@@ -352,9 +354,10 @@ export default function OperatorOrderManagement() {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center p-4 border-b border-slate-200">
               <h2 className="text-lg font-bold text-slate-900">{t("Order Details —")}{' '}{selectedOrder.orderNumber || selectedOrder.id}</h2>
-              <button aria-label={t('Close')} onClick={() => setSelectedOrder(null)} className="text-slate-400 hover:text-slate-600 text-2xl">×</button>
+              <button aria-label={t('Close')} onClick={() => setSelectedOrder(null)} title={t('Close')} className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><X size={20} /></button>
             </div>
             <div className="p-6 space-y-5">
+              <OrderTableHeading order={selectedOrder} size="lg" />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 <div className="border border-slate-100 rounded-lg p-3">
                   <p className="text-xs text-slate-500 font-medium">{t("Order Number")}</p>
@@ -406,7 +409,6 @@ export default function OperatorOrderManagement() {
               </div>
 
               <div className="flex justify-end gap-2 pt-1">
-                <button onClick={() => setSelectedOrder(null)} className="text-xs font-semibold border border-slate-300 text-slate-700 px-4 py-2 rounded-md hover:bg-slate-50">{t("Close")}</button>
                 {['ready', 'served', 'paid'].includes(String(selectedOrder.status || '').trim().toLowerCase()) && (
                   <button onClick={() => navigate(`/operator/receipt/${selectedOrder.id}`)} className="text-xs font-semibold bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">{t("View Receipt")}</button>
                 )}

@@ -1,4 +1,6 @@
 import { usePreferences } from '../../context/PreferencesContext'
+import OrderTableHeading from '../../components/OrderTableHeading'
+import { orderCardStyle } from '../../utils/orderStatus'
 import React, { useEffect, useState } from 'react'
 import * as api from '../../api/endpoints'
 
@@ -108,11 +110,11 @@ export default function OrderManagement() {
       ) : (
         <div style={styles.ordersList}>
           {displayOrders.map((order) => (
-            <div key={order.id} style={styles.orderCard}>
+            <div key={order.id} style={{ ...styles.orderCard, ...orderCardStyle(order.status) }}>
+              <OrderTableHeading order={order} size="lg" style={{ marginBottom: 10 }} />
               <div style={styles.orderHeader}>
                 <div>
-                  <span style={styles.orderNumber}>{order.orderNumber}</span>
-                  <span style={styles.tableBadge}>{t("Table")}{' '}{order.tableNumber}</span>
+                  <span style={styles.orderNumber}>{t("Order")} {order.orderNumber}</span>
                   <span style={{
                     ...styles.statusBadge,
                     backgroundColor: order.status === 'Open' ? '#ffc107' 

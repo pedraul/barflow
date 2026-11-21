@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react'
 import { useOwner } from '../../context/OwnerContext'
 import OrderRestockModal from '../../components/OrderRestockModal'
 import { usePreferences } from '../../context/PreferencesContext'
+import OrderStatusBadge from '../../components/OrderStatusBadge'
 
 const STATUS_OPTIONS = ['', 'Open', 'Preparing', 'Ready', 'Served', 'Paid', 'Cancelled']
 const LIFECYCLE = ['Open', 'Preparing', 'Ready', 'Served', 'Paid']
@@ -110,7 +111,7 @@ export default function OwnerQRWorkspace() {
                       <td className="p-2 text-slate-700">{t('Table')} {o.tableNumber}</td>
                       <td className="p-2 text-slate-700 capitalize">{o.orderType}</td>
                       <td className="p-2">
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusClass(o.status)}`}>{o.status}</span>
+                        <OrderStatusBadge status={o.status} />
                       </td>
                       <td className="p-2 text-right font-semibold text-slate-900">{money(o.total)}</td>
                       <td className="p-2 text-right text-slate-400">{new Date(o.createdAt).toLocaleDateString()}</td>
@@ -149,7 +150,7 @@ export default function OwnerQRWorkspace() {
               <div key={o.id} className="bg-slate-50 p-4 rounded-lg border border-slate-200">
                 <div className="flex justify-between flex-wrap gap-3 mb-3">
                   <h3 className="m-0 text-base font-bold text-slate-900">{t('Order')} {o.orderNumber} {t('— Table')} {o.tableNumber}</h3>
-                  <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusClass(o.status)}`}>{o.status}</span>
+                  <OrderStatusBadge status={o.status} />
                 </div>
 
                 {o.items.length === 0 ? (

@@ -1,7 +1,10 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { X } from 'lucide-react'
+import { orderTableText } from '../../components/OrderTableHeading'
 import { useOwner } from '../../context/OwnerContext'
 import { usePreferences } from '../../context/PreferencesContext'
+import OrderStatusBadge from '../../components/OrderStatusBadge'
 
 const fmt = (v) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'RWF', minimumFractionDigits: 0 }).format(v || 0)
 
@@ -109,7 +112,10 @@ export default function OwnerRevenue() {
           </p>
           <p className="text-sm text-slate-600">{t('Read-only list of items, quantities, prices and value.')}</p>
         </div>
-        <span className="shrink-0 self-start sm:self-center rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white">
+        <span
+          className="shrink-0 self-start sm:self-center rounded-lg px-5 py-2.5 text-sm font-bold shadow-sm"
+          style={{ backgroundColor: '#047857', color: '#ffffff' }}
+        >
           {t('View stock & value')}
         </span>
       </Link>
@@ -148,7 +154,7 @@ export default function OwnerRevenue() {
               <h2 className="text-lg font-bold text-slate-900">{t(activeCard.label)}</h2>
               <p className="text-sm text-slate-500">{activeCard.value}</p>
             </div>
-            <Link to={{ search: '' }} className="shrink-0 text-sm font-semibold text-slate-600 border border-slate-300 rounded-lg px-3 py-1.5 hover:bg-slate-50">{t('Close')}</Link>
+            <Link to={{ search: '' }} aria-label={t('Close')} title={t('Close')} className="shrink-0 rounded-full p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800"><X size={20} /></Link>
           </div>
           <div className="p-4 sm:p-6">
             {detailsLoading && <p className="text-sm text-slate-500">{t('Loading…')}</p>}
@@ -216,6 +222,7 @@ function RevenueDetailsTable({ details, t }) {
   if (details.kind === 'orders') {
     head = (
       <tr>
+        <th className={`${th} text-left`}>{t('Table')}</th>
         <th className={`${th} text-left`}>{t('Order')}</th>
         <th className={`${th} text-left`}>{t('Status')}</th>
         <th className={`${th} text-left`}>{t('Payment')}</th>
@@ -226,8 +233,9 @@ function RevenueDetailsTable({ details, t }) {
     )
     body = rows.map((o) => (
       <tr key={o.id} className="hover:bg-indigo-50">
-        <td className="p-2 font-semibold text-slate-900">#{o.orderNumber}{o.tableNumber ? ` · ${t('Table')} ${o.tableNumber}` : ''}</td>
-        <td className="p-2 text-slate-600">{t(o.status)}</td>
+        <td className="p-2 font-extrabold text-slate-900 uppercase tracking-wide">{orderTableText(o, t)}</td>
+        <td className="p-2 font-semibold text-slate-900">{o.orderNumber}</td>
+        <td className="p-2"><OrderStatusBadge status={o.status} /></td>
         <td className="p-2 text-slate-600">{o.paymentMethod || t('Not paid')}</td>
         <td className="p-2 text-slate-600">{o.branchName || '—'}</td>
         <td className="p-2 text-right font-semibold text-slate-900">{fmt(o.total)}</td>

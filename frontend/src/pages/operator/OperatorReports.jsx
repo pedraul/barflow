@@ -213,7 +213,7 @@ export default function OperatorReports() {
                     : filteredEvents.map((event, index) => (
                       <tr key={`${event.eventId}-${index}`}>
                         <td><strong>{event.itemName}</strong>{event.itemCategory && <small>{event.itemCategory}</small>}</td>
-                        <td><span className="operator-report-order">#{event.orderNumber}</span></td>
+                        <td><span className="operator-report-order">{event.orderNumber}</span></td>
                         <td><span className={`operator-report-station ${String(event.destination).toLowerCase()}`}>{String(event.destination).toLowerCase() === 'kitchen' ? t("Kitchen") : t("Bar")}</span></td>
                         <td className="numeric">{event.itemNumber}</td><td className="numeric">{MONEY(event.unitPrice)}{' '}{t("RWF")}</td>
                         <td className="numeric amount">{MONEY(event.lineTotal)}{' '}{t("RWF")}</td>

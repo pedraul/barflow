@@ -12831,3 +12831,44 @@ svg {
 @layer base {
   th { text-align: left; }
 }
+
+/* Order status tints (cards). Light theme = pale tint, dark theme = deep tint. */
+:root {
+  --order-tint-open: #eff6ff;
+  --order-tint-pending: #fff7ed;
+  --order-tint-preparing: #fffbeb;
+  --order-tint-ready: #f0fdf4;
+  --order-tint-served: #f5f3ff;
+  --order-tint-paid: #f0fdfa;
+  --order-tint-cancelled: #fef2f2;
+  --order-tint-default: #ffffff;
+}
+:root[data-theme="dark"] {
+  --order-tint-open: #172554;
+  --order-tint-pending: #431407;
+  --order-tint-preparing: #422006;
+  --order-tint-ready: #052e16;
+  --order-tint-served: #2e1065;
+  --order-tint-paid: #042f2e;
+  --order-tint-cancelled: #450a0a;
+  --order-tint-default: var(--surface, #0f172a);
+}
+
+/* Theme toggle: round icon button (moon = switch to dark, sun = switch to light) */
+.app-preferences-theme {
+  width: 2.45rem;
+  height: 2.45rem;
+  min-height: 2.45rem;
+  padding: 0;
+  flex-shrink: 0;
+}
+.app-preferences-theme svg {
+  display: block;
+  transition: transform 0.25s ease;
+}
+.app-preferences-theme:hover svg {
+  transform: rotate(-15deg) scale(1.08);
+}
+:root[data-theme="dark"] .app-preferences-theme {
+  color: #facc15;
+}

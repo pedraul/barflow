@@ -3,6 +3,8 @@ import * as api from '../api/endpoints'
 import { useAuth } from '../context/AuthContext'
 import { useOwner } from '../context/OwnerContext'
 import { usePreferences } from '../context/PreferencesContext'
+import OrderTableHeading from './OrderTableHeading'
+import { orderCardStyle } from '../utils/orderStatus'
 
 function formatCurrency(amount) {
   return 'RWF ' + Number(amount).toLocaleString('en-US', {
@@ -134,11 +136,10 @@ export default function StationDisplay({
   }
 
   const renderOrderCard = (queuePosition, order, trailing) => (
-    <div key={order.id} style={{ ...styles.orderCard, borderLeft: `4px solid ${accent}` }}>
+    <div key={order.id} style={{ ...styles.orderCard, ...orderCardStyle(order.status) }}>
+      <OrderTableHeading order={order} size="lg" style={{ marginBottom: 10 }} />
       <div style={styles.orderHeader}>
-        <span style={styles.queueBadge}>#{queuePosition}</span>
-                  <span style={styles.orderNumber}>{formatOrderNumber(order.orderNumber)}</span>
-        <span style={styles.tableBadge}>{t('Table')} {order.tableNumber}</span>
+        <span style={styles.orderNumber}>{t('Order')} {formatOrderNumber(order.orderNumber)}</span>
       </div>
       <div style={styles.itemsList}>
         {order.items.map((item, idx) => renderItem(item, idx))}
@@ -208,11 +209,10 @@ export default function StationDisplay({
           <h2 style={{ ...styles.sectionTitle, color: '#28a745' }}>{t(readyHeading)}</h2>
           <div style={styles.ordersGrid}>
             {readyOrders.map((order, idx) => (
-              <div key={order.id} style={{ ...styles.orderCard, borderLeft: '4px solid #28a745' }}>
+              <div key={order.id} style={{ ...styles.orderCard, ...orderCardStyle(order.status) }}>
+                <OrderTableHeading order={order} size="lg" style={{ marginBottom: 10 }} />
                 <div style={styles.orderHeader}>
-                  <span style={styles.queueBadge}>#{idx + 1}</span>
-                  <span style={styles.orderNumber}>{formatOrderNumber(order.orderNumber)}</span>
-                  <span style={styles.tableBadge}>{t('Table')} {order.tableNumber}</span>
+                  <span style={styles.orderNumber}>{t('Order')} {formatOrderNumber(order.orderNumber)}</span>
                 </div>
                 <div style={styles.itemsList}>
                   {order.items.map((item, idx) => renderItem(item, idx))}
@@ -233,11 +233,10 @@ export default function StationDisplay({
           <h2 style={{ ...styles.sectionTitle, color: '#0d6efd' }}>{t(paidHeading)}</h2>
           <div style={styles.ordersGrid}>
             {paidOrders.map((order, idx) => (
-              <div key={order.id} style={{ ...styles.orderCard, borderLeft: '4px solid #0d6efd' }}>
+              <div key={order.id} style={{ ...styles.orderCard, ...orderCardStyle(order.status) }}>
+                <OrderTableHeading order={order} size="lg" style={{ marginBottom: 10 }} />
                 <div style={styles.orderHeader}>
-                  <span style={styles.queueBadge}>#{idx + 1}</span>
-                  <span style={styles.orderNumber}>{formatOrderNumber(order.orderNumber)}</span>
-                  <span style={styles.tableBadge}>{t('Table')} {order.tableNumber}</span>
+                  <span style={styles.orderNumber}>{t('Order')} {formatOrderNumber(order.orderNumber)}</span>
                 </div>
                 <div style={styles.itemsList}>
                   {order.items.map((item, idx) => renderItem(item, idx))}
@@ -357,7 +356,7 @@ const styles = {
     marginBottom: '16px',
   },
   orderNumber: {
-    fontSize: '24px',
+    fontSize: '18px',
     fontWeight: '700',
     color: '#1a1a2e',
   },

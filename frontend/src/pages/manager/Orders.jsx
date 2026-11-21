@@ -3,6 +3,8 @@ import { fetchOrders } from '../../api/endpoints'
 import OrderRestockModal from '../../components/OrderRestockModal'
 import { getOrderLocation } from '../../utils/orderDisplay'
 import { usePreferences } from '../../context/PreferencesContext'
+import OrderStatusBadge from '../../components/OrderStatusBadge'
+import { orderTableText, orderWaiterText } from '../../components/OrderTableHeading'
 
 const STATUS_OPTIONS = ['', 'Open', 'Preparing', 'Ready', 'Served', 'Paid', 'Cancelled']
 const SOURCE_OPTIONS = ['', 'qr', 'waiter']
@@ -174,8 +176,8 @@ export default function ManagerOrders() {
             <table className="user-table">
               <thead>
                 <tr>
-                  <th>#</th>
                   <th>{t('Table')}</th>
+                  <th>{t('Order')}</th>
                   <th>{t('Branch')}</th>
                   <th>{t('Type')}</th>
                   <th>{t('Source')}</th>
@@ -191,24 +193,14 @@ export default function ManagerOrders() {
                   const canRestock = ['Open', 'Preparing'].includes(o.status)
                   return (
                   <tr key={o.id}>
-                    <td className="obw-strong">{o.orderNumber ?? o.id}</td>
-                    <td>{getOrderLocation(o)}</td>
+                    <td className="obw-strong" style={{ fontWeight: 800 }}>{orderTableText(o, t)}{orderWaiterText(o, t) && <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b' }}>{orderWaiterText(o, t)}</div>}</td>
+                    <td>{o.orderNumber ?? o.id}</td>
                     <td>{o.branchName ?? o.branchId ?? '—'}</td>
                     <td style={{ textTransform: 'capitalize' }}>{o.orderType ?? '—'}</td>
                     <td style={{ textTransform: 'capitalize' }}>{o.source ?? t('waiter')}</td>
                     <td>{(o.items || []).length}</td>
                     <td>
-                      <span
-                        className={
-                          o.status === 'Paid' || o.status === 'Served'
-                            ? 'user-active'
-                            : o.status === 'Cancelled'
-                            ? 'user-inactive'
-                            : 'user-pending'
-                        }
-                      >
-                        {o.status}
-                      </span>
+                      <OrderStatusBadge status={o.status} />
                     </td>
                     <td style={{ textAlign: 'right', fontWeight: 600 }}>{money(o.total)}</td>
                     <td style={{ textAlign: 'right', color: 'var(--text-4)' }}>

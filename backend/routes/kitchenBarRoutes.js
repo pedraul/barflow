@@ -15,7 +15,8 @@ router.get('/orders', authMiddleware, async (req, res) => {
   try {
     const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
     const { rows } = await query(
-      `SELECT o.id, o.order_number, o.table_number, o.status, o.source, o.station, o.total_amount, o.created_at, o.user_id,
+      `SELECT o.id, o.order_number, o.table_number, o.table_name, o.status, o.source, o.station, o.total_amount, o.created_at, o.user_id,
+              (SELECT u.full_name FROM users u WHERE u.id = o.user_id) AS waiter_name,
               (
                 SELECT COALESCE(json_agg(json_build_object(
                   'productId', p.id,
@@ -60,7 +61,8 @@ router.get('/bar-orders', authMiddleware, async (req, res) => {
   try {
     const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
     const { rows } = await query(
-      `SELECT o.id, o.order_number, o.table_number, o.status, o.source, o.station, o.total_amount, o.created_at, o.user_id,
+      `SELECT o.id, o.order_number, o.table_number, o.table_name, o.status, o.source, o.station, o.total_amount, o.created_at, o.user_id,
+              (SELECT u.full_name FROM users u WHERE u.id = o.user_id) AS waiter_name,
               (
                 SELECT COALESCE(json_agg(json_build_object(
                   'productId', p.id,
@@ -211,6 +213,8 @@ function mapKitchenBarOrder(o) {
     source: o.source,
     station: o.station,
     waiterId: o.user_id || null,
+    waiterName: o.source === 'waiter' ? (o.waiter_name || '') : '',
+    customer: o.table_name || null,
     total: Number(o.total_amount || 0),
     items: (o.items || []).map((item) => ({
       productId: item.productId,
