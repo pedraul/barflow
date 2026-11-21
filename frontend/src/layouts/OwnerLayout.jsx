@@ -4,7 +4,7 @@ import { useOwner } from '../context/OwnerContext'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, CreditCard, Smartphone, ArrowLeftRight, Users,
-  TrendingUp, QrCode, UserCheck, FileText, Settings, LogOut, ArrowLeft, Clock, ShieldCheck
+  TrendingUp, QrCode, UserCheck, FileText, Settings, LogOut, ArrowLeft, Clock, ShieldCheck, Package
 } from 'lucide-react'
 import { SidebarLink } from '../components/ui/SharedComponents'
 import BranchBadge from '../components/BranchBadge'
@@ -24,6 +24,7 @@ const OWNER_LINKS = [
     { path: '/owner/withdraw', label: 'Withdraw', icon: <Smartphone size={18} />, perm: 'canWithdraw' },
     { path: '/owner/transfer', label: 'Transfer', icon: <ArrowLeftRight size={18} />, perm: 'canTransfer' },
     { path: '/owner/revenue', label: 'Revenue', icon: <TrendingUp size={18} />, perm: 'canViewRevenue' },
+    { path: '/owner/stock', label: 'Stock & Value', icon: <Package size={18} />, perm: null },
   ]},
   { section: 'Users & Access', items: [
     { path: '/owner/users', label: 'Users', icon: <Users size={18} />, perm: 'canManageUsers' },

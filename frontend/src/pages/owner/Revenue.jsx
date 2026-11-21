@@ -94,13 +94,25 @@ export default function OwnerRevenue() {
           <h1 className="text-2xl font-extrabold text-slate-900">{t('Revenue Overview')}</h1>
           <p className="text-sm text-slate-500">{t('Revenue received, stock available, stock ordered and the value of sold stock.')}</p>
         </div>
-        <Link
-          to="/owner/stock"
-          className="shrink-0 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg px-4 py-2"
-        >
-          {t('View stock & value')}
-        </Link>
       </div>
+
+      <Link
+        to="/owner/stock"
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border-2 border-indigo-600 bg-indigo-50 p-5 transition hover:bg-indigo-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+      >
+        <div className="min-w-0">
+          <p className="text-xs font-bold uppercase tracking-wider text-indigo-700">{t('Stock & Value')}</p>
+          <p className="text-lg font-extrabold text-slate-900">
+            {revenue
+              ? `${revenue.stockAvailable?.items || 0} ${t('items in stock')} · ${fmt(revenue.currentStockValue)}`
+              : t('See every item in stock and its current value')}
+          </p>
+          <p className="text-sm text-slate-600">{t('Read-only list of items, quantities, prices and value.')}</p>
+        </div>
+        <span className="shrink-0 self-start sm:self-center rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white">
+          {t('View stock & value')}
+        </span>
+      </Link>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {revenueError && (
