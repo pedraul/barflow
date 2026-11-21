@@ -410,7 +410,7 @@ export default function ReconciliationDashboard() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div className="recon-stats">
               {[
                 { label: 'Statement Balance', value: formatRWF(statementBalance), note: 'From uploaded statements and confirmed items', tone: 'text-indigo-950' },
                 { label: 'System Balance', value: formatRWF(systemBalance), note: 'As per system records', tone: 'text-emerald-600' },
@@ -429,8 +429,9 @@ export default function ReconciliationDashboard() {
               {t('Upload a bank or mobile money statement, then click Auto Match. To pair items by hand, select one statement line and one system transaction and click Match Selected. Cash you have counted can be confirmed by selecting the items and clicking Match Selected.')}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-              <div className="lg:col-span-3 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between min-w-0">
+            {/* Table takes the full width; controls, filters and summary sit in a row above it. */}
+            <div className="flex flex-col gap-6">
+              <div className="order-2 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between min-w-0">
                 <div>
                   <div className="p-5 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100">
                     <h2 className="text-base font-bold text-slate-800">
@@ -459,19 +460,37 @@ export default function ReconciliationDashboard() {
                     </div>
                   </div>
 
+                  <div className="px-5 py-3 flex flex-wrap items-center gap-2 border-b border-slate-100 bg-slate-50/60 text-sm">
+                    <span className="text-xs font-semibold text-slate-500 mr-1">{t('Filters')}</span>
+                    <select aria-label={t('Account')} value={bankAccountFilter} onChange={(e) => setBankAccountFilter(e.target.value)} className="recon-filter">
+                      <option value="">{t('All Accounts')}</option>
+                      {ACCOUNTS.map((a) => <option key={a} value={a}>{t(a)}</option>)}
+                    </select>
+                    <select aria-label={t('Status')} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="recon-filter">
+                      <option value="">{activeTab === 'unreconciled' ? t('All unreconciled') : t('All Statuses')}</option>
+                      {STATUSES.filter((s) => activeTab !== 'unreconciled' || s !== 'Matched').map((s) => <option key={s} value={s}>{t(s)}</option>)}
+                    </select>
+                    <select aria-label={t('Type')} value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="recon-filter">
+                      <option value="">{t('All Types')}</option>
+                      {TYPES.map((type) => <option key={type} value={type}>{t(type)}</option>)}
+                    </select>
+                    {(bankAccountFilter || statusFilter || typeFilter || searchInput) && (
+                      <button type="button" onClick={resetFilters} className="text-xs font-semibold text-indigo-600 hover:underline ml-1">{t('Reset filters')}</button>
+                    )}
+                  </div>
+
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold text-xs uppercase tracking-wider">
+                    <table className="recon-table w-full text-left">
+                      <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase tracking-wider">
                         <tr>
                           <th className="p-2 w-10 text-center">
                             <input type="checkbox" aria-label={t('Select all on this page')} checked={allOnPageSelected} onChange={toggleSelectAll} />
                           </th>
                           <th className="p-2">{t('Date')}</th>
                           <th className="p-2">{t('Description')}</th>
-                          <th className="p-2">{t('Account')}</th>
-                          <th className="p-2">{t('Type')}</th>
-                          <th className="p-2 text-right">{t('Statement Amount')}</th>
-                          <th className="p-2 text-right">{t('System Amount')}</th>
+                          <th className="p-2">{t('Account')} / {t('Type')}</th>
+                          <th className="p-2 text-right">{t('Statement')}</th>
+                          <th className="p-2 text-right">{t('System')}</th>
                           <th className="p-2 text-right">{t('Difference')}</th>
                           <th className="p-2 text-center">{t('Status')}</th>
                           <th className="p-2 text-center">{t('Action')}</th>
@@ -479,9 +498,9 @@ export default function ReconciliationDashboard() {
                       </thead>
                       <tbody className="divide-y divide-slate-100 text-slate-700">
                         {loading ? (
-                          <tr><td colSpan={10} className="p-8 text-center text-slate-400">{t('Loading transactions...')}</td></tr>
+                          <tr><td colSpan={9} className="p-8 text-center text-slate-400">{t('Loading transactions...')}</td></tr>
                         ) : paginatedTransactions.length === 0 ? (
-                          <tr><td colSpan={10} className="p-8 text-center text-slate-400">{activeTab === 'unreconciled' ? t('Nothing left to reconcile.') : t('No transactions found.')}</td></tr>
+                          <tr><td colSpan={9} className="p-8 text-center text-slate-400">{activeTab === 'unreconciled' ? t('Nothing left to reconcile.') : t('No transactions found.')}</td></tr>
                         ) : paginatedTransactions.map((item) => {
                           const isSelected = selectedRows.includes(item.id)
                           return (
@@ -490,12 +509,14 @@ export default function ReconciliationDashboard() {
                                 <input type="checkbox" aria-label={t('Select')} checked={isSelected} onChange={() => toggleSelectRow(item.id)} />
                               </td>
                               <td className="p-2 whitespace-nowrap font-medium text-slate-600">{item.date}</td>
-                              <td className="p-2">
+                              <td className="p-2 recon-desc">
                                 <div className="font-semibold text-slate-900">{item.description}</div>
-                                <div className="text-[10px] text-slate-400">{t(KIND_LABELS[item.kind] || item.kind)}{item.ref ? ` · ${item.ref}` : ''}</div>
+                                <div className="text-[11px] text-slate-400">{t(KIND_LABELS[item.kind] || item.kind)}{item.ref ? ` · ${item.ref}` : ''}</div>
                               </td>
-                              <td className="p-2 whitespace-nowrap">{t(item.bankAccount)}</td>
-                              <td className="p-2 whitespace-nowrap">{t(item.type)}</td>
+                              <td className="p-2 whitespace-nowrap">
+                                <div>{t(item.bankAccount)}</div>
+                                <div className="text-[11px] text-slate-400">{t(item.type)}</div>
+                              </td>
                               <td className="p-2 text-right font-medium">{formatRWF(item.statementAmount)}</td>
                               <td className="p-2 text-right font-medium">{formatRWF(item.systemAmount)}</td>
                               <td className={`p-2 text-right font-medium ${Math.abs(item.difference) >= 0.5 && item.status !== 'Matched' ? 'text-rose-600' : ''}`}>{formatRWF(item.status === 'Matched' ? 0 : item.difference)}</td>
@@ -537,43 +558,15 @@ export default function ReconciliationDashboard() {
                 </div>
               </div>
 
-              <div className="space-y-6 min-w-0">
+              <div className="order-1 recon-top min-w-0">
                 <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
                   <h3 className="font-bold text-slate-800 text-sm mb-2">{t('Reconciliation Controls')}</h3>
+                  <div className="recon-controls">
                   <button type="button" onClick={() => setShowUploadModal(true)} className={sideButton}>{t('Upload Bank Statement')}</button>
                   <button type="button" onClick={handleAutoMatch} disabled={busy} className={sideButton}>{busy ? t('Working…') : t('Auto Match')}</button>
                   <button type="button" onClick={() => setShowAdjustmentModal(true)} className={sideButton}>{t('Create Adjustment')}</button>
                   <button type="button" onClick={() => changeTab('history')} className={sideButton}>{t('Reconciliation History')}</button>
-                </div>
-
-                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
-                  <h3 className="font-bold text-slate-800 text-sm">{t('Filters')}</h3>
-                  <div className="space-y-3 text-xs">
-                    <label className="block">
-                      <span className="block text-slate-500 font-semibold mb-1">{t('Account')}</span>
-                      <select value={bankAccountFilter} onChange={(e) => setBankAccountFilter(e.target.value)} className={inputClass}>
-                        <option value="">{t('All Accounts')}</option>
-                        {ACCOUNTS.map((a) => <option key={a} value={a}>{t(a)}</option>)}
-                      </select>
-                    </label>
-                    <label className="block">
-                      <span className="block text-slate-500 font-semibold mb-1">{t('Status')}</span>
-                      <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={inputClass}>
-                        <option value="">{activeTab === 'unreconciled' ? t('All unreconciled') : t('All Statuses')}</option>
-                        {STATUSES.filter((s) => activeTab !== 'unreconciled' || s !== 'Matched').map((s) => <option key={s} value={s}>{t(s)}</option>)}
-                      </select>
-                    </label>
-                    <label className="block">
-                      <span className="block text-slate-500 font-semibold mb-1">{t('Type')}</span>
-                      <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className={inputClass}>
-                        <option value="">{t('All Types')}</option>
-                        {TYPES.map((type) => <option key={type} value={type}>{t(type)}</option>)}
-                      </select>
-                    </label>
                   </div>
-                  <button type="button" onClick={resetFilters} className="w-full py-2 border border-slate-200 rounded-lg text-xs font-semibold hover:bg-slate-50 transition">
-                    {t('Reset filters')}
-                  </button>
                 </div>
 
                 <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">

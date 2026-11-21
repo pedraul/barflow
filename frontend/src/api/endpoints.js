@@ -170,6 +170,11 @@ export async function createOutgoingPayment(payload) {
 }
 
 // ===== ACCOUNTANT =====
+export async function fetchAccountantBranches() {
+  const { data } = await api.get('/accountant/branches')
+  return data
+}
+
 export async function fetchAccountantSummary(params = {}) {
   const { data } = await api.get('/accountant/summary', { params })
   return data

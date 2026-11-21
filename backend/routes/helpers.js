@@ -15,6 +15,7 @@ export const mapUser = (u) => ({
   phone: u.phone || '',
   role: u.role,
   branch: u.branch_name || '',
+  branchId: u.branch_id || null,
   status: u.is_active ? 'Active' : 'Inactive',
   salary: Number(u.salary) || 0,
   bonus: Number(u.bonus) || 0,

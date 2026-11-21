@@ -3,6 +3,7 @@ import { createContext, useContext, useState, useEffect } from 'react'
 
 import { logoutUser } from '../api/endpoints'
 import api from '../api/axios'
+import { clearAccountantBranch } from '../utils/accountantBranch'
 
 const AuthContext = createContext(null)
 
@@ -91,6 +92,7 @@ export function AuthProvider({ children }) {
   }
 
   const login = ({ token: authToken, user: userProfile }) => {
+    clearAccountantBranch()
     const role = String(userProfile?.role || '').toLowerCase()
     if (!['platform_admin', 'super_admin'].includes(role)) {
       const branchId = role === 'owner' ? 'all' : userProfile?.branchId
@@ -114,6 +116,7 @@ export function AuthProvider({ children }) {
       setToken(null)
       setUser(null)
       setPermissions({})
+      clearAccountantBranch()
     }
   }
   const updateUser = (changes) => {

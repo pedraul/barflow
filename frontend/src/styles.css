@@ -1691,6 +1691,55 @@ table tbody tr:hover {
   background: var(--brand-subtle);
 }
 
+/* Payroll: table on wide screens, one card per worker on phones. */
+.payroll-actions { display: flex; gap: 0.5rem; align-items: center; flex-wrap: nowrap; }
+.payroll-actions > button { margin: 0; padding: 0.4rem 0.9rem; min-width: 0; width: auto; white-space: nowrap; }
+.payroll-cards { display: none; list-style: none; margin: 0; padding: 0; }
+@media (max-width: 768px) {
+  .payroll-table { display: none !important; }
+  .payroll-cards { display: grid; gap: 0.75rem; }
+  .payroll-card {
+    border: 1px solid var(--border, #e5e7eb); border-radius: 14px; padding: 0.9rem 1rem;
+    background: var(--surface, #fff); display: grid; gap: 0.75rem;
+  }
+  .payroll-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; }
+  .payroll-card-head strong { display: block; font-size: 1rem; color: var(--text-1, #111827); }
+  .payroll-card-head > div > span { display: block; font-size: 0.8rem; color: var(--text-3, #6b7280); text-transform: capitalize; }
+  .payroll-card-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem 1rem; margin: 0; }
+  .payroll-card-grid .wide { grid-column: 1 / -1; }
+  .payroll-card-grid dt { font-size: 0.72rem; color: var(--text-3, #6b7280); margin: 0; }
+  .payroll-card-grid dd { font-size: 0.9rem; color: var(--text-1, #111827); margin: 0.1rem 0 0; overflow-wrap: anywhere; }
+  .payroll-card-total {
+    display: flex; justify-content: space-between; align-items: baseline;
+    border-top: 1px solid var(--border, #e5e7eb); padding-top: 0.6rem;
+  }
+  .payroll-card-total span { font-size: 0.8rem; color: var(--text-3, #6b7280); }
+  .payroll-card-total strong { font-size: 1.05rem; }
+  .payroll-card .payroll-actions > button { flex: 1 1 0; padding: 0.6rem 0.9rem; }
+}
+
+/* Reconciliation table: readable cells, wrapping descriptions.
+   Unlayered on purpose so it wins over the global table rules above. */
+.recon-table { font-size: 0.8125rem; }
+.recon-stats { display: grid; gap: 1.25rem; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.recon-top { display: grid; gap: 1.5rem; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+.recon-controls { display: grid; gap: 0.75rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.recon-controls > button { height: 100%; }
+@media (max-width: 1100px) { .recon-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 768px) {
+  .recon-top { grid-template-columns: minmax(0, 1fr); }
+  .recon-table { min-width: 720px; }
+}
+@media (max-width: 420px) { .recon-stats, .recon-controls { grid-template-columns: minmax(0, 1fr); } }
+.recon-table th { font-size: 0.7rem; padding: 0.65rem 0.6rem; }
+.recon-table td { padding: 0.7rem 0.6rem; vertical-align: middle; }
+.recon-filter {
+  width: auto; min-width: 150px; margin: 0; padding: 0.4rem 2rem 0.4rem 0.65rem;
+  font-size: 0.8125rem; border: 1px solid var(--border, #e2e8f0); border-radius: 0.5rem;
+  background-color: var(--surface, #fff); color: inherit;
+}
+.recon-table td.recon-desc { white-space: normal; min-width: 200px; max-width: 340px; overflow-wrap: anywhere; line-height: 1.35; }
+
 @media (max-width: 768px) {
   table {
     min-width: 640px !important;
@@ -12997,4 +13046,10 @@ svg {
     font-size: 10pt;
     color: #475569;
   }
+}
+
+/* Accountant viewing every branch: changes need one branch. */
+.accountant-branch-notice {
+  margin: 0 0 1rem; padding: 0.7rem 1rem; border-radius: 10px; font-size: 0.85rem;
+  background: #eef2ff; color: #3730a3; border: 1px solid #c7d2fe;
 }

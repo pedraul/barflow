@@ -10,6 +10,7 @@ import { SidebarLink } from '../components/ui/SharedComponents'
 import { useAuth } from '../context/AuthContext'
 import { usePreferences } from '../context/PreferencesContext'
 import GrantedStaffLinks from '../components/GrantedStaffLinks'
+import { isAllBranchesView } from '../utils/accountantBranch'
 
 const ACCOUNTANT_LINKS = [
   { section: 'Main', items: [
@@ -73,5 +74,12 @@ export default function AccountantLayout({ children }) {
 
   return <Layout sidebar={sidebar} logoutButton={
     <button type="button" className="mobile-logout-btn" onClick={handleLogout} title={t('Logout')}>{t('Logout')}</button>
-  }>{children}</Layout>
+  }>
+    {isAllBranchesView() && (
+      <div role="status" className="accountant-branch-notice">
+        {t('You are viewing all branches. Choose one branch at the top of the page to record expenses, pay salaries, upload statements or send transfers.')}
+      </div>
+    )}
+    {children}
+  </Layout>
 }

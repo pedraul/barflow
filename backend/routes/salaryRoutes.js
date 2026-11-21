@@ -39,7 +39,7 @@ router.get('/', authMiddleware, async (req, res) => {
       }))
     )
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    res.status(error.statusCode || error.status || 500).json({ error: error.message })
   }
 })
 
@@ -125,7 +125,7 @@ router.post('/', authMiddleware, roleMiddleware('accountant', 'manager', 'owner'
 
     res.status(201).json({ id: rows[0].id, gross, tax, insurance, net, bonus: bonusAmount, status: 'pending' })
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    res.status(error.statusCode || error.status || 500).json({ error: error.message })
   }
 })
 

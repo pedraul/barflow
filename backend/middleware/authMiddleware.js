@@ -49,6 +49,29 @@ export default async function authMiddleware(req, res, next) {
         branchName: rows[0].branch_name || '',
         unpaidAccessGranted: rows[0].unpaid_access_granted === true,
         businessVerified: rows[0].is_verified === true,
+        assignedBranchId: rows[0].branch_id || null,
+      }
+
+      // Accountants work for the whole business: the X-Branch-Id header picks the branch
+      // they are working in ("all" = every branch, view only). Checked against the business.
+      const requestedBranch = String(req.headers['x-branch-id'] || '').trim()
+      if (String(rows[0].role || '').toLowerCase() === 'accountant' && requestedBranch) {
+        if (requestedBranch.toLowerCase() === 'all') {
+          req.user.branchScope = 'all'
+        } else if (requestedBranch !== req.user.branchId) {
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestedBranch)
+          const { rows: branchRows } = isUuid
+            ? await query(
+              'SELECT id, name FROM branches WHERE id = $1 AND business_id = $2 AND is_active = TRUE',
+              [requestedBranch, req.user.businessId]
+            )
+            : { rows: [] }
+          if (!branchRows.length) {
+            return res.status(403).json({ error: 'The selected branch does not belong to your business or is inactive.', code: 'BRANCH_NOT_ALLOWED' })
+          }
+          req.user.branchId = branchRows[0].id
+          req.user.branchName = branchRows[0].name
+        }
       }
     } else {
       req.user = user

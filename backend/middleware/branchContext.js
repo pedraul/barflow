@@ -31,6 +31,32 @@ export async function getBranchContext(req, { requestedBranchId = null, allowOwn
     return { businessId, branchId: rows[0].id, isAllBranches: false }
   }
 
+  // Accountants may work in any active branch of their business (chosen with X-Branch-Id
+  // or ?branchId=). "All branches" is for viewing only; changes need one branch.
+  if (role === 'accountant') {
+    const requested = requestedBranchId && requestedBranchId !== 'all' ? String(requestedBranchId) : null
+    if (requested && requested !== req.user?.branchId) {
+      const { rows } = await query(
+        'SELECT id FROM branches WHERE id::text = $1 AND business_id = $2 AND is_active = TRUE',
+        [requested, businessId]
+      )
+      if (!rows.length) {
+        const error = new Error('Branch does not belong to this business or is inactive.')
+        error.statusCode = 403
+        throw error
+      }
+      return { businessId, branchId: rows[0].id, isAllBranches: false }
+    }
+    if (!requested && (req.user?.branchScope === 'all' || requestedBranchId === 'all')) {
+      if (String(req.method || 'GET').toUpperCase() === 'GET') {
+        return { businessId, branchId: null, isAllBranches: true }
+      }
+      const error = new Error('"All branches" is for viewing only. Choose a branch at the top of the page to do this.')
+      error.statusCode = 400
+      throw error
+    }
+  }
+
   const branchId = req.user?.branchId || null
   if (!branchId) {
     const error = new Error('This user is not assigned to a branch.')

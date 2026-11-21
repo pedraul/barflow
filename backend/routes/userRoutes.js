@@ -14,7 +14,8 @@ router.get('/me/salary-status', authMiddleware, async (req, res) => {
     const userId = req.user?.id
     if (!userId) return res.status(400).json({ error: 'User not identified.' })
     const businessId = req.user?.businessId
-    const branchId = req.user?.branchId || null
+    // The user's own branch, not the branch an accountant is currently working in.
+    const branchId = req.user?.assignedBranchId ?? req.user?.branchId ?? null
     if (!businessId) return res.status(403).json({ error: 'No business associated with this account.' })
 
     const { rows: userRows } = await query(
@@ -211,7 +212,8 @@ router.patch('/:id/payroll', authMiddleware, async (req, res) => {
   if (!fields.length) return res.status(400).json({ error: 'Nothing to update.' })
 
   try {
-    const branchId = isOwner(req) ? null : (req.user?.branchId || null)
+    // Owner, or an accountant viewing all branches: any employee of the business.
+    const branchId = isOwner(req) || req.user?.branchScope === 'all' ? null : (req.user?.branchId || null)
     params.push(req.params.id, req.user.businessId, branchId)
     const n = params.length
     const { rows } = await query(

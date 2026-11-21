@@ -4,6 +4,7 @@ import { useSalary } from '../../context/SalaryContext'
 import { useAuditLog } from '../../context/AuditLogContext'
 import * as api from '../../api/endpoints'
 import { usePreferences } from '../../context/PreferencesContext'
+import { isAllBranchesView } from '../../utils/accountantBranch'
 
 const money = (value) => `${Number(value || 0).toLocaleString()} RWF`
 
@@ -122,6 +123,8 @@ export default function Salary() {
     try {
       await recordSalaryPayment({
         userId: paying.id,
+        // Paid from the worker's own branch (needed when viewing all branches).
+        ...(paying.branchId ? { branchId: paying.branchId } : {}),
         name: paying.name,
         phone: paying.phone || '',
         amount: gross,
@@ -149,6 +152,41 @@ export default function Salary() {
       setSending(false)
     }
   }
+
+  const allBranches = isAllBranchesView()
+  const rows = users.map((user) => {
+    const base = Number(user.salary) || 0
+    const bonus = Number(user.bonus) || 0
+    return { user, base, bonus, total: base + bonus }
+  })
+
+  const renderStatus = (user) => (
+    <span className={user.status === 'Inactive' ? 'user-inactive' : 'user-active'}>
+      {user.status || t('Active')}
+    </span>
+  )
+
+  const renderLastPayment = (user) => {
+    const last = (salaryPayments || []).findLast((sp) => sp.name === user.name)
+    if (!last) return '—'
+    const isPending = last.status === 'pending'
+    return (
+      <span style={{ fontSize: 13, color: isPending ? '#e63946' : '#059669', fontWeight: 600 }}>
+        {isPending ? t('Pending approval') : t('Approved')}
+      </span>
+    )
+  }
+
+  const renderActions = (user) => (
+    <>
+      <button type="button" className="secondary-action" onClick={() => openEdit(user)}>
+        {t('Edit')}
+      </button>
+      <button type="button" className="pay-action" disabled={!user.salary} title={user.salary ? undefined : t('Set a base salary first')} onClick={() => { setPaying(user); setMethod('mtn') }}>
+        {t('Pay')}
+      </button>
+    </>
+  )
 
   return (
     <div className="page accountant-salary">
@@ -187,78 +225,72 @@ export default function Salary() {
       </div>
 
       <section className="user-section">
-        <div className="user-table-wrap">
+        {/* Wide screens: table */}
+        <div className="user-table-wrap payroll-table">
           <table className="user-table">
             <thead>
-               <tr>
-                 <th>{t('Name')}</th>
-                 <th>{t('Role')}</th>
-                 <th>{t('Base Salary')}</th>
-                 <th>{t('Bonus')}</th>
-                 <th>{t('Promotion')}</th>
-                 <th>{t('Status')}</th>
-                 <th>{t('Last Payment')}</th>
-                 <th>{t('Phone')}</th>
-                 <th>{t('Total')}</th>
-                 <th>{t('Action')}</th>
-               </tr>
+              <tr>
+                <th>{t('Name')}</th>
+                <th>{t('Role')}</th>
+                {allBranches && <th>{t('Branch')}</th>}
+                <th>{t('Base Salary')}</th>
+                <th>{t('Bonus')}</th>
+                <th>{t('Promotion')}</th>
+                <th>{t('Status')}</th>
+                <th>{t('Last Payment')}</th>
+                <th>{t('Phone')}</th>
+                <th>{t('Total')}</th>
+                <th>{t('Action')}</th>
+              </tr>
             </thead>
             <tbody>
-              {users.map((user) => {
-                const base = Number(user.salary) || 0
-                const bonus = Number(user.bonus) || 0
-                const total = base + bonus
-                return (
-                  <tr key={user.id}>
-                    <td>{user.name}</td>
-                    <td>{user.role}</td>
-                    <td>{base ? money(base) : '—'}</td>
-                    <td>{bonus ? money(bonus) : '—'}</td>
-                    <td>{user.promotion || '—'}</td>
-                     <td>
-                       <span className={user.status === 'Inactive' ? 'user-inactive' : 'user-active'}>
-                         {user.status || t('Active')}
-                       </span>
-                     </td>
-                     <td>
-                       {(() => {
-                         const last = (salaryPayments || []).findLast((sp) => sp.name === user.name)
-                         if (!last) return '—'
-                         const isPending = last.status === 'pending'
-                         return (
-                           <span style={{ fontSize: 13, color: isPending ? '#e63946' : '#059669', fontWeight: 600 }}>
-                             {last.status === 'pending' ? t('Pending approval') : t('Approved')}
-                           </span>
-                         )
-                       })()}
-                     </td>
-                    <td>{user.phone || '—'}</td>
-                    <td><strong>{total ? money(total) : '—'}</strong></td>
-                    <td className="user-actions" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <button
-                        type="button"
-                        className="secondary-action"
-                        onClick={() => openEdit(user)}
-                        style={{ padding: '0.35rem 0.7rem', margin: 0 }}
-                      >
-                        {t('Edit')}
-                      </button>
-                      <button
-                        type="button"
-                        className="pay-action"
-                        disabled={!user.salary}
-                        onClick={() => { setPaying(user); setMethod('mtn') }}
-                        style={{ padding: '0.35rem 0.7rem', margin: 0 }}
-                      >
-                        {t('Pay')}
-                      </button>
-                    </td>
-                  </tr>
-                )
-              })}
+              {rows.map(({ user, base, bonus, total }) => (
+                <tr key={user.id}>
+                  <td>{user.name}</td>
+                  <td>{user.role}</td>
+                  {allBranches && <td>{user.branch || '—'}</td>}
+                  <td>{base ? money(base) : '—'}</td>
+                  <td>{bonus ? money(bonus) : '—'}</td>
+                  <td>{user.promotion || '—'}</td>
+                  <td>{renderStatus(user)}</td>
+                  <td>{renderLastPayment(user)}</td>
+                  <td>{user.phone || '—'}</td>
+                  <td><strong>{total ? money(total) : '—'}</strong></td>
+                  <td>
+                    <div className="payroll-actions">{renderActions(user)}</div>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
+
+        {/* Phones: one card per worker */}
+        <ul className="payroll-cards">
+          {rows.map(({ user, base, bonus, total }) => (
+            <li key={user.id} className="payroll-card">
+              <div className="payroll-card-head">
+                <div>
+                  <strong>{user.name}</strong>
+                  <span>{user.role}{allBranches && user.branch ? ` · ${user.branch}` : ''}</span>
+                </div>
+                {renderStatus(user)}
+              </div>
+              <dl className="payroll-card-grid">
+                <div><dt>{t('Base Salary')}</dt><dd>{base ? money(base) : '—'}</dd></div>
+                <div><dt>{t('Bonus')}</dt><dd>{bonus ? money(bonus) : '—'}</dd></div>
+                <div><dt>{t('Phone')}</dt><dd>{user.phone || '—'}</dd></div>
+                <div><dt>{t('Last Payment')}</dt><dd>{renderLastPayment(user)}</dd></div>
+                {user.promotion && <div className="wide"><dt>{t('Promotion')}</dt><dd>{user.promotion}</dd></div>}
+              </dl>
+              <div className="payroll-card-total">
+                <span>{t('Total')}</span>
+                <strong>{total ? money(total) : '—'}</strong>
+              </div>
+              <div className="payroll-actions">{renderActions(user)}</div>
+            </li>
+          ))}
+        </ul>
       </section>
 
       {/* Edit Bonus/Promotion/Phone Modal */}

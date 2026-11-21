@@ -24,7 +24,7 @@ const router = Router()
 const accountantOnly = [authMiddleware, roleMiddleware('accountant')]
 
 const actorName = (req) => req.user?.full_name || req.user?.email || 'Accountant'
-const sendError = (res, error) => res.status(error.status || 500).json({ error: error.message })
+const sendError = (res, error) => res.status(error.status || error.statusCode || 500).json({ error: error.message })
 
 async function audit(req, action, targetModule) {
   await logAudit({
@@ -43,6 +43,24 @@ function splitTransferDescription(description = '') {
   const index = text.indexOf(': ')
   return index > 0 ? { name: text.slice(0, index), purpose: text.slice(index + 2) } : { name: '', purpose: text }
 }
+
+// GET /api/accountant/branches — the business's active branches, for the branch picker.
+router.get('/branches', ...accountantOnly, async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT id, name, address, is_main FROM branches
+       WHERE business_id = $1 AND is_active = TRUE
+       ORDER BY is_main DESC NULLS LAST, name`,
+      [req.user.businessId]
+    )
+    res.json({
+      assignedBranchId: req.user.assignedBranchId || null,
+      branches: rows.map((b) => ({ id: b.id, name: b.name, address: b.address || '', isMain: b.is_main === true })),
+    })
+  } catch (error) {
+    sendError(res, error)
+  }
+})
 
 // GET /api/accountant/summary?period=&cashFlowPeriod=&expensePeriod=
 router.get('/summary', ...accountantOnly, async (req, res) => {
