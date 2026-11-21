@@ -6,6 +6,7 @@ import { getTwoFactorSettings, updateTwoFactorSettings } from '../../api/endpoin
 import QRCode from '../../components/QRCode'
 import { User, Database, CreditCard, ShieldCheck, Lock, RefreshCw, Settings, FileText, Menu, Wallet, Mail } from 'lucide-react'
 import AuditLogViewer from './AuditLogViewer'
+import PaymentQRSettings from '../../components/PaymentQRSettings'
 import { usePreferences, stripIcons } from '../../context/PreferencesContext'
 
 const SETTINGS_GROUPS = [
@@ -110,16 +111,8 @@ export default function SystemSettings() {
   const [restoreId, setRestoreId] = useState('')
   const [restoreMsg, setRestoreMsg] = useState('')
   const [permDraft, setPermDraft] = useState([])
-  const [paymentSettings, setPaymentSettings] = useState({
-    qrPaymentEnabled: false,
-    mtnMomoNumber: '',
-    airtelMoneyNumber: '',
-    merchantCode: '',
-    bankAccount: '',
-    merchantName: 'BarFlow Business',
-  })
   const [twoFactor, setTwoFactor] = useState({ isEnabled: false, method: 'email', scope: 'business', businessId: null })
-  const [merchantQR, setMerchantQR] = useState(null)
+
 
   const loadBackups = useCallback(async () => {
     try {
@@ -255,22 +248,6 @@ export default function SystemSettings() {
     } catch (e) { flash('❌ ' + e.message) }
   }
 
-  const loadPaymentSettings = useCallback(async () => {
-    try {
-      const s = await fetchPaymentSettings()
-      if (s && typeof s === 'object') {
-        setPaymentSettings({
-          qrPaymentEnabled: !!s.qrPaymentEnabled,
-          mtnMomoNumber: s.mtnMomoNumber || '',
-          airtelMoneyNumber: s.airtelMoneyNumber || '',
-          merchantCode: s.merchantCode || '',
-          bankAccount: s.bankAccount || '',
-          merchantName: s.merchantName || 'BarFlow Business',
-        })
-      }
-    } catch (e) { console.error('Failed to load payment settings:', e) }
-  }, [fetchPaymentSettings])
-
   const loadTwoFactorSettings = useCallback(async () => {
     try {
       const s = await getTwoFactorSettings()
@@ -295,40 +272,6 @@ export default function SystemSettings() {
     } catch (e) { flash('❌ ' + e.message) }
   }
 
-  const loadMerchantQR = useCallback(async () => {
-    try {
-      const data = await generateMerchantQRPayment()
-      if (data && data.qrPayload) {
-        setMerchantQR(data)
-      }
-    } catch (e) {
-      console.error('Failed to load merchant QR:', e)
-    }
-  }, [generateMerchantQRPayment])
-
-  const handleSavePaymentSettings = async () => {
-    try {
-      await updatePaymentSettings({
-        qrPaymentEnabled: paymentSettings.qrPaymentEnabled,
-        mtnMomoNumber: paymentSettings.mtnMomoNumber,
-        airtelMoneyNumber: paymentSettings.airtelMoneyNumber,
-        merchantCode: paymentSettings.merchantCode,
-        bankAccount: paymentSettings.bankAccount,
-        merchantName: paymentSettings.merchantName,
-      })
-      await loadPaymentSettings()
-      if (paymentSettings.qrPaymentEnabled) {
-        await loadMerchantQR()
-      }
-      flash(t('✅ Payment settings saved.'))
-    } catch (e) { flash('❌ ' + e.message) }
-  }
-
-  React.useEffect(() => {
-    if (activeSubTab === 'payments') {
-      loadPaymentSettings()
-    }
-  }, [activeSubTab, loadPaymentSettings])
 
   React.useEffect(() => {
     if (activeSubTab === 'security') {
@@ -336,11 +279,6 @@ export default function SystemSettings() {
     }
   }, [activeSubTab, loadTwoFactorSettings])
 
-  React.useEffect(() => {
-    if (activeSubTab === 'payments' && paymentSettings.qrPaymentEnabled) {
-      loadMerchantQR()
-    }
-  }, [activeSubTab, paymentSettings.qrPaymentEnabled, loadMerchantQR])
 
   return (
     <div className="flex min-h-screen bg-[#F8FAFC] text-[#0F172A] font-sans antialiased">
@@ -422,7 +360,7 @@ export default function SystemSettings() {
                     return (
                       <div key={key} className="flex items-center justify-between py-2">
                         <label className="text-sm font-semibold text-slate-700">{t(label)}</label>
-                        <button type="button" onClick={() => setSetting(key, on ? 'false' : 'true')}
+                        <button type="button" role="switch" aria-checked={on} aria-label={t(label)} title={on ? t('On') : t('Off')} onClick={() => setSetting(key, on ? 'false' : 'true')}
                           className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${on ? 'bg-indigo-600' : 'bg-slate-300'}`}>
                           <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${on ? 'translate-x-6' : 'translate-x-1'}`} />
                         </button>
@@ -706,69 +644,7 @@ export default function SystemSettings() {
                 </div>
               </div>
             ) : activeSubTab === 'payments' ? (
-              <div className="p-8 space-y-6">
-                <SectionTitle title={t('PAYMENT SETTINGS & QR CODES')} subtitle={t('Configure QR payment methods and merchant details for customer scan-to-pay.')} />
-                <div className="border-t border-slate-100"></div>
-                <div className="flex items-center gap-3">
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" checked={paymentSettings.qrPaymentEnabled} onChange={(e) => setPaymentSettings({ ...paymentSettings, qrPaymentEnabled: e.target.checked })} className="sr-only peer" />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
-                  <span className="text-sm font-semibold text-slate-700">{t('Enable QR Payments')}</span>
-                </div>
-                {paymentSettings.qrPaymentEnabled && (
-                  <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-                      <div className="md:col-span-2">
-                        <label className="text-xs font-bold text-slate-800 tracking-wide">{t('Merchant Name')}</label>
-                        <input type="text" value={paymentSettings.merchantName} onChange={(e) => setPaymentSettings({ ...paymentSettings, merchantName: e.target.value })} className="mt-1 w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition font-medium" />
-                      </div>
-                      <div>
-                        <label className="text-xs font-bold text-slate-800 tracking-wide">{t('MTN Mobile Money Number')}</label>
-                        <input type="text" value={paymentSettings.mtnMomoNumber} onChange={(e) => setPaymentSettings({ ...paymentSettings, mtnMomoNumber: e.target.value })} placeholder={t('e.g. 0788123456')} className="mt-1 w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition font-medium" />
-                      </div>
-                      <div>
-                        <label className="text-xs font-bold text-slate-800 tracking-wide">{t('Airtel Money Number')}</label>
-                        <input type="text" value={paymentSettings.airtelMoneyNumber} onChange={(e) => setPaymentSettings({ ...paymentSettings, airtelMoneyNumber: e.target.value })} placeholder={t('e.g. 0733123456')} className="mt-1 w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition font-medium" />
-                      </div>
-                      <div>
-                        <label className="text-xs font-bold text-slate-800 tracking-wide">{t('Merchant Code')}</label>
-                        <input type="text" value={paymentSettings.merchantCode} onChange={(e) => setPaymentSettings({ ...paymentSettings, merchantCode: e.target.value })} placeholder={t('e.g. 123456')} className="mt-1 w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition font-medium" />
-                      </div>
-                      <div>
-                        <label className="text-xs font-bold text-slate-800 tracking-wide">{t('Bank Account')}</label>
-                        <input type="text" value={paymentSettings.bankAccount} onChange={(e) => setPaymentSettings({ ...paymentSettings, bankAccount: e.target.value })} placeholder={t('e.g. 40001-0001234567-00')} className="mt-1 w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition font-medium" />
-                      </div>
-                    </div>
-                    <div className="flex justify-end">
-                      <button onClick={handleSavePaymentSettings} disabled={loading} className="flex items-center gap-2 bg-[#0066FF] hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm transition shadow-sm disabled:opacity-50">
-                        {t('Save Payment Settings')}
-                      </button>
-                    </div>
-
-                    <div className="border-t border-slate-100 pt-6">
-                      <h3 className="text-sm font-bold text-slate-800 tracking-wide mb-4">{t('BUSINESS QR CODE')}</h3>
-                      <p className="text-xs text-slate-500 mb-4">{t('Print this QR code and place it at the bar counter or on receipts. Customers can scan it to see your payment details.')}</p>
-                      {merchantQR ? (
-                        <div className="flex flex-col items-center gap-4 p-6 border border-slate-200 rounded-xl bg-white">
-                          <div className="p-4 bg-white border border-slate-100 rounded-lg shadow-sm">
-                            <QRCode value={merchantQR.qrPayload || ''} size={220} level="M" />
-                          </div>
-                          <div className="text-center">
-                            <p className="text-sm font-bold text-slate-900">{merchantQR.merchant?.name || paymentSettings.merchantName}</p>
-                            <p className="text-xs text-slate-500 mt-1">{t('QR Payment Enabled')}</p>
-                          </div>
-                          <button onClick={() => window.print()} className="flex items-center gap-2 border border-slate-300 text-slate-700 font-semibold px-4 py-2 rounded-lg text-sm hover:bg-slate-50 transition">
-                            {t('Print QR Code')}
-                          </button>
-                        </div>
-                      ) : (
-                        <p className="text-sm text-slate-400">{t('Save payment settings to generate your business QR code.')}</p>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
+              <PaymentQRSettings />
             ) : activeSubTab === 'audit' ? (
               <div className="p-6">
                 <SectionTitle title={t('AUDIT LOGS')} subtitle={t('View system audit logs and export records.')} />

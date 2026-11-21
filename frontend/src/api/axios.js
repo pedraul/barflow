@@ -1,7 +1,10 @@
 import axios from 'axios'
 
 const rawApiUrl = import.meta.env.VITE_API_URL || 'https://barflow-backend-tezw.onrender.com'
-const normalized = rawApiUrl.replace(/\/+$/, '')
+// Never talk to the API over plain HTTP from a deployed page (only a local dev server may use http).
+const isLocalApi = /^http:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(rawApiUrl)
+const secureApiUrl = !isLocalApi && /^http:\/\//i.test(rawApiUrl) ? rawApiUrl.replace(/^http:/i, 'https:') : rawApiUrl
+const normalized = secureApiUrl.replace(/\/+$/, '')
 const baseURL = normalized.endsWith('/api') ? normalized : `${normalized}/api`
 
 console.log('[axios] baseURL =', baseURL)

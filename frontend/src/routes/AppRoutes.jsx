@@ -65,6 +65,7 @@ import MenuPage from '../pages/customer/MenuPage'
 import CartPage from '../pages/customer/CartPage'
 import PaymentPage from '../pages/customer/PaymentPage'
 import MyOrdersPage from '../pages/customer/MyOrdersPage'
+import PayPage from '../pages/customer/PayPage'
 import QRCodeManager from '../pages/operator/QRCodeManager'
 import KitchenDisplay from '../pages/kitchen/KitchenDisplay'
 import KitchenLayout from '../layouts/KitchenLayout'
@@ -116,6 +117,7 @@ export default function AppRoutes() {
       <Route path="/cart" element={<CustomerProvider><CartPage /></CustomerProvider>} />
       <Route path="/payment" element={<CustomerProvider><PaymentPage /></CustomerProvider>} />
       <Route path="/my-orders" element={<CustomerProvider><MyOrdersPage /></CustomerProvider>} />
+      <Route path="/pay/:businessId" element={<PayPage />} />
 
       {/* Owner Routes */}
       <Route

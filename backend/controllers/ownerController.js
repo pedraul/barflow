@@ -10,9 +10,12 @@ import { logAudit, getClientIp, serializeAuditLogs } from '../utils/audit.js'
 import {
   sendSubscriptionActivation,
   sendAdminSubscriptionActivation,
+  sendRenewalConfirmation,
 } from '../services/emailNotificationService.js'
 import { createBackup as createSqlBackup, restoreBackup as restoreSqlBackup } from '../utils/backup.js'
 import { getFinancialSummary } from '../services/financialSummaryService.js'
+import { normalizePaymentMethods, readPaymentMethods } from '../utils/paymentMethods.js'
+import { sealTransaction } from '../services/transactionLedger.js'
 import { getBranchContext } from '../middleware/branchContext.js'
 import { getTaxBreakdown } from '../utils/taxCalculator.js'
 import { initiateSalaryPayout } from '../services/salaryPayoutService.js'
@@ -983,6 +986,18 @@ export async function getTransferLogs(req, res) {
 
 // An order counts as paid when its status is Paid, or when a payment for it
 // completed (orders paid up front later move on to Served).
+// Email notifications the owner can switch on/off (Settings → Notifications).
+// Stored per business in system_settings; checked in emailNotificationService.
+const OWNER_NOTIFICATION_KEYS = [
+  'notify_registration',
+  'notify_subscription_activation',
+  'notify_expiry_reminder',
+  'notify_subscription_expired',
+  'notify_renewal_confirmation',
+  'notify_account_suspended',
+  'notify_account_reactivated',
+]
+
 const ORDER_IS_PAID_SQL = `(LOWER(BTRIM(o.status::text)) = 'paid' OR EXISTS (
   SELECT 1 FROM payments pay WHERE pay.order_id = o.id AND pay.paid_at IS NOT NULL
 ))`
@@ -1824,12 +1839,12 @@ export async function selectSubscriptionPlan(req, res) {
       await query(
         `UPDATE platform_payments
          SET provider_txn_id = $2, provider_status = $3
-         WHERE id = $1`,
+         WHERE id = $1 RETURNING id`,
         [paymentId, providerRequest.providerTxnId, providerRequest.providerStatus]
       )
     } catch (error) {
       await query(
-        `UPDATE platform_payments SET status = 'failed', provider_status = 'FAILED', provider_payload = $2 WHERE id = $1`,
+        `UPDATE platform_payments SET status = 'failed', provider_status = 'FAILED', provider_payload = $2 WHERE id = $1 RETURNING id`,
         [paymentId, JSON.stringify({ error: error.message })]
       )
       await query(`UPDATE subscriptions SET status = 'payment_failed', payment_status = 'failed' WHERE id = $1`, [subscription.id])
@@ -1898,6 +1913,15 @@ async function completeSubscriptionPayment(paymentId, businessId, providerStatus
     }
     if (payment.status !== 'pending') throw new Error('This subscription payment is no longer pending.')
 
+    // A renewal = the business already had a paid subscription before this one.
+    const { rows: previousPaid } = await client.query(
+      `SELECT 1 FROM subscriptions
+       WHERE business_id = $1 AND id <> $2 AND payment_status = 'verified'
+       LIMIT 1`,
+      [businessId, payment.subscription_id]
+    )
+    const isRenewal = previousPaid.length > 0
+
     const receiptNumber = generateReceiptNumber()
     await client.query(
       `UPDATE subscriptions
@@ -1923,9 +1947,12 @@ async function completeSubscriptionPayment(paymentId, businessId, providerStatus
       [businessId]
     )
     await client.query('COMMIT')
+    // Updated inside the transaction: seal the paid subscription payment after commit.
+    await sealTransaction('platform_payments', paymentId, 'updated')
     return {
       status: 'completed',
       alreadyCompleted: false,
+      isRenewal,
       receiptNumber,
       plan: payment.plan,
       amount: Number(payment.amount_paid),
@@ -1975,7 +2002,7 @@ export async function checkSubscriptionPayment(req, res) {
     await query(
       `UPDATE platform_payments
        SET provider_status = $2, provider_payload = $3
-       WHERE id = $1 AND status = 'pending'`,
+       WHERE id = $1 AND status = 'pending' RETURNING id`,
       [payment.id, result.providerStatus, JSON.stringify(result.payload || {})]
     )
     if (result.status === 'failed') {
@@ -2036,8 +2063,11 @@ export async function checkSubscriptionPayment(req, res) {
             amount: completion.amount,
             businessId,
           }
-          sendSubscriptionActivation(notification).catch((error) => {
-            console.error('Failed to send subscription activation email:', error.message)
+          const ownerEmail = completion.isRenewal
+            ? sendRenewalConfirmation({ ...notification, newExpiryDate: completion.endDate })
+            : sendSubscriptionActivation(notification)
+          ownerEmail.catch((error) => {
+            console.error('Failed to send subscription email:', error.message)
           })
           sendAdminSubscriptionActivation(notification).catch((error) => {
             console.error('Failed to send admin subscription activation email:', error.message)
@@ -2242,7 +2272,13 @@ export async function getSystemSettings(req, res) {
       [businessId]
     )
     const { rows: branches } = await query('SELECT id, name FROM branches WHERE business_id = $1 ORDER BY name', [businessId])
-    const { rows: settings } = await query('SELECT * FROM system_settings ORDER BY setting_group, setting_key')
+    // Shared settings (no business) plus this business's own rows, which win.
+    const { rows: settings } = await query(
+      `SELECT * FROM system_settings
+       WHERE business_id IS NULL OR business_id = $1
+       ORDER BY (business_id IS NOT NULL), updated_at, setting_group, setting_key`,
+      [businessId]
+    )
     const { rows: platformSettings } = await query(
       `SELECT setting_key, setting_value FROM platform_settings
        WHERE setting_key IN (
@@ -2289,6 +2325,10 @@ export async function getSystemSettings(req, res) {
     }
     for (const [k, v] of Object.entries(settingDefaults)) {
       if (flatSettings[k] === undefined) flatSettings[k] = v
+    }
+    // Email notifications are sent unless the owner turned them off.
+    for (const k of OWNER_NOTIFICATION_KEYS) {
+      if (flatSettings[k] === undefined) flatSettings[k] = 'true'
     }
 
     res.json({
@@ -2402,6 +2442,25 @@ export async function updateSystemSettings(req, res) {
          }
        }
 
+       // Email notification preferences belong to this business only.
+       for (const key of Object.keys(localSettings)) {
+         if (!OWNER_NOTIFICATION_KEYS.includes(key)) continue
+         const value = String(localSettings[key]) === 'true' ? 'true' : 'false'
+         delete localSettings[key]
+         const { rows: updatedRows } = await query(
+           `UPDATE system_settings SET setting_value = $3, updated_at = NOW()
+            WHERE business_id = $1 AND setting_key = $2 RETURNING id`,
+           [businessId, key, value]
+         )
+         if (!updatedRows.length) {
+           await query(
+             `INSERT INTO system_settings (business_id, setting_key, setting_value, setting_group)
+              VALUES ($1, $2, $3, 'notifications')`,
+             [businessId, key, value]
+           )
+         }
+       }
+
        if (Object.keys(localSettings).length > 0) {
          const groupFor = (key) => {
            if (key === 'max_login_attempts' || key === 'session_timeout') return 'security'
@@ -2409,7 +2468,7 @@ export async function updateSystemSettings(req, res) {
          }
          for (const [key, value] of Object.entries(localSettings)) {
            const { rows: updatedRows } = await query(
-             `UPDATE system_settings SET setting_value = $2, updated_at = NOW() WHERE setting_key = $1 RETURNING id`,
+             `UPDATE system_settings SET setting_value = $2, updated_at = NOW() WHERE setting_key = $1 AND business_id IS NULL RETURNING id`,
              [key, String(value)]
            )
            if (!updatedRows.length) {
@@ -2849,44 +2908,48 @@ export async function getOrderHistory(req, res) {
 // ──────────────────────────────────────────────
 
 // GET /api/v1/owner/payment-settings
+// Adds the payment_methods column if the startup migration hasn't run yet.
+let paymentMethodsColumnReady = null
+export function ensurePaymentMethodsColumn() {
+  if (!paymentMethodsColumnReady) {
+    paymentMethodsColumnReady = query(
+      `ALTER TABLE payment_settings ADD COLUMN IF NOT EXISTS payment_methods JSONB NOT NULL DEFAULT '[]'::jsonb`
+    ).catch((error) => {
+      paymentMethodsColumnReady = null
+      throw error
+    })
+  }
+  return paymentMethodsColumnReady
+}
+
+const emptyPaymentSettings = (businessId = null) => ({
+  businessId,
+  qrPaymentEnabled: false,
+  merchantName: 'BarFlow Business',
+  paymentMethods: [],
+  mtnMomoNumber: '',
+  airtelMoneyNumber: '',
+  merchantCode: '',
+  bankAccount: '',
+})
+
 export async function getPaymentSettings(req, res) {
   try {
     const businessId = req.user?.businessId
-    if (!businessId) {
-      return res.json({
-        qrPaymentEnabled: false,
-        mtnMomoNumber: '',
-        airtelMoneyNumber: '',
-        merchantCode: '',
-        bankAccount: '',
-        merchantName: 'BarFlow Business',
-      })
-    }
-    const { rows } = await query(
-      `SELECT qr_payment_enabled, mtn_momo_number, airtel_money_number,
-              merchant_code, bank_account, merchant_name
-       FROM payment_settings
-       WHERE business_id = $1`,
-      [businessId]
-    )
-    if (!rows.length) {
-      return res.json({
-        qrPaymentEnabled: false,
-        mtnMomoNumber: '',
-        airtelMoneyNumber: '',
-        merchantCode: '',
-        bankAccount: '',
-        merchantName: 'BarFlow Business',
-      })
-    }
+    if (!businessId) return res.json(emptyPaymentSettings())
+    await ensurePaymentMethodsColumn()
+    const { rows } = await query('SELECT * FROM payment_settings WHERE business_id = $1', [businessId])
+    if (!rows.length) return res.json(emptyPaymentSettings(businessId))
     const s = rows[0]
     res.json({
+      businessId,
       qrPaymentEnabled: s.qr_payment_enabled,
+      merchantName: s.merchant_name || 'BarFlow Business',
+      paymentMethods: readPaymentMethods(s),
       mtnMomoNumber: s.mtn_momo_number || '',
       airtelMoneyNumber: s.airtel_money_number || '',
       merchantCode: s.merchant_code || '',
       bankAccount: s.bank_account || '',
-      merchantName: s.merchant_name || 'BarFlow Business',
     })
   } catch (error) {
     res.status(500).json({ error: error.message })
@@ -2895,44 +2958,49 @@ export async function getPaymentSettings(req, res) {
 
 // PUT /api/v1/owner/payment-settings
 export async function updatePaymentSettings(req, res) {
-  const { qrPaymentEnabled, mtnMomoNumber, airtelMoneyNumber, merchantCode, bankAccount, merchantName } = req.body
+  const { qrPaymentEnabled, merchantName, paymentMethods } = req.body || {}
   try {
     const businessId = req.user?.businessId
     if (!businessId) {
       return res.status(400).json({ error: 'Business not found.' })
     }
+    await ensurePaymentMethodsColumn()
+
+    const methods = paymentMethods === undefined ? null : normalizePaymentMethods(paymentMethods)
+    if (qrPaymentEnabled && methods && !methods.some((m) => m.enabled)) {
+      return res.status(400).json({ error: 'Add at least one payment method before enabling QR payments.' })
+    }
+    const name = merchantName === undefined ? null : (String(merchantName).trim().slice(0, 80) || 'BarFlow Business')
+    const methodsJson = methods ? JSON.stringify(methods) : null
 
     const existing = (await query('SELECT id FROM payment_settings WHERE business_id = $1', [businessId])).rows[0]
     if (existing) {
       await query(
         `UPDATE payment_settings SET
           qr_payment_enabled = COALESCE($1, qr_payment_enabled),
-          mtn_momo_number = COALESCE($2, mtn_momo_number),
-          airtel_money_number = COALESCE($3, airtel_money_number),
-          merchant_code = COALESCE($4, merchant_code),
-          bank_account = COALESCE($5, bank_account),
-          merchant_name = COALESCE($6, merchant_name),
+          merchant_name = COALESCE($2, merchant_name),
+          payment_methods = COALESCE($3::jsonb, payment_methods),
           updated_at = NOW()
-         WHERE id = $7`,
-        [qrPaymentEnabled, mtnMomoNumber, airtelMoneyNumber, merchantCode, bankAccount, merchantName, existing.id]
+         WHERE id = $4`,
+        [qrPaymentEnabled ?? null, name, methodsJson, existing.id]
       )
     } else {
       await query(
-        `INSERT INTO payment_settings (business_id, qr_payment_enabled, mtn_momo_number, airtel_money_number, merchant_code, bank_account, merchant_name)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [businessId, qrPaymentEnabled ?? false, mtnMomoNumber, airtelMoneyNumber, merchantCode, bankAccount, merchantName || 'BarFlow Business']
+        `INSERT INTO payment_settings (business_id, qr_payment_enabled, merchant_name, payment_methods)
+         VALUES ($1, $2, $3, COALESCE($4::jsonb, '[]'::jsonb))`,
+        [businessId, qrPaymentEnabled ?? false, name || 'BarFlow Business', methodsJson]
       )
     }
 
     await logAudit({
       actorName: req.user?.name || req.user?.email || 'Owner',
-      action: `Updated payment settings. QR payments: ${qrPaymentEnabled ? 'enabled' : 'disabled'}`,
+      action: `Updated payment settings. QR payments: ${qrPaymentEnabled ? 'enabled' : 'disabled'}${methods ? `, ${methods.length} payment method(s)` : ''}`,
       targetModule: 'Payment',
       ipAddress: getClientIp(req),
       businessId: req.user?.businessId,
     })
 
-    res.json({ success: true })
+    res.json({ success: true, paymentMethods: methods || undefined })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

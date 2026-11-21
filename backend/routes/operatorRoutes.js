@@ -5,6 +5,7 @@ import { logAudit, getClientIp } from '../utils/audit.js'
 import authMiddleware from '../middleware/authMiddleware.js'
 import { getBranchContext } from '../middleware/branchContext.js'
 import { resolveOrderStation } from '../utils/orderStation.js'
+import { sealTransactionBy } from '../services/transactionLedger.js'
 
 const router = Router()
 
@@ -280,6 +281,8 @@ router.post('/orders/:id/mark-paid', authMiddleware, async (req, res) => {
       [id, req.user.full_name || req.user.email || 'operator', method]
     )
     await client.query('COMMIT')
+    // Payment was written inside the transaction: seal it now that it is committed.
+    await sealTransactionBy('payments', 'reference', reference, 'created')
 
 await logAudit({
        userId: req.user?.id,

@@ -872,3 +872,9 @@ export async function fetchMyCustomerOrders(orderIds, businessId) {
   const { data } = await api.post('/customer/orders/mine', { orderIds, businessId })
   return data
 }
+
+/** Public: payment methods a business accepts on its "scan to pay" page. */
+export async function fetchPayOptions(businessId) {
+  const { data } = await api.get(`/customer/pay/${encodeURIComponent(businessId)}`)
+  return data
+}

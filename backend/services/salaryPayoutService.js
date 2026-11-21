@@ -135,7 +135,7 @@ export async function checkSalaryPayoutStatus({ salaryPaymentId, businessId, bra
     await query(
       `UPDATE salary_payments
        SET status = $2, provider_status = $3, provider_payload = $4
-       WHERE id = $1 AND status = 'processing'`,
+       WHERE id = $1 AND status = 'processing' RETURNING id`,
       [salaryPaymentId, status, providerResult.providerStatus, JSON.stringify(providerResult.payload || {})]
     )
   }

@@ -391,7 +391,7 @@ router.post('/refunds', ...managerOwnerWaiter, async (req, res) => {
     const paymentRef = `REFUND-${refund.id}-${Date.now().toString(36).toUpperCase()}`
     await query(
       `INSERT INTO payments (order_id, business_id, branch_id, received_by, method, amount, reference, paid_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW()) RETURNING id`,
       [orderId, scope.businessId, scope.branchId, null, 'pos', Number(amount) || 0, paymentRef]
     )
     await logAudit({

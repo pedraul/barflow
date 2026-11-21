@@ -4,8 +4,49 @@ import { initiatePayment, verifyPayment } from '../services/paymentService.js'
 import { createOrderCore, addItemsToOrder } from '../services/orderService.js'
 import { logAudit, getClientIp } from '../utils/audit.js'
 import authMiddleware from '../middleware/authMiddleware.js'
+import { readPaymentMethods } from '../utils/paymentMethods.js'
+import { ensurePaymentMethodsColumn } from '../controllers/ownerController.js'
 
 const router = Router()
+
+/**
+ * GET /api/customer/pay/:businessId
+ * Public "scan to pay" details: the business name and the payment methods
+ * the owner enabled. Available only while QR payments are switched on.
+ */
+router.get('/pay/:businessId', async (req, res) => {
+  const { businessId } = req.params
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(businessId))) {
+    return res.status(404).json({ error: 'Payment page not found.' })
+  }
+  try {
+    await ensurePaymentMethodsColumn()
+    const { rows } = await query(
+      `SELECT ps.*, b.name AS business_name
+       FROM payment_settings ps
+       JOIN businesses b ON b.id = ps.business_id
+       WHERE ps.business_id = $1
+       LIMIT 1`,
+      [businessId]
+    )
+    const ps = rows[0]
+    const methods = ps ? readPaymentMethods(ps).filter((m) => m.enabled) : []
+    if (!ps || !ps.qr_payment_enabled || !methods.length) {
+      return res.status(404).json({ error: 'This business is not accepting QR payments right now.' })
+    }
+    res.set('Cache-Control', 'no-store')
+    res.json({
+      merchantName: ps.merchant_name || ps.business_name || 'BarFlow Business',
+      businessName: ps.business_name || '',
+      currency: 'RWF',
+      methods: methods.map(({ id, type, label, accountName, number, bankName, dialCode, note }) => ({
+        id, type, label, accountName, number, bankName, dialCode, note,
+      })),
+    })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
 
 /**
  * GET /api/customer/menu?table=5&businessId=xxx

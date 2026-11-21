@@ -20,22 +20,36 @@ async function isEmailNotificationsEnabled() {
   }
 }
 
-async function isNotificationEnabled(settingKey) {
+async function isNotificationEnabled(settingKey, businessId = null) {
+  // 1. Platform master switch (super admin).
   if (!(await isEmailNotificationsEnabled())) return false
   try {
+    // 2. Platform-wide switch for this notification type (super admin), if set.
     const { rows } = await query(
       `SELECT setting_value FROM platform_settings WHERE setting_key = $1 LIMIT 1`,
       [settingKey]
     )
-    if (rows.length) {
-      return rows[0].setting_value === 'true' || rows[0].setting_value === '1'
+    if (rows.length && !isOn(rows[0].setting_value)) return false
+
+    // 3. The business owner's own preference (Settings → Notifications).
+    if (businessId) {
+      const { rows: own } = await query(
+        `SELECT setting_value FROM system_settings
+         WHERE business_id = $1 AND setting_key = $2
+         ORDER BY updated_at DESC LIMIT 1`,
+        [businessId, settingKey]
+      )
+      if (own.length) return isOn(own[0].setting_value)
     }
+    // Not configured anywhere: notifications are on by default.
     return true
   } catch (e) {
     console.error(`Failed to check notification setting (${settingKey}):`, e.message)
     return true
   }
 }
+
+const isOn = (value) => value === true || value === 'true' || value === '1' || value === 1
 
 // ──────────────────────────────────────────────
 // Helper: record sent email in the database
@@ -108,7 +122,7 @@ async function sendAndRecord({ toEmail, toName, subject, text, html, notificatio
 // 1. Business Registration Confirmation (to owner)
 // ──────────────────────────────────────────────
 export async function sendRegistrationConfirmation({ businessName, ownerName, ownerEmail, businessId }) {
-  if (!(await isEmailNotificationsEnabled())) return false
+  if (!(await isNotificationEnabled('notify_registration', businessId))) return false
   const subject = `Welcome to BarFlow – ${businessName} Registration Confirmed`
   const text = `Hello ${ownerName || 'Business Owner'},
 
@@ -230,7 +244,7 @@ Please review and verify this business registration.`
 // 3. Subscription Activation Confirmation (to owner)
 // ──────────────────────────────────────────────
 export async function sendSubscriptionActivation({ businessName, ownerName, ownerEmail, planName, activationDate, expiryDate, amount, businessId }) {
-  if (!(await isEmailNotificationsEnabled())) return false
+  if (!(await isNotificationEnabled('notify_subscription_activation', businessId))) return false
   const subject = `Subscription Activated – ${planName} Plan for ${businessName}`
   const text = `Hello ${ownerName || 'Business Owner'},
 
@@ -345,7 +359,7 @@ The business account has been activated successfully.`
 // 5. Subscription Expiry Reminder (to owner)
 // ──────────────────────────────────────────────
 export async function sendExpiryReminder({ businessName, ownerName, ownerEmail, planName, expiryDate, daysRemaining, businessId }) {
-  if (!(await isEmailNotificationsEnabled())) return false
+  if (!(await isNotificationEnabled('notify_expiry_reminder', businessId))) return false
   const subject = `Subscription Expiry Reminder – ${daysRemaining} Day${daysRemaining !== 1 ? 's' : ''} Left`
   const text = `Hello ${ownerName || 'Business Owner'},
 
@@ -503,7 +517,7 @@ The BarFlow Team`
 // 6. Subscription Expired Notification (to owner)
 // ──────────────────────────────────────────────
 export async function sendSubscriptionExpired({ businessName, ownerName, ownerEmail, planName, expiryDate, businessId }) {
-  if (!(await isEmailNotificationsEnabled())) return false
+  if (!(await isNotificationEnabled('notify_subscription_expired', businessId))) return false
   const subject = `Subscription Expired – ${businessName}`
   const text = `Hello ${ownerName || 'Business Owner'},
 
@@ -553,7 +567,7 @@ The BarFlow Team`
 // 7. Subscription Renewal Confirmation (to owner)
 // ──────────────────────────────────────────────
 export async function sendRenewalConfirmation({ businessName, ownerName, ownerEmail, planName, newExpiryDate, amount, businessId }) {
-  if (!(await isEmailNotificationsEnabled())) return false
+  if (!(await isNotificationEnabled('notify_renewal_confirmation', businessId))) return false
   const subject = `Subscription Renewed – ${planName} Plan for ${businessName}`
   const text = `Hello ${ownerName || 'Business Owner'},
 
@@ -609,7 +623,7 @@ The BarFlow Team`
 // 8. Account Suspended/Deactivated Notification (to owner)
 // ──────────────────────────────────────────────
 export async function sendAccountSuspended({ businessName, ownerName, ownerEmail, reason, businessId }) {
-  if (!(await isNotificationEnabled('notify_account_suspended'))) return false
+  if (!(await isNotificationEnabled('notify_account_suspended', businessId))) return false
   const subject = `Account Suspended – ${businessName}`
   const text = `Hello ${ownerName || 'Business Owner'},
 
@@ -665,7 +679,7 @@ The BarFlow Team`
 // 9. Account Reactivated Notification (to owner)
 // ──────────────────────────────────────────────
 export async function sendAccountReactivated({ businessName, ownerName, ownerEmail, businessId }) {
-  if (!(await isNotificationEnabled('notify_account_reactivated'))) return false
+  if (!(await isNotificationEnabled('notify_account_reactivated', businessId))) return false
   const subject = `Account Reactivated – ${businessName}`
   const text = `Hello ${ownerName || 'Business Owner'},
 

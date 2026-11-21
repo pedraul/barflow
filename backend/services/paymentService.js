@@ -91,14 +91,14 @@ export async function initiatePayment({ orderId, method, customerPhone }) {
     const providerPayment = await requestMobileMoneyPayment({ method, reference, amount, phone })
     await query(
       `UPDATE payments SET provider = $2, provider_txn_id = $3, provider_status = $4
-       WHERE id = $1`,
+       WHERE id = $1 RETURNING id`,
       [paymentId, providerPayment.provider, providerPayment.providerTxnId, providerPayment.providerStatus]
     )
     await query('UPDATE orders SET customer_phone = $1 WHERE id = $2', [phone, order.id])
   } catch (error) {
     await query(
       `UPDATE payments SET provider_status = 'FAILED', provider_payload = $2
-       WHERE id = $1`,
+       WHERE id = $1 RETURNING id`,
       [paymentId, JSON.stringify({ error: error.message })]
     )
     throw error
@@ -149,7 +149,7 @@ async function completePayment(payment, providerStatus, providerPayload) {
   await query(
      `UPDATE payments
       SET paid_at = COALESCE(paid_at, NOW()), provider_status = $2, provider_payload = $3
-      WHERE id = $1`,
+      WHERE id = $1 RETURNING id`,
      [payment.id, providerStatus, JSON.stringify(providerPayload || {})]
   )
   return { verified: true, status: 'completed', receipt, smsSent: false }
@@ -176,7 +176,7 @@ export async function verifyPayment(paymentId) {
 
   const providerResult = await getMobileMoneyPaymentStatus(payment)
   await query(
-    `UPDATE payments SET provider_status = $2, provider_payload = $3 WHERE id = $1`,
+    `UPDATE payments SET provider_status = $2, provider_payload = $3 WHERE id = $1 RETURNING id`,
     [paymentId, providerResult.providerStatus, JSON.stringify(providerResult.payload || {})]
   )
   if (providerResult.status === 'completed') {

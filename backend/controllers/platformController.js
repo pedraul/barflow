@@ -775,7 +775,7 @@ export async function refundPayment(req, res) {
     const { rows: pay } = await query('SELECT * FROM platform_payments WHERE id = $1', [id])
     if (!pay.length) return res.status(404).json({ error: 'Payment not found.' })
     const p = pay[0]
-    await query('UPDATE platform_payments SET status = \'refunded\' WHERE id = $1', [id])
+    await query('UPDATE platform_payments SET status = \'refunded\' WHERE id = $1 RETURNING id', [id])
     await query(
       `INSERT INTO platform_refunds (payment_id, business_id, amount, reason, processed_by)
        VALUES ($1, $2, $3, $4, $5)`,
@@ -795,7 +795,7 @@ export async function settlePayment(req, res) {
     if (!pay.length) return res.status(404).json({ error: 'Payment not found.' })
     const p = pay[0]
     if (p.status === 'settled') return res.status(400).json({ error: 'Payment is already settled.' })
-    await query('UPDATE platform_payments SET status = \'settled\', paid_at = COALESCE(paid_at, NOW()) WHERE id = $1', [id])
+    await query('UPDATE platform_payments SET status = \'settled\', paid_at = COALESCE(paid_at, NOW()) WHERE id = $1 RETURNING id', [id])
     await logPlatformActivity({ req, actorName: req.user?.name, action: `Settled payment ${p.transaction_id || id}`, module: 'Payments' })
     res.json({ success: true })
   } catch (error) {
