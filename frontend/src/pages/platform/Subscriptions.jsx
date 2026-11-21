@@ -1,8 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useOwner } from '../../context/OwnerContext'
-import { AlertTriangle, Download, ArrowLeft } from 'lucide-react'
-import { usePreferences } from '../../context/PreferencesContext'
+import { usePreferences, stripIcons } from '../../context/PreferencesContext'
 
 const PLANS = [
   { id: 'annually', label: 'Annually', months: 12, hint: 'Full features, billed every 12 months' },
@@ -172,7 +171,7 @@ export default function Subscription() {
   )
 
   const notice = (text, type) => (
-    <div className={`p-3 rounded-lg text-sm font-medium border ${type === 'warn' ? 'bg-amber-50 border-amber-300 text-amber-800' : 'bg-emerald-50 border-emerald-300 text-emerald-800'}`}>{text}</div>
+    <div className={`p-3 rounded-lg text-sm font-medium border ${type === 'warn' ? 'bg-amber-50 border-amber-300 text-amber-800' : 'bg-emerald-50 border-emerald-300 text-emerald-800'}`}>{stripIcons(text)}</div>
   )
 
   return (
@@ -189,7 +188,7 @@ export default function Subscription() {
 
       {sub && !sub.isActive && (
         <div className="bg-amber-50 border border-amber-300 rounded-xl p-6">
-          <h2 className="text-amber-800 flex items-center gap-2 font-bold"><AlertTriangle size={18} /> {t('No active subscription')}</h2>
+          <h2 className="text-amber-800 flex items-center gap-2 font-bold">{t('No active subscription')}</h2>
           <p className="text-slate-600 mt-1 text-sm">{t('Your system features are currently locked. Choose a plan below and complete payment to restore access.')}</p>
         </div>
       )}
@@ -346,8 +345,8 @@ export default function Subscription() {
             <span className="text-slate-500 text-sm">{t('Status')}</span><strong className="text-slate-900 text-sm text-right">{paymentStatusLabel(receipt?.paymentStatus || sub?.paymentStatus || 'verified')}</strong>
           </div>
           <div className="flex flex-wrap justify-end gap-3 mt-6">
-            <button className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition inline-flex items-center gap-2 shadow-sm" onClick={downloadReceipt}><Download size={16} /> {t('Download Receipt')}</button>
-            <button className="text-slate-700 bg-white border border-slate-300 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-slate-100 transition inline-flex items-center gap-2" onClick={() => navigate('/settings')}><ArrowLeft size={16} /> {t('View in Settings')}</button>
+            <button className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition inline-flex items-center gap-2 shadow-sm" onClick={downloadReceipt}>{t('Download Receipt')}</button>
+            <button className="text-slate-700 bg-white border border-slate-300 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-slate-100 transition inline-flex items-center gap-2" onClick={() => navigate('/settings')}>{t('View in Settings')}</button>
           </div>
         </div>
       )}

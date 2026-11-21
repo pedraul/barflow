@@ -17,6 +17,7 @@ import OwnerSubscription from '../pages/owner/Subscription'
 import OwnerWithdraw from '../pages/owner/Withdraw'
 import OwnerTransfer from '../pages/owner/Transfer'
 import OwnerRevenue from '../pages/owner/Revenue'
+import OwnerStock from '../pages/owner/OwnerStock'
 import ManagerDashboard from '../pages/manager/Dashboard'
 import ManagerOrders from '../pages/manager/Orders'
 import ManagerStaff from '../pages/manager/Staff'
@@ -194,6 +195,16 @@ export default function AppRoutes() {
           <ProtectedRoute checkSubscription allow={['Owner']}>
             <OwnerLayout>
               <OwnerRevenue />
+            </OwnerLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/owner/stock"
+        element={
+          <ProtectedRoute checkSubscription allow={['Owner']}>
+            <OwnerLayout>
+              <OwnerStock />
             </OwnerLayout>
           </ProtectedRoute>
         }

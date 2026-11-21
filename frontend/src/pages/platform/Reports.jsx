@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react'
-import { BarChart3, Download, FileText, TrendingUp, CircleDollarSign, Building2, CheckCircle2, XCircle } from 'lucide-react'
 import { fetchPlatformReports, fetchPlatformStats } from '../../api/endpoints'
 import { usePreferences } from '../../context/PreferencesContext'
 
@@ -69,10 +68,10 @@ export default function Reports() {
   const maxReg = Math.max(1, ...(report?.growth || []).map((g) => g.registrations))
 
   const metrics = [
-    { title: t('Total Businesses'), value: stats?.totalBusinesses ?? 0, icon: <Building2 className="text-indigo-600" />, bg: 'bg-indigo-50' },
-    { title: t('Active Subscriptions'), value: stats?.activeSubscriptions ?? 0, icon: <CheckCircle2 className="text-emerald-600" />, bg: 'bg-emerald-50' },
-    { title: t('Expired'), value: stats?.expiredSubscriptions ?? 0, icon: <XCircle className="text-red-600" />, bg: 'bg-red-50' },
-    { title: t('Monthly Income'), value: formatCurr(report?.income?.thisMonth), icon: <CircleDollarSign className="text-blue-600" />, bg: 'bg-blue-50' },
+    { title: t('Total Businesses'), value: stats?.totalBusinesses ?? 0 },
+    { title: t('Active Subscriptions'), value: stats?.activeSubscriptions ?? 0 },
+    { title: t('Expired'), value: stats?.expiredSubscriptions ?? 0 },
+    { title: t('Monthly Income'), value: formatCurr(report?.income?.thisMonth) },
   ]
 
   return (
@@ -83,9 +82,9 @@ export default function Reports() {
           <p className="text-sm text-slate-500 mt-1">{t('Platform analytics and financials')}</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={exportPdf} className="px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg hover:bg-slate-50 inline-flex items-center gap-2"><FileText size={15} /> PDF</button>
-          <button onClick={exportExcel} className="px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg hover:bg-slate-50 inline-flex items-center gap-2"><Download size={15} /> Excel</button>
-          <button onClick={exportCsv} className="px-3 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 inline-flex items-center gap-2"><Download size={15} /> CSV</button>
+          <button onClick={exportPdf} className="px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg hover:bg-slate-50 inline-flex items-center gap-2">PDF</button>
+          <button onClick={exportExcel} className="px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg hover:bg-slate-50 inline-flex items-center gap-2">Excel</button>
+          <button onClick={exportCsv} className="px-3 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 inline-flex items-center gap-2">CSV</button>
         </div>
       </div>
 
@@ -96,7 +95,6 @@ export default function Reports() {
               <span className="text-[11px] font-bold tracking-wide text-slate-500 uppercase block">{m.title}</span>
               <p className="text-2xl font-black text-slate-900 tracking-tight">{m.value}</p>
             </div>
-            <div className={`p-2 rounded-lg ${m.bg} shrink-0`}>{m.icon}</div>
           </div>
         ))}
       </div>
@@ -111,7 +109,7 @@ export default function Reports() {
       {/* Growth chart */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
-          <div className="flex items-center gap-2 font-bold text-sm text-slate-900 border-b border-slate-100 pb-3 mb-4"><TrendingUp size={16} className="text-[#4F46E5]" /><span>{t('Revenue (last 6 months)')}</span></div>
+          <div className="flex items-center gap-2 font-bold text-sm text-slate-900 border-b border-slate-100 pb-3 mb-4"><span>{t('Revenue (last 6 months)')}</span></div>
           <div className="h-48 flex items-end justify-between gap-2">
             {(report?.growth || []).map((g, i) => (
               <div key={i} className="flex-1 flex flex-col items-center gap-2 group">
@@ -125,7 +123,7 @@ export default function Reports() {
         </div>
 
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
-          <div className="flex items-center gap-2 font-bold text-sm text-slate-900 border-b border-slate-100 pb-3 mb-4"><BarChart3 size={16} className="text-[#4F46E5]" /><span>{t('New Registrations')}</span></div>
+          <div className="flex items-center gap-2 font-bold text-sm text-slate-900 border-b border-slate-100 pb-3 mb-4"><span>{t('New Registrations')}</span></div>
           <div className="h-48 flex items-end justify-between gap-2">
             {(report?.growth || []).map((g, i) => (
               <div key={i} className="flex-1 flex flex-col items-center gap-2 group">
@@ -141,7 +139,7 @@ export default function Reports() {
 
       {/* Plan breakdown */}
       <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
-        <div className="flex items-center gap-2 font-bold text-sm text-slate-900 border-b border-slate-100 pb-3 mb-4"><BarChart3 size={16} className="text-[#4F46E5]" /><span>{t('Businesses by Plan')}</span></div>
+        <div className="flex items-center gap-2 font-bold text-sm text-slate-900 border-b border-slate-100 pb-3 mb-4"><span>{t('Businesses by Plan')}</span></div>
         <div className="space-y-3">
           {(report?.byPlan || []).length === 0 && <p className="text-sm text-slate-400">{t('No data.')}</p>}
           {(report?.byPlan || []).map((p) => {

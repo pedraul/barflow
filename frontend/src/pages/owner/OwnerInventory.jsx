@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from 'react'
-import { PackageSearch, AlertTriangle, BarChart3 } from 'lucide-react'
 import { usePreferences } from '../../context/PreferencesContext'
 
 export default function OwnerInventory({ inventory }) {

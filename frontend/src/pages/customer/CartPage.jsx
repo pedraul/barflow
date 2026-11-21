@@ -59,11 +59,9 @@ export default function CartPage() {
   if (displayOrder) {
     const order = displayOrder
     const destinationLabel = order.orderType === 'drinks' ? 'Bar' : 'Kitchen'
-    const destinationEmoji = order.orderType === 'drinks' ? '🍺' : '🍳'
     return (
       <div className="customer-cart-page" style={styles.container}>
         <div className="customer-order-confirmation" style={styles.successContainer}>
-          <div className="customer-order-confirmation-icon" style={styles.successIcon}>{destinationEmoji}</div>
           <span className="customer-order-number">{t("ORDER")}{' '}{order.orderNumber}</span>
           <h1 className="customer-order-confirmation-title" style={styles.successTitle}>
             {currentOrder ? t("Order Placed!") : 'Order Sent to ' + destinationLabel + '!'}
@@ -170,7 +168,6 @@ export default function CartPage() {
     return (
       <div className="customer-cart-page" style={styles.container}>
         <div style={styles.emptyContainer}>
-          <div style={styles.emptyIcon}>🛒</div>
           <h2 style={styles.emptyTitle}>{t("Your Cart is Empty")}</h2>
           <p style={styles.emptyText}>{t("Browse the menu and add some items!")}</p>
           <button
@@ -207,9 +204,7 @@ export default function CartPage() {
                   <div style={styles.itemImage}>
                     {item.imageUrl ? (
                       <img src={item.imageUrl} alt={item.name} style={styles.thumbImg} />
-                    ) : (
-                      <div style={styles.thumbPlaceholder}>🍽</div>
-                    )}
+                    ) : null}
                   </div>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontWeight: 700 }}>{item.name}</div>

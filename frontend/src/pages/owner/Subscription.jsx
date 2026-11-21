@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useOwner } from '../../context/OwnerContext'
-import { AlertTriangle, CheckCircle2, Download, ShieldCheck } from 'lucide-react'
 import { usePreferences } from '../../context/PreferencesContext'
 
 const PAYMENT_METHODS = [
@@ -80,7 +79,7 @@ export default function Subscription() {
         await load()
       } else if (result.status === 'failed') {
         setPending((current) => ({ ...current, status: 'failed' }))
-        setMessage(t('❌ The provider declined or could not complete this payment. Start a new payment to try again.'))
+        setMessage('❌ ' + t('❌ The provider declined or could not complete this payment. Start a new payment to try again.'))
       }
     } catch (e) {
       setMessage('❌ ' + (e.message || t('Unable to check provider payment status.')))
@@ -123,10 +122,10 @@ export default function Subscription() {
     setMessage('')
     try {
       if (!phoneNumber) {
-        return setMessage(t('❌ Phone number is required to receive the payment request.'))
+        return setMessage('❌ ' + t('❌ Phone number is required to receive the payment request.'))
       }
       if (!selectedPlan) {
-        return setMessage(t('❌ Select a subscription plan first.'))
+        return setMessage('❌ ' + t('❌ Select a subscription plan first.'))
       }
       const result = await selectSubscriptionPlan({
         plan: selectedPlan.name.toLowerCase(),
@@ -144,7 +143,7 @@ export default function Subscription() {
   const handleRenew = async (plan) => {
     setMessage('')
     try {
-      if (!phoneNumber) return setMessage(t('❌ Phone number is required to receive the payment request.'))
+      if (!phoneNumber) return setMessage('❌ ' + t('❌ Phone number is required to receive the payment request.'))
       const result = await selectSubscriptionPlan({
         plan: plan.name.toLowerCase(),
         planId: plan.id,
@@ -231,7 +230,6 @@ export default function Subscription() {
 
       {message && (
         <div role={isError ? 'alert' : 'status'} className={`sub-alert ${isError ? 'is-error' : 'is-ok'}`}>
-          {isError ? <AlertTriangle size={18} /> : <CheckCircle2 size={18} />}
           <span>{message.replace(/^[❌✅]\s*/u, '')}</span>
         </div>
       )}
@@ -240,7 +238,6 @@ export default function Subscription() {
       {sub && (
         <section className="sub-current" aria-label={t('Current subscription')}>
           <div className="sub-current-main">
-            <div className="sub-current-icon"><ShieldCheck size={22} /></div>
             <div className="min-w-0">
               <span className="sub-current-label">{t('Current plan')}</span>
               <div className="sub-current-plan">
@@ -269,7 +266,6 @@ export default function Subscription() {
 
       {sub && !sub.isActive && (
         <div className="sub-alert is-warn">
-          <AlertTriangle size={18} />
           <span>
             {sub.unpaidAccessGranted
               ? t('A platform administrator has granted access without payment. This is separate from a paid subscription.')
@@ -279,7 +275,6 @@ export default function Subscription() {
       )}
       {sub?.aboutToExpire && sub.isActive && (
         <div className="sub-alert is-warn">
-          <AlertTriangle size={18} />
           <span>{t('Your subscription expires soon. Renew now to avoid service interruption.')}</span>
         </div>
       )}
@@ -288,7 +283,7 @@ export default function Subscription() {
       <ol className="sub-stepper" aria-label={t('Progress')}>
         {steps.map((label, i) => (
           <li key={label} className={i < stepIndex ? 'is-done' : i === stepIndex ? 'is-current' : ''} aria-current={i === stepIndex ? 'step' : undefined}>
-            <span className="sub-step-dot">{i < stepIndex ? <CheckCircle2 size={14} /> : i + 1}</span>
+            <span className="sub-step-dot">{i + 1}</span>
             <span className="sub-step-label">{label}</span>
           </li>
         ))}
@@ -313,7 +308,6 @@ export default function Subscription() {
                     >
                       <span className="sub-tier-name">{plan.name}</span>
                       <span className="sub-tier-price">{formatCurr(plan.priceMonthly)}<small>{t('/month')}</small></span>
-                      <CheckCircle2 size={18} className="sub-tier-check" aria-hidden="true" />
                     </button>
                   )
                 })}
@@ -349,7 +343,7 @@ export default function Subscription() {
                     {savePercent > 0 && <span className="sub-save">{t('Save')} {savePercent}%</span>}
                     <ul className="sub-cycle-features">
                       {[...features, 'Automatic renewal reminders'].map((feature) => (
-                        <li key={feature}><CheckCircle2 size={15} aria-hidden="true" />{t(feature)}</li>
+                        <li key={feature}>{t(feature)}</li>
                       ))}
                     </ul>
                   </label>
@@ -358,7 +352,7 @@ export default function Subscription() {
             </div>
             <div className="sub-includes">
               {['All Core Features', '24/7 Support', 'Regular Updates', 'Secure & Reliable'].map((item) => (
-                <span key={item}><CheckCircle2 size={14} aria-hidden="true" />{t(item)}</span>
+                <span key={item}>{t(item)}</span>
               ))}
             </div>
           </section>
@@ -420,8 +414,6 @@ export default function Subscription() {
         <section className={`sub-card sub-pending is-${pending.status}`}>
           <div className="sub-pending-head">
             {pending.status === 'pending' && <span className="sub-spinner" aria-hidden="true" />}
-            {pending.status === 'completed' && <CheckCircle2 size={28} className="text-emerald-600" />}
-            {pending.status === 'failed' && <AlertTriangle size={28} className="text-rose-600" />}
             <div>
               <h2 className="sub-card-title m-0">
                 {pending.status === 'failed'
@@ -469,7 +461,6 @@ export default function Subscription() {
       {step === 2 && receipt && (
         <section className="sub-card sub-receipt">
           <div className="sub-receipt-head">
-            <CheckCircle2 size={40} className="text-emerald-500" />
             <h2>{t('Subscription payment confirmed')}</h2>
             <p className="sub-muted">{t('Your provider-confirmed payment activated access for this subscription period.')}</p>
           </div>
@@ -489,7 +480,7 @@ export default function Subscription() {
               {t('Back to plans')}
             </button>
             <button type="button" className="sub-btn-primary" onClick={downloadReceipt}>
-              <Download size={16} /> {t('Download receipt')}
+              {t('Download receipt')}
             </button>
           </div>
         </section>

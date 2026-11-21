@@ -1,5 +1,4 @@
 import React from 'react'
-import { QrCode, Smartphone } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useOwner } from '../context/OwnerContext'
 import QRCode from './QRCode'
@@ -25,10 +24,10 @@ export default function QRCodeDisplay() {
         <QRCode value={menuUrl} size={132} level="M" ariaLabel={t('QR code for CLIENT TABLE 1')} />
       </div>
       <div className="min-w-0">
-        <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-violet-700"><QrCode size={15} /> {t('CLIENT TABLE 1')}</span>
+        <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-violet-700">{t('CLIENT TABLE 1')}</span>
         <h2 className="font-bold text-slate-900 mt-1">{t('Scan to order')}</h2>
         <p className="text-xs leading-5 text-slate-500 mt-1">{t('Customers scan this code to open the menu for Table 1.')}</p>
-        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 mt-2"><Smartphone size={14} /> {t('Ready to scan')}</span>
+        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 mt-2">{t('Ready to scan')}</span>
       </div>
     </aside>
   )

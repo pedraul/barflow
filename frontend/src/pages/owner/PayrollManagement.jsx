@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useOwner } from '../../context/OwnerContext'
-import { usePreferences } from '../../context/PreferencesContext'
+import { usePreferences, stripIcons } from '../../context/PreferencesContext'
 
 export default function PayrollManagement() {
   const { t } = usePreferences()
@@ -85,7 +85,7 @@ export default function PayrollManagement() {
           background: message.startsWith('✅') ? '#d1fae5' : '#fee2e2',
           color: message.startsWith('✅') ? '#065f46' : '#991b1b',
           padding: '10px 14px', borderRadius: 8, fontSize: 13,
-        }}>{message}</div>
+        }}>{stripIcons(message)}</div>
       )}
 
       {/* Summary cards */}

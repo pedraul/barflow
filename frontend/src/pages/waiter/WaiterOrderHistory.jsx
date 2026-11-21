@@ -133,7 +133,6 @@ export default function WaiterOrderHistory() {
         <div className="emptyState" style={{ padding: '60px', textAlign: 'center', color: '#6c757d' }}>{t("Loading history...")}</div>
       ) : orders.length === 0 ? (
         <div className="emptyState" style={{ padding: '60px', textAlign: 'center', color: '#6c757d' }}>
-          <div style={{ fontSize: '48px', marginBottom: '12px' }}>📋</div>
           <h2 style={{ margin: '0 0 8px' }}>{t("No orders found")}</h2>
           <p>{t("Orders you create will appear here permanently.")}</p>
         </div>

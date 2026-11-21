@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { Search, ShieldCheck } from 'lucide-react'
 import { fetchStaffPermissions, updateStaffPermissions } from '../../api/endpoints'
 import { usePreferences } from '../../context/PreferencesContext'
 
@@ -85,7 +84,6 @@ export default function StaffAccess() {
       <div className="access-catalog">
         {catalog.map((p) => (
           <div key={p.key} className="access-catalog-card">
-            <span className="access-catalog-icon"><ShieldCheck size={16} /></span>
             <div className="min-w-0">
               <div className="access-catalog-title">
                 {t(p.label)}
@@ -101,7 +99,6 @@ export default function StaffAccess() {
       </p>
 
       <div className="access-search">
-        <Search size={16} aria-hidden="true" />
         <input
           type="search"
           value={search}

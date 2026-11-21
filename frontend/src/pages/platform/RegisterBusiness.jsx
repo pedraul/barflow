@@ -3,11 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { registerBusiness, fetchPlans } from '../../api/endpoints'
 import { useAuth } from '../../context/AuthContext'
 import { buildWorkspaceUrl } from '../../config/workspaceUrl'
-import {
-  Building2, LayoutDashboard, Briefcase, CreditCard, RefreshCw, BarChart3,
-  Users, ClipboardList, Settings, Menu, Bell, LogOut, Info, CheckCircle2,
-  Eye, EyeOff, UserPlus, ShieldAlert
-} from 'lucide-react'
+import { LayoutDashboard, Briefcase, CreditCard, RefreshCw, BarChart3, Users, ClipboardList, Settings, Menu } from 'lucide-react'
 import { PROVINCES, DISTRICTS_BY_PROVINCE } from '../../constants/locationOptions'
 import { usePreferences } from '../../context/PreferencesContext'
 
@@ -143,11 +139,6 @@ export default function RegisterBusiness() {
     return (
       <div className="flex min-h-screen bg-[#F8FAFC] text-[#0F172A] font-sans antialiased items-center justify-center p-4">
         <div className="bg-white rounded-2xl p-8 shadow-xl max-w-md w-full text-center">
-          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
           <h2 className="text-2xl font-bold text-slate-900 mb-2">{t('Business Registered!')}</h2>
           <p className="text-slate-600 mb-6">
             {t('Your business has been registered successfully. Your account will be reviewed by our team.')}
@@ -255,11 +246,10 @@ export default function RegisterBusiness() {
 
           <div className="flex items-center gap-6">
             <div className="relative cursor-pointer p-1.5 hover:bg-slate-50 rounded-full transition">
-              <Bell size={20} className="text-slate-600" />
               <span className="absolute top-1 right-1 bg-[#4F46E5] text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">3</span>
             </div>
             <button className="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-red-600 transition border-l pl-6 border-slate-200">
-              <LogOut size={16} /> {t('Logout')}
+              {t('Logout')}
             </button>
           </div>
         </header>
@@ -277,7 +267,6 @@ export default function RegisterBusiness() {
             {/* CARD ONE: Business Information */}
             <section className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs space-y-5">
               <div className="flex items-center gap-2.5 text-[#4F46E5] border-b border-slate-100 pb-3">
-                <div className="p-1.5 bg-[#4F46E5]/10 rounded-lg"><Building2 size={18} /></div>
                 <h2 className="font-bold text-sm text-slate-900">{t('Business Information')}</h2>
               </div>
 
@@ -398,7 +387,6 @@ export default function RegisterBusiness() {
             {/* CARD TWO: Initial Owner Account */}
             <section className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs space-y-5">
               <div className="flex items-center gap-2.5 text-[#4F46E5] border-b border-slate-100 pb-3">
-                <div className="p-1.5 bg-[#4F46E5]/10 rounded-lg"><UserPlus size={18} /></div>
                 <h2 className="font-bold text-sm text-slate-900">{t('Initial Owner Account')}</h2>
               </div>
 
@@ -429,7 +417,7 @@ export default function RegisterBusiness() {
                         title={t(showPassword ? 'Hide password' : 'Show password')}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                       >
-                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        {showPassword ? t('Hide') : t('Show')}
                       </button>
                     </div>
                   </div>
@@ -452,14 +440,13 @@ export default function RegisterBusiness() {
                         title={t(showConfirmPassword ? 'Hide password' : 'Show password')}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                       >
-                        {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        {showConfirmPassword ? t('Hide') : t('Show')}
                       </button>
                     </div>
                   </div>
                 </div>
 
                 <div className="col-span-12 md:col-span-4 bg-emerald-50/60 border border-emerald-100 text-emerald-800 rounded-lg p-3.5 flex items-start gap-2.5 text-xs font-medium">
-                  <CheckCircle2 size={16} className="text-emerald-600 shrink-0 mt-0.5" />
                   <p className="leading-relaxed">
                     {t('Password must be at least 8 characters long and include letters and numbers.')}
                   </p>
@@ -481,7 +468,6 @@ export default function RegisterBusiness() {
                 disabled={loading}
                 className="flex items-center gap-2 px-6 py-2.5 bg-[#4F46E5] hover:bg-indigo-700 text-white font-bold text-sm rounded-lg shadow-sm transition disabled:opacity-50"
               >
-                <Building2 size={16} />
                 {loading ? t('Registering...') : t('Register Business')}
               </button>
             </div>

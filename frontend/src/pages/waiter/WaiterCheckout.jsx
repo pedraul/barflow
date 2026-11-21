@@ -265,9 +265,7 @@ export default function WaiterCheckout() {
                 onClick={() => setSelectedMethod(m.id)}
                 className={`waiter-payment-option${selectedMethod === m.id ? ' is-selected' : ''}`}
               >
-                <span className="waiter-payment-icon">{m.icon}</span>
                 <span className="waiter-payment-name">{t(m.name)}<small>{m.id === 'cash' ? t("Pay at the counter") : m.id === 'qr' ? t('Scan with a payment app') : t('Approve a prompt on the customer phone')}</small></span>
-                {selectedMethod === m.id && <span style={{ marginLeft: 'auto', color: '#2d6a4f' }}>✓</span>}
               </button>
             ))}
           </div>
@@ -383,7 +381,6 @@ export default function WaiterCheckout() {
         </div>
 
         <section className="section-card" style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 48, marginBottom: 12 }}>📱</div>
           <p style={{ color: 'var(--text-3)', lineHeight: 1.6 }}>{paymentResult.message}</p>
 
           <div style={{ textAlign: 'left', margin: '20px auto', maxWidth: 320 }}>
@@ -440,7 +437,6 @@ export default function WaiterCheckout() {
       </div>
 
       <section className="section-card" style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
         <h2 style={{ margin: '0 0 4px' }}>{t("Payment successful")}</h2>
         <p style={{ color: 'var(--text-4)' }}>{t("Receipt")}{' '}{receipt?.receiptNumber}</p>
 

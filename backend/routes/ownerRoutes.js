@@ -39,6 +39,7 @@ import {
   getTransferLogs,
   getRevenue,
   getRevenueLogs,
+  getRevenueDetails,
   getQROrders,
   getWaiters,
   getWaiterOrders,
@@ -105,6 +106,7 @@ router.get('/transfer/logs', ...ownerOnly, getTransferLogs)
 // ──────────────────────────────────────────────
 router.get('/revenue', ...ownerOnly, getRevenue)
 router.get('/revenue/logs', ...ownerOnly, getRevenueLogs)
+router.get('/revenue/details', ...ownerOnly, getRevenueDetails)
 
 // ──────────────────────────────────────────────
 // 7. System Metrics & Export Data

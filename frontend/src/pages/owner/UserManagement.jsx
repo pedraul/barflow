@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useOwner } from '../../context/OwnerContext'
-import { Plus, Edit3, Trash2, Power, Key, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { usePreferences } from '../../context/PreferencesContext'
 
 const ROLES = ['manager', 'accountant', 'waiter', 'kitchen', 'bar', 'operator']
@@ -119,7 +119,7 @@ export default function UserManagement() {
             {branches.filter((branch) => branch.name?.toLowerCase() !== 'main branch').map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
           </select>
           <button onClick={openCreate} className="staff-registry-create flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition shadow-sm">
-            <Plus size={18} /> {t('Register New Employee')}
+            {t('Register New Employee')}
           </button>
         </div>
       </div>
@@ -155,12 +155,10 @@ export default function UserManagement() {
                   </td>
                   <td className="staff-registry-actions p-2">
                     <div className="flex items-center gap-2">
-                      <button onClick={() => openEdit(u)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition" title={t('Edit')}><Edit3 size={16} /></button>
-                      <button onClick={() => handleDelete(u)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition" title={t('Delete')}><Trash2 size={16} /></button>
-                      <button onClick={() => toggleStatus(u)} className={`p-1.5 rounded-lg transition ${u.isActive !== false ? 'text-amber-600 hover:bg-amber-50' : 'text-emerald-600 hover:bg-emerald-50'}`} title={u.isActive !== false ? t('Deactivate') : t('Activate')}>
-                        <Power size={16} />
-                      </button>
-                      <button onClick={() => setResetPwId(resetPwId === u.id ? null : u.id)} className="p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg transition" title={t('Reset password')}><Key size={16} /></button>
+                      <button onClick={() => openEdit(u)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition" title={t('Edit')}>{t('Edit')}</button>
+                      <button onClick={() => handleDelete(u)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition" title={t('Delete')}>{t('Delete')}</button>
+                      <button onClick={() => toggleStatus(u)} className={`p-1.5 rounded-lg transition ${u.isActive !== false ? 'text-amber-600 hover:bg-amber-50' : 'text-emerald-600 hover:bg-emerald-50'}`} title={u.isActive !== false ? t('Deactivate') : t('Activate')}>{u.isActive !== false ? t('Deactivate') : t('Activate')}</button>
+                      <button onClick={() => setResetPwId(resetPwId === u.id ? null : u.id)} className="p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg transition" title={t('Reset password')}>{t('Reset password')}</button>
                     </div>
                     {resetPwId === u.id && (
                       <div className="flex items-center gap-2 mt-2">

@@ -1,26 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Papa from 'papaparse'
-import {
-  Landmark,
-  BookOpen,
-  AlertTriangle,
-  CheckCircle2,
-  FileText,
-  CreditCard,
-  Upload,
-  Zap,
-  PlusCircle,
-  History,
-  Eye,
-  Edit2,
-  ChevronLeft,
-  ChevronRight,
-  Lightbulb,
-  Search,
-  X,
-  FileSpreadsheet
-} from 'lucide-react'
+import { X } from 'lucide-react'
 import { fetchReconciliationTransactions, createReconciliation, uploadBankStatement, createAdjustment } from '../../api/endpoints'
 import { usePreferences } from '../../context/PreferencesContext'
 
@@ -255,9 +236,6 @@ export default function ReconciliationDashboard() {
               <div className="text-2xl font-bold text-indigo-950 mt-1">{formatRWF(statementBalance)}</div>
               <div className="text-xs text-slate-400 mt-1">{t('As per bank statement')}</div>
             </div>
-            <div className="p-3 bg-indigo-50 rounded-full text-indigo-600">
-              <Landmark className="w-6 h-6" />
-            </div>
           </div>
 
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
@@ -268,9 +246,6 @@ export default function ReconciliationDashboard() {
               </div>
               <div className="text-2xl font-bold text-emerald-600 mt-1">{formatRWF(systemBalance)}</div>
               <div className="text-xs text-slate-400 mt-1">{t('As per system records')}</div>
-            </div>
-            <div className="p-3 bg-emerald-50 rounded-full text-emerald-600">
-              <BookOpen className="w-6 h-6" />
             </div>
           </div>
 
@@ -283,9 +258,6 @@ export default function ReconciliationDashboard() {
               <div className="text-2xl font-bold text-rose-600 mt-1">{formatRWF(difference)}</div>
               <div className="text-xs text-slate-400 mt-1">{t('Difference to reconcile')}</div>
             </div>
-            <div className="p-3 bg-rose-50 rounded-full text-rose-500">
-              <AlertTriangle className="w-6 h-6" />
-            </div>
           </div>
 
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
@@ -296,9 +268,6 @@ export default function ReconciliationDashboard() {
               </div>
               <div className="text-2xl font-bold text-indigo-950 mt-1">{matchedCount}</div>
               <div className="text-xs text-slate-400 mt-1">{t('Out of')} {totalItems} {t('items')}</div>
-            </div>
-            <div className="p-3 bg-purple-50 rounded-full text-indigo-600">
-              <CheckCircle2 className="w-6 h-6" />
             </div>
           </div>
         </div>
@@ -326,13 +295,12 @@ export default function ReconciliationDashboard() {
 
                 <div className="flex items-center gap-3">
                   <div className="relative">
-                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
                       placeholder={t('Search transactions...')}
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-9 pr-4 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 w-60"
+                      className="pl-3 pr-4 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 w-60"
                     />
                   </div>
 
@@ -408,13 +376,9 @@ export default function ReconciliationDashboard() {
                             <td className="p-2 text-center">{renderStatusBadge(item.status)}</td>
                             <td className="p-2 text-center">
                               <div className="flex items-center justify-center gap-2 text-slate-400">
-                                <button onClick={() => handleViewDetails(item)} className="hover:text-indigo-600 transition" title={t('View Details')}>
-                                  <Eye className="w-4 h-4" />
-                                </button>
+                                <button onClick={() => handleViewDetails(item)} className="hover:text-indigo-600 transition" title={t('View Details')}>{t('View')}</button>
                                 {item.status !== 'Matched' && (
-                                  <button onClick={() => handleEditItem(item)} className="hover:text-indigo-600 transition" title={t('Edit Item')}>
-                                    <Edit2 className="w-4 h-4" />
-                                  </button>
+                                  <button onClick={() => handleEditItem(item)} className="hover:text-indigo-600 transition" title={t('Edit Item')}>{t('Edit')}</button>
                                 )}
                               </div>
                             </td>
@@ -442,7 +406,7 @@ export default function ReconciliationDashboard() {
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
                 >
-                  <ChevronLeft className="w-4 h-4" />
+                  {t('Prev')}
                 </button>
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                   <button
@@ -458,7 +422,7 @@ export default function ReconciliationDashboard() {
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
                 >
-                  <ChevronRight className="w-4 h-4" />
+                  {t('Next')}
                 </button>
               </div>
             </div>
@@ -472,22 +436,18 @@ export default function ReconciliationDashboard() {
               <h3 className="font-bold text-slate-800 text-sm mb-4">{t('Reconciliation Controls')}</h3>
 
               <button onClick={() => setShowUploadModal(true)} className="w-full flex items-center justify-center gap-2 py-2.5 px-4 border border-indigo-200 text-indigo-600 rounded-lg text-sm font-semibold hover:bg-indigo-50 transition">
-                <Upload className="w-4 h-4" />
                 <span>{t('Upload Bank Statement')}</span>
               </button>
 
               <button onClick={handleAutoMatch} className="w-full flex items-center justify-center gap-2 py-2.5 px-4 border border-indigo-200 text-indigo-600 rounded-lg text-sm font-semibold hover:bg-indigo-50 transition">
-                <Zap className="w-4 h-4" />
                 <span>{t('Auto Match')}</span>
               </button>
 
               <button onClick={() => setShowAdjustmentModal(true)} className="w-full flex items-center justify-center gap-2 py-2.5 px-4 border border-indigo-200 text-indigo-600 rounded-lg text-sm font-semibold hover:bg-indigo-50 transition">
-                <PlusCircle className="w-4 h-4" />
                 <span>{t('Create Adjustment')}</span>
               </button>
 
               <button onClick={handleViewHistory} className="w-full flex items-center justify-center gap-2 py-2.5 px-4 border border-indigo-200 text-indigo-600 rounded-lg text-sm font-semibold hover:bg-indigo-50 transition">
-                <History className="w-4 h-4" />
                 <span>{t('Reconciliation History')}</span>
               </button>
             </div>
@@ -624,7 +584,6 @@ export default function ReconciliationDashboard() {
 
         {/* BOTTOM TIP BANNER */}
         <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4 flex items-center gap-3 text-indigo-900 text-xs">
-          <Lightbulb className="w-4 h-4 text-indigo-600 shrink-0" />
           <span>
             <strong>{t('Tip:')}</strong> {t('Upload your bank statement and click "Auto Match" to automatically match transactions. Then review unmatched items and create adjustments if necessary.')}
           </span>
@@ -642,7 +601,6 @@ export default function ReconciliationDashboard() {
               </div>
               <div className="p-5 space-y-4">
                 <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center">
-                  <FileSpreadsheet className="w-10 h-10 text-indigo-400 mx-auto mb-3" />
                   <p className="text-sm text-slate-600 mb-3">{t('Upload a CSV file with columns: Date, Description, Reference, Type, Amount')}</p>
                   <input
                     ref={fileInputRef}
@@ -669,7 +627,7 @@ export default function ReconciliationDashboard() {
                         <tr className="text-slate-500">
                           <th className="p-1">{t('Date')}</th>
                           <th className="p-1">{t('Description')}</th>
-                          <th className="p-1">{t('Amount')}</th>
+                          <th className="p-1 text-right">{t('Amount')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">

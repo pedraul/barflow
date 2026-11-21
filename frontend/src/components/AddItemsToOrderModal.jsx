@@ -3,8 +3,6 @@ import { fetchMenu } from '../api/endpoints'
 import { addItemsToExistingOrder } from '../api/endpoints'
 import { useAuth } from '../context/AuthContext'
 import { usePreferences } from '../context/PreferencesContext'
-import { ArrowLeft, Search, ShoppingCart } from 'lucide-react'
-
 const money = (value) => `${Number(value || 0).toLocaleString('en-RW')} RWF`
 
 export default function AddItemsToOrderModal({ order, onClose, onSuccess }) {
@@ -124,12 +122,11 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
         <form onSubmit={handleSubmit}>
           {/* Search bar (always visible) */}
           <div style={{ position: 'relative', marginBottom: 12 }}>
-            <Search size={16} style={{ position: 'absolute', left: 10, top: 10, color: '#94a3b8' }} />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={selectedCategory ? `${t('Search in')} ${selectedCategory}...` : t('Search all items...')}
-              style={{ width: '100%', padding: '8px 10px 8px 34px', borderRadius: 6, border: '1px solid #cbd5e0', fontSize: 14, boxSizing: 'border-box' }}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #cbd5e0', fontSize: 14, boxSizing: 'border-box' }}
             />
           </div>
 
@@ -143,7 +140,7 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
                   fontSize: 13, fontWeight: 600, cursor: 'pointer', marginBottom: 10,
                 }}
               >
-                <ArrowLeft size={16} /> {t('Back to categories')}
+                {t('Back to categories')}
               </button>
               <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 4px' }}>{selectedCategory}</h3>
               <p style={{ fontSize: 12, color: '#64748b', marginBottom: 10 }}>{t('Select the items to add to this order')}</p>
@@ -264,7 +261,7 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
               fontSize: 14, fontWeight: 700,
             }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <ShoppingCart size={16} /> {additionsCount} {t('item(s) to add')}
+                {additionsCount} {t('item(s) to add')}
               </span>
               <span style={{ color: '#d97706' }}>{money(totalAdditions)}</span>
             </div>

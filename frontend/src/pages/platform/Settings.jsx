@@ -1,8 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import {
-  Save, Globe, Info, CreditCard, Wallet, Mail, MessageSquare, Bell,
-  ShieldCheck, Database, ClipboardList, Plug, QrCode, ChevronRight, ChevronDown, ArrowLeft
-} from 'lucide-react'
+import { Globe, Info, CreditCard, Wallet, Mail, MessageSquare, Bell, ShieldCheck, Database, ClipboardList, Plug, QrCode } from 'lucide-react'
 import { fetchPlatformSettings, updatePlatformSettings } from '../../api/endpoints'
 import { useToast } from '../../context/ToastContext'
 import { usePreferences } from '../../context/PreferencesContext'
@@ -119,7 +116,7 @@ export default function Settings() {
           <p className="text-sm text-slate-500 mt-1">{t('Configure the BarFlow platform')}</p>
         </div>
         <button onClick={save} disabled={saving} className="px-5 py-2.5 text-sm bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition inline-flex items-center gap-2">
-          <Save size={16} /> {saving ? t('Saving...') : t('Save Changes')}
+          {saving ? t('Saving...') : t('Save Changes')}
         </button>
       </div>
 

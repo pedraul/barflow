@@ -4,8 +4,6 @@ import * as api from '../../api/endpoints'
 import { useAuth } from '../../context/AuthContext'
 import { usePreferences } from '../../context/PreferencesContext'
 import { buildWorkspaceUrl } from '../../config/workspaceUrl'
-import { ShieldCheck, Info, RotateCw, HelpCircle, Lock, Mail, Smartphone } from 'lucide-react'
-
 export default function TwoFactorVerify() {
   const [searchParams] = useSearchParams()
   const tempToken = searchParams.get('tempToken')
@@ -180,13 +178,6 @@ export default function TwoFactorVerify() {
       <div className="bg-white rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.04)] w-full max-w-[480px] p-8 md:p-10 text-center flex flex-col items-center">
         
         <div className="flex items-center gap-2 mb-8">
-          <div className="text-[#5B41DE]">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M8 22h8" />
-              <path d="M12 11v11" />
-              <path d="m19 3-7 8-7-8Z" />
-            </svg>
-          </div>
           <div className="flex flex-col items-start leading-tight">
             <span className="font-bold text-xl tracking-tight text-[#1E1B4B]">
               Bar<span className="text-[#5B41DE]">Flow</span>
@@ -194,25 +185,6 @@ export default function TwoFactorVerify() {
             <span className="text-[10px] text-gray-400 font-medium tracking-wide">
               {t('Smart Bar Management')}
             </span>
-          </div>
-        </div>
-
-        <div className="relative flex items-center justify-center w-48 h-28 mb-6">
-          <div className="absolute inset-0 border border-dashed border-gray-200 rounded-full scale-100 opacity-60"></div>
-          <div className="absolute inset-2 border border-dashed border-gray-200 rounded-full scale-90 opacity-40"></div>
-
-          <div className="absolute top-0 bg-gray-50 border border-gray-100 rounded-full p-1.5 shadow-sm text-gray-400 text-xs font-bold">
-            G
-          </div>
-          <div className="absolute left-2 top-1/2 -translate-y-1/2 bg-gray-50 border border-gray-100 rounded-full p-1.5 shadow-sm text-gray-400">
-            <Mail className="w-3.5 h-3.5" />
-          </div>
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 bg-gray-50 border border-gray-100 rounded-full p-1.5 shadow-sm text-gray-400">
-            <Smartphone className="w-3.5 h-3.5" />
-          </div>
-
-          <div className="relative z-10 bg-gradient-to-br from-[#6D53F2] to-[#5136DC] p-4 rounded-[22px] shadow-lg shadow-indigo-200">
-            <Lock className="w-8 h-8 text-white" />
           </div>
         </div>
 
@@ -256,7 +228,6 @@ export default function TwoFactorVerify() {
             className="w-full bg-[#5B41DE] hover:bg-[#4C33CF] active:scale-[0.99] text-white font-medium py-3.5 rounded-xl shadow-md shadow-indigo-100 transition-all flex items-center justify-center gap-2 mb-6 disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={loading || otp.some((v) => v === '')}
           >
-            <ShieldCheck className="w-5 h-5" />
             <span>{loading ? t('Verifying...') : t('Verify')}</span>
           </button>
         </form>
@@ -275,7 +246,6 @@ export default function TwoFactorVerify() {
             timer > 0 ? 'text-gray-400 cursor-not-allowed' : 'text-[#5B41DE] hover:underline'
           }`}
         >
-          <RotateCw className="w-4 h-4" />
           <span>{t('Resend Code')}</span>
         </button>
 
@@ -286,7 +256,6 @@ export default function TwoFactorVerify() {
       </div>
 
       <div className="mt-8 flex items-center gap-2 text-xs text-gray-500 font-normal">
-        <HelpCircle className="w-4 h-4 text-gray-400" />
         <span>{t("Didn't receive the code? Check your spam folder or try again.")}</span>
       </div>
     </div>

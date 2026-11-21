@@ -137,7 +137,6 @@ export default function WaiterOrders() {
         <div className="emptyState" style={{ padding: '60px', textAlign: 'center', color: '#6c757d' }}>{t("Loading orders...")}</div>
       ) : orders.length === 0 ? (
         <div className="emptyState" style={{ padding: '60px', textAlign: 'center', color: '#6c757d' }}>
-          <div style={{ fontSize: '48px', marginBottom: '12px' }}>📋</div>
           <h2 style={{ margin: '0 0 8px' }}>{t("No orders yet")}</h2>
           <p>{t("Create a new order from the New Order page.")}</p>
         </div>

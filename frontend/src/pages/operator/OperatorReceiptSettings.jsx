@@ -2,10 +2,7 @@ import { usePreferences } from '../../context/PreferencesContext'
 import BackButton from '../../components/BackButton'
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import {
-  ChefHat, CheckCircle2, FileText, Printer, GlassWater,
-  FileSpreadsheet, User, LogOut, Menu, Save, ArrowLeft
-} from 'lucide-react'
+import { ChefHat, CheckCircle2, FileText, Printer, GlassWater, FileSpreadsheet, User, LogOut } from 'lucide-react'
 import { fetchReceiptSettings, saveReceiptSettings } from '../../api/endpoints'
 
 const DEFAULT_SETTINGS = {
@@ -265,7 +262,6 @@ export default function OperatorReceiptSettings() {
         <main className="operator-main flex-1 overflow-y-auto p-6">
           {saved && (
             <div className="mb-4 flex items-center gap-3 bg-emerald-50 border border-emerald-300 rounded-xl px-5 py-4">
-              <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-lg">✓</div>
               <div>
                 <p className="font-bold text-emerald-800 text-sm">{t("Receipt settings saved successfully!")}</p>
                 <p className="text-xs text-emerald-600 mt-0.5">{t("Your changes will be applied to all printed receipts.")}</p>
@@ -284,7 +280,6 @@ export default function OperatorReceiptSettings() {
                 disabled={saving}
                 className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-lg px-5 py-2.5 shadow-sm transition disabled:opacity-50"
               >
-                <Save size={16} />
                 {saving ? t("Saving...") : t("Save Settings")}
               </button>
             </div>
@@ -340,7 +335,7 @@ export default function OperatorReceiptSettings() {
               onClick={() => navigate('/operator/receipts/printed')}
               className="flex items-center gap-2 border border-slate-200 text-slate-600 font-bold text-sm bg-white rounded-lg px-5 py-2.5 hover:bg-slate-50 shadow-sm transition"
             >
-              <ArrowLeft size={16} />{t("Back to Receipts")}</button>
+              {t("Back to Receipts")}</button>
           </div>
         </main>
       </div>

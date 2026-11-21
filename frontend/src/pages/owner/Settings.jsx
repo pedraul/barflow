@@ -4,13 +4,9 @@ import { useOwner } from '../../context/OwnerContext'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { getTwoFactorSettings, updateTwoFactorSettings } from '../../api/endpoints'
 import QRCode from '../../components/QRCode'
-import {
-  User, Database, CreditCard, ShieldCheck, Lock, RefreshCw,
-  Settings, HelpCircle, LogOut, FileText,
-  Menu, Bell, ChevronDown, Save, Wallet, Printer, Mail, ArrowLeft
-} from 'lucide-react'
+import { User, Database, CreditCard, ShieldCheck, Lock, RefreshCw, Settings, FileText, Menu, Wallet, Mail } from 'lucide-react'
 import AuditLogViewer from './AuditLogViewer'
-import { usePreferences } from '../../context/PreferencesContext'
+import { usePreferences, stripIcons } from '../../context/PreferencesContext'
 
 const SETTINGS_GROUPS = [
   {
@@ -216,7 +212,7 @@ export default function SystemSettings() {
 
   const handleRestore = async () => {
     setRestoreMsg('')
-    if (!restoreId) return setRestoreMsg(t('❌ Select a backup to restore.'))
+    if (!restoreId) return setRestoreMsg('❌ ' + t('❌ Select a backup to restore.'))
     try {
       const res = await restoreBackup(restoreId)
       setRestoreMsg('✅ ' + res.message)
@@ -353,8 +349,8 @@ export default function SystemSettings() {
         {/* 2. TOP BANNER HEADER */}
         <header className="owner-settings-header h-16 bg-white border-b border-slate-200 flex items-center justify-between px-3 sm:px-6 shrink-0 shadow-xs">
           <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-            <button onClick={goBack} className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition" title={t('Back to Dashboard')}>
-              <ArrowLeft size={22} />
+            <button onClick={goBack} className="h-10 px-3 text-sm font-semibold flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition" title={t('Back to Dashboard')}>
+              {t('Back')}
             </button>
             <button type="button" className="owner-settings-menu text-slate-600 hover:text-slate-900 transition">
               <Menu size={20} />
@@ -372,20 +368,15 @@ export default function SystemSettings() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-            <button onClick={goBack} className="hidden sm:flex w-10 h-10 items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition" title={t('Back to Dashboard')}>
-              <ArrowLeft size={22} />
+            <button onClick={goBack} className="hidden sm:flex h-10 px-3 text-sm font-semibold items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition" title={t('Back to Dashboard')}>
+              {t('Back')}
             </button>
-            <div className="relative cursor-pointer p-1.5 hover:bg-slate-100 rounded-full transition">
-              <Bell size={20} className="text-slate-600" />
-              <span className="absolute top-1.5 right-1.5 bg-red-500 w-2 h-2 rounded-full"></span>
-            </div>
             <div className="flex items-center gap-2.5 border-l pl-4 border-slate-200 cursor-pointer group">
               <div className="w-8 h-8 rounded-full bg-[#0066FF] text-white flex items-center justify-center font-bold text-xs shadow-sm">{t('OL')}</div>
               <div className="text-left hidden sm:block">
                 <p className="text-xs font-bold text-slate-900 leading-tight">{t('Owner')}</p>
                 <p className="text-[10px] text-slate-400 font-medium">{t('Super Admin')}</p>
               </div>
-              <ChevronDown size={14} className="text-slate-400 group-hover:text-slate-600 transition" />
             </div>
           </div>
         </header>
@@ -418,7 +409,7 @@ export default function SystemSettings() {
           {/* RIGHT COLUMN: Settings Viewport Canvas */}
           <div className="owner-settings-panel flex-1 w-full bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden min-w-0">
             {message && (
-              <div className={`m-6 p-3 rounded-lg text-sm font-medium border ${message.startsWith('❌') ? 'bg-red-50 border-red-300 text-red-800' : 'bg-emerald-50 border-emerald-300 text-emerald-800'}`}>{message}</div>
+              <div className={`m-6 p-3 rounded-lg text-sm font-medium border ${message.startsWith('❌') ? 'bg-red-50 border-red-300 text-red-800' : 'bg-emerald-50 border-emerald-300 text-emerald-800'}`}>{stripIcons(message)}</div>
             )}
 
             {activeSubTab === 'notifications' ? (
@@ -450,7 +441,7 @@ export default function SystemSettings() {
                       flash(t('✅ Email notification preferences saved.'))
                     } catch (e) { flash('❌ ' + e.message) }
                   }} className="flex items-center gap-2 bg-[#0066FF] hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm transition shadow-sm">
-                    <Save size={16} /> {t('Save Preferences')}
+                    {t('Save Preferences')}
                   </button>
                 </div>
               </div>
@@ -482,7 +473,6 @@ export default function SystemSettings() {
                         <option value="USD">{t('USD (US Dollar)')}</option>
                         <option value="EUR">{t('EUR (Euro)')}</option>
                       </select>
-                      <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     </div>
                   </div>
                   <Field label={t('Tax Rate (%)')} name="taxRate" value={data.business.taxRate} onChange={(v) => handleBusinessChange('taxRate', parseFloat(v) || 0)} />
@@ -496,7 +486,7 @@ export default function SystemSettings() {
                     <Field label={t('Branch Name')} value={newBranch.name} onChange={(value) => setNewBranch({ ...newBranch, name: value })} placeholder={t('Downtown Branch')} />
                     <Field label={t('Address')} value={newBranch.address} onChange={(value) => setNewBranch({ ...newBranch, address: value })} placeholder={t('Branch location')} />
                     <button type="button" onClick={handleCreateBranch} className="flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-700 text-white font-bold px-4 py-2.5 rounded-lg text-sm transition">
-                      <Save size={16} /> {t('Add Branch')}
+                      {t('Add Branch')}
                     </button>
                   </div>
                   <div className="space-y-2">
@@ -521,7 +511,7 @@ export default function SystemSettings() {
                 <div className="border-t border-slate-100 pt-4"></div>
                 <div className="flex justify-end pt-2">
                   <button type="submit" className="flex items-center gap-2 bg-[#0066FF] hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm transition shadow-sm">
-                    <Save size={16} /> {t('Save Changes')}
+                    {t('Save Changes')}
                   </button>
                 </div>
               </form>
@@ -538,13 +528,12 @@ export default function SystemSettings() {
                         <option value="full">{t('Full Backup')}</option>
                         <option value="partial">{t('File / Partial Backup')}</option>
                       </select>
-                      <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     </div>
                   </div>
                 </div>
                 <div className="flex justify-end">
                   <button onClick={handleTriggerBackup} disabled={loading} className="flex items-center gap-2 bg-[#0066FF] hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm transition shadow-sm disabled:opacity-50">
-                    <Database size={16} /> {t('Create Backup')}
+                    {t('Create Backup')}
                   </button>
                 </div>
 
@@ -558,12 +547,11 @@ export default function SystemSettings() {
                         <option key={b.id} value={b.id}>{b.backupName} · {b.backupType} · {new Date(b.createdAt).toLocaleString()}</option>
                       ))}
                     </select>
-                    <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                   </div>
                   <button onClick={handleRestore} disabled={loading} className="text-amber-800 border border-amber-300 px-4 py-2.5 rounded-lg font-semibold text-sm hover:bg-amber-50 transition disabled:opacity-50">{t('Restore Selected')}</button>
                 </div>
                 {restoreMsg && (
-                  <div className={`p-3 rounded-lg text-sm font-medium border ${restoreMsg.startsWith('❌') ? 'bg-red-50 border-red-300 text-red-800' : 'bg-emerald-50 border-emerald-300 text-emerald-800'}`}>{restoreMsg}</div>
+                  <div className={`p-3 rounded-lg text-sm font-medium border ${restoreMsg.startsWith('❌') ? 'bg-red-50 border-red-300 text-red-800' : 'bg-emerald-50 border-emerald-300 text-emerald-800'}`}>{stripIcons(restoreMsg)}</div>
                 )}
 
                 <SectionTitle title={t('BACKUP HISTORY')} subtitle={t('Previously saved backups.')} />
@@ -613,7 +601,6 @@ export default function SystemSettings() {
                         <option value="true">{t('Enabled')}</option>
                         <option value="false">{t('Disabled')}</option>
                       </select>
-                      <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     </div>
                   </div>
                   <Field label={t('Alert Before Expiry (days)')} value={data.settings.alert_before_expiry_days ?? 7} readOnly />
@@ -650,7 +637,7 @@ export default function SystemSettings() {
                 </div>
                 <div className="flex justify-end">
                   <button onClick={handleSavePermissions} className="flex items-center gap-2 bg-[#0066FF] hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm transition shadow-sm">
-                    <Save size={16} /> {t('Save Permissions')}
+                    {t('Save Permissions')}
                   </button>
                 </div>
               </div>
@@ -684,7 +671,6 @@ export default function SystemSettings() {
                              <option value="sms">{t('SMS')}</option>
                              <option value="authenticator">{t('Authenticator App')}</option>
                            </select>
-                           <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                          </div>
                        </div>
                        <div className="space-y-1.5">
@@ -694,21 +680,20 @@ export default function SystemSettings() {
                              <option value="platform">{t('Platform (all businesses)')}</option>
                              <option value="business">{t('This Business Only')}</option>
                            </select>
-                           <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                          </div>
                        </div>
                      </>
                    )}
                    <div className="flex justify-end pt-2">
                      <button onClick={handleSaveTwoFactor} className="flex items-center gap-2 bg-[#0066FF] hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm transition shadow-sm">
-                       <Save size={16} /> {t('Save 2FA Settings')}
+                       {t('Save 2FA Settings')}
                      </button>
                    </div>
                   </div>
                   {twoFactor.isEnabled && (
                     <div className="flex justify-end pt-2">
                       <button onClick={handleSaveTwoFactor} className="flex items-center gap-2 bg-[#0066FF] hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm transition shadow-sm">
-                        <Save size={16} /> {t('Save 2FA Settings')}
+                        {t('Save 2FA Settings')}
                       </button>
                     </div>
                   )}
@@ -716,7 +701,7 @@ export default function SystemSettings() {
 
                 <div className="flex justify-end">
                   <button onClick={handleSaveSecurity} className="flex items-center gap-2 bg-[#0066FF] hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm transition shadow-sm">
-                    <Save size={16} /> {t('Save Security Settings')}
+                    {t('Save Security Settings')}
                   </button>
                 </div>
               </div>
@@ -757,7 +742,7 @@ export default function SystemSettings() {
                     </div>
                     <div className="flex justify-end">
                       <button onClick={handleSavePaymentSettings} disabled={loading} className="flex items-center gap-2 bg-[#0066FF] hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm transition shadow-sm disabled:opacity-50">
-                        <Save size={16} /> {t('Save Payment Settings')}
+                        {t('Save Payment Settings')}
                       </button>
                     </div>
 
@@ -774,7 +759,7 @@ export default function SystemSettings() {
                             <p className="text-xs text-slate-500 mt-1">{t('QR Payment Enabled')}</p>
                           </div>
                           <button onClick={() => window.print()} className="flex items-center gap-2 border border-slate-300 text-slate-700 font-semibold px-4 py-2 rounded-lg text-sm hover:bg-slate-50 transition">
-                            <Printer size={16} /> {t('Print QR Code')}
+                            {t('Print QR Code')}
                           </button>
                         </div>
                       ) : (

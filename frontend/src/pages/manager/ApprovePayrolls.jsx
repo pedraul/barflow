@@ -88,7 +88,7 @@ export default function ApprovePayrolls() {
              ))}</tbody>
            </table></div>
         ) : <p>{t('No pending payrolls.')} <Link to="/manager/transfer">{t('Back')}</Link></p>}
-        {msg && <p className="creation-success"><span>✓</span>{msg}</p>}
+        {msg && <p className="creation-success">{msg}</p>}
       </section>
     </div>
   )

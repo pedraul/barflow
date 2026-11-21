@@ -604,6 +604,18 @@ const platformTranslations = {
   },
 }
 
+// Emoji and symbol glyphs used as decorative icons (✅ ❌ ⚠ 🔒 ✓ ▶ ↩ ➡ …).
+const ICON_GLYPHS = /(?:[\p{Extended_Pictographic}✓✔▶↩➡➕](?:️|‍[\p{Extended_Pictographic}♀♂])*)+\s*/gu
+
+/** Removes icon-like glyphs from user-facing text. */
+export function stripIcons(text) {
+  if (typeof text !== 'string') return text
+  ICON_GLYPHS.lastIndex = 0
+  if (!ICON_GLYPHS.test(text)) return text
+  ICON_GLYPHS.lastIndex = 0
+  return text.replace(ICON_GLYPHS, '').replace(/\s{2,}/g, ' ').trim()
+}
+
 export function PreferencesProvider({ children }) {
   const [theme, setTheme] = useState(() => {
     try { return localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light' } catch (error) {
@@ -636,7 +648,7 @@ export function PreferencesProvider({ children }) {
     }
   }, [language])
 
-  const t = useCallback((text) => (
+  const t = useCallback((text) => stripIcons(
     platformTranslations[language]?.[text]
     || translations[language]?.[text]
     || sharedTranslations[language]?.[text]

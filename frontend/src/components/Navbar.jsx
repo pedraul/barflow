@@ -1,6 +1,5 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { Search, User, LogOut } from 'lucide-react'
 import { usePreferences } from '../context/PreferencesContext'
 
 export default function Navbar({ user, onLogout }) {
@@ -21,9 +20,7 @@ export default function Navbar({ user, onLogout }) {
             placeholder={t('Search products, orders, users...')}
             aria-label={t('Search')}
           />
-          <button type="submit" aria-label={t('Search')}>
-            <Search size={18} />
-          </button>
+          <button type="submit" aria-label={t('Search')}>{t('Search')}</button>
         </form>
 
         <nav className="amazon-actions">
@@ -35,13 +32,11 @@ export default function Navbar({ user, onLogout }) {
                 onClick={onLogout}
                 title={t('Logout')}
               >
-                <LogOut size={20} />
                 <span className="amazon-action-text">{t('Logout')}</span>
               </button>
             </>
           ) : (
             <Link to="/login" className="amazon-action">
-              <User size={20} />
               <span className="amazon-action-text">{t('Sign In')}</span>
             </Link>
           )}

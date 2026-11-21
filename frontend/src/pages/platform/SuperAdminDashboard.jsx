@@ -1,16 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import {
-  LayoutDashboard, Briefcase, PlusCircle, RefreshCw, CreditCard,
-  Users, BarChart3, ClipboardList, Settings, LogOut,
-  Menu, ChevronDown, Building2, CheckCircle2, XCircle,
-  Clock, Ban, CalendarDays, Plus, FileText, ShieldAlert,
-  HardDriveDownload, ArrowLeft
-} from 'lucide-react'
+import { LayoutDashboard, Briefcase, PlusCircle, RefreshCw, CreditCard, Users, BarChart3, Settings, LogOut, Menu, HardDriveDownload, X } from 'lucide-react'
 import { fetchPlatformStats, fetchBusinesses, fetchPlatformReports, fetchAdmins, createAdmin } from '../../api/endpoints'
 import { useToast } from '../../context/ToastContext'
-import { usePreferences } from '../../context/PreferencesContext'
+import { usePreferences, stripIcons } from '../../context/PreferencesContext'
 
 const CURRENCY = 'RWF'
 const formatCurr = (v) => new Intl.NumberFormat('en-RW', { style: 'currency', currency: CURRENCY, minimumFractionDigits: 0 }).format(v || 0)
@@ -152,12 +146,12 @@ export default function SuperAdminDashboard() {
   const expiringSoon = Number(stats?.expiringSoon || 0)
 
   const metrics = [
-    { title: t('Total Businesses'), value: String(total), trend: `${verified} ${t('verified')}`, trendType: 'up', icon: <Building2 className="text-indigo-600" />, bg: 'bg-indigo-50', to: '/admin/businesses' },
-    { title: t('Active Subscriptions'), value: String(activeSubs), trend: t('Currently active'), trendType: 'up', icon: <CheckCircle2 className="text-emerald-600" />, bg: 'bg-emerald-50', to: '/admin/businesses?status=active' },
-    { title: t('Expired Subscriptions'), value: String(expiredSubs), trend: t('Needs attention'), trendType: 'down', icon: <XCircle className="text-rose-600" />, bg: 'bg-rose-50', to: '/admin/businesses?status=subscription%20inactive' },
-    { title: t('Awaiting Verification'), value: String(pendingVerification), trend: t('Needs your review'), trendType: 'neutral', icon: <Clock className="text-amber-500" />, bg: 'bg-amber-50', to: '/admin/businesses?status=pending' },
-    { title: t('Suspended Businesses'), value: String(suspended), trend: t('Currently suspended'), trendType: 'neutral', icon: <Ban className="text-red-500" />, bg: 'bg-red-50', to: '/admin/businesses?status=suspended' },
-    { title: t('Expiring in 7 Days'), value: String(expiringSoon), trend: t('Action required'), trendType: 'neutral', icon: <CalendarDays className="text-blue-500" />, bg: 'bg-blue-50', to: '/admin/businesses?status=active' },
+    { title: t('Total Businesses'), value: String(total), trend: `${verified} ${t('verified')}`, trendType: 'up', bg: 'bg-indigo-50', to: '/admin/businesses' },
+    { title: t('Active Subscriptions'), value: String(activeSubs), trend: t('Currently active'), trendType: 'up', bg: 'bg-emerald-50', to: '/admin/businesses?status=active' },
+    { title: t('Expired Subscriptions'), value: String(expiredSubs), trend: t('Needs attention'), trendType: 'down', bg: 'bg-rose-50', to: '/admin/businesses?status=subscription%20inactive' },
+    { title: t('Awaiting Verification'), value: String(pendingVerification), trend: t('Needs your review'), trendType: 'neutral', bg: 'bg-amber-50', to: '/admin/businesses?status=pending' },
+    { title: t('Suspended Businesses'), value: String(suspended), trend: t('Currently suspended'), trendType: 'neutral', bg: 'bg-red-50', to: '/admin/businesses?status=suspended' },
+    { title: t('Expiring in 7 Days'), value: String(expiringSoon), trend: t('Action required'), trendType: 'neutral', bg: 'bg-blue-50', to: '/admin/businesses?status=active' },
   ]
 
   const getStatus = (b) => {
@@ -277,7 +271,7 @@ export default function SuperAdminDashboard() {
                   onClick={handleBack}
                   aria-label={t('Back')}
                 >
-                  <ArrowLeft size={20} />
+                  {t('Back')}
                 </button>
               )}
               <button
@@ -297,13 +291,12 @@ export default function SuperAdminDashboard() {
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-3 border-l pl-6 border-slate-200 cursor-pointer group">
                 <div className="w-8 h-8 rounded-full bg-[#4F46E5] text-white flex items-center justify-center font-bold text-xs shadow-sm">
-                  <Users size={14} />
+                  SA
                 </div>
                 <div className="text-left hidden sm:block">
                   <p className="text-xs font-bold text-slate-900 leading-tight">{t('Super Admin')}</p>
                   <p className="text-[10px] text-slate-400 font-medium">{user?.email || 'superadmin@barflow.rw'}</p>
                 </div>
-                <ChevronDown size={14} className="text-slate-400 group-hover:text-slate-600 transition" />
               </div>
             </div>
           </header>
@@ -337,11 +330,11 @@ export default function SuperAdminDashboard() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setAdminOpen(false)}>
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white">
-              <h2 className="font-bold text-slate-900 flex items-center gap-2"><Users size={18} className="text-[#4F46E5]" /> {t('Add Super Admin')}</h2>
-              <button onClick={() => setAdminOpen(false)} aria-label={t('Close')} title={t('Close')} className="text-slate-400 hover:text-slate-700"><XCircle size={20} /></button>
+              <h2 className="font-bold text-slate-900 flex items-center gap-2">{t('Add Super Admin')}</h2>
+              <button onClick={() => setAdminOpen(false)} aria-label={t('Close')} title={t('Close')} className="text-slate-400 hover:text-slate-700"><X size={20} /></button>
             </div>
             <div className="p-6 space-y-4">
-              {adminMsg && <div className={`p-3 rounded-lg text-sm font-medium border ${adminMsg.startsWith('❌') ? 'bg-red-50 border-red-300 text-red-800' : 'bg-emerald-50 border-emerald-300 text-emerald-800'}`}>{adminMsg}</div>}
+              {adminMsg && <div className={`p-3 rounded-lg text-sm font-medium border ${adminMsg.startsWith('❌') ? 'bg-red-50 border-red-300 text-red-800' : 'bg-emerald-50 border-emerald-300 text-emerald-800'}`}>{stripIcons(adminMsg)}</div>}
               <div className="space-y-1.5">
                 <label className="block text-sm font-semibold text-slate-700">{t('Full Name')}</label>
                 <input value={adminForm.name} onChange={(e) => setAdminForm({ ...adminForm, name: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
@@ -367,7 +360,7 @@ export default function SuperAdminDashboard() {
                 </select>
               </div>
               <div className="space-y-2">
-                <label className="block text-sm font-semibold text-slate-700 flex items-center gap-1.5"><ShieldAlert size={14} /> {t('Permissions')}</label>
+                <label className="block text-sm font-semibold text-slate-700 flex items-center gap-1.5">{t('Permissions')}</label>
                 <div className="grid grid-cols-2 gap-2">
                   {['businesses', 'subscriptions', 'payments', 'users', 'reports', 'settings', 'backup'].map((p) => (
                     <label key={p} className="flex items-center gap-2 text-sm text-slate-600 capitalize">
@@ -393,9 +386,9 @@ export default function SuperAdminDashboard() {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white">
               <h2 className="font-bold text-slate-900 flex items-center gap-2">
-                <Building2 size={18} className="text-[#4F46E5]" /> {t('Business Details')}
+                {t('Business Details')}
               </h2>
-              <button onClick={() => setViewing(null)} aria-label={t('Close')} title={t('Close')} className="text-slate-400 hover:text-slate-700"><XCircle size={20} /></button>
+              <button onClick={() => setViewing(null)} aria-label={t('Close')} title={t('Close')} className="text-slate-400 hover:text-slate-700"><X size={20} /></button>
             </div>
             <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <BusinessDetail label={t('Name')} value={viewing.name} />
@@ -440,9 +433,6 @@ function Overview({ metrics, recentBusinesses, chartData, pendingVerification, e
                 {String(m.trend || '').replace(/[+%–—−]/g, '').trim()}
               </span>
             </div>
-            <div className={`p-2 rounded-lg ${m.bg} shrink-0`}>
-              {m.icon}
-            </div>
           </button>
         ))}
       </div>
@@ -455,7 +445,6 @@ function Overview({ metrics, recentBusinesses, chartData, pendingVerification, e
           <div>
             <div className="p-5 flex items-center justify-between border-b border-slate-100">
               <div className="flex items-center gap-2 font-bold text-sm text-slate-900">
-                <Building2 size={16} className="text-[#4F46E5]" />
                 <span>{t('Latest Registered Businesses')}</span>
               </div>
               <Link to="/admin/businesses" className="text-xs font-bold text-[#4F46E5] hover:underline flex items-center gap-1">
@@ -486,9 +475,6 @@ function Overview({ metrics, recentBusinesses, chartData, pendingVerification, e
                   {recentBusinesses.map((b, idx) => (
                     <tr key={idx} className="hover:bg-slate-50/50 transition">
                       <td className="p-2 pl-6 font-bold text-slate-900 flex items-center gap-2">
-                        <span className={`w-5 h-5 rounded flex items-center justify-center text-[10px] ${
-                          b.status === 'Active' ? 'bg-emerald-50 text-emerald-600' : b.status === 'Expired' ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-600'
-                        }`}><Building2 size={10} /></span>
                         {b.name}
                       </td>
                       <td className="p-2 text-slate-500">{b.owner}</td>
@@ -529,7 +515,6 @@ function Overview({ metrics, recentBusinesses, chartData, pendingVerification, e
         <div className="col-span-12 lg:col-span-4 bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between border-b border-slate-100 pb-4">
             <div className="flex items-center gap-2 font-bold text-sm text-slate-900">
-              <Clock size={16} className="text-[#4F46E5]" />
               <span>{t('Subscription Revenue')}</span>
             </div>
             <select className="bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 py-1 px-2.5 focus:outline-hidden">
@@ -577,22 +562,22 @@ function Overview({ metrics, recentBusinesses, chartData, pendingVerification, e
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col justify-between">
           <div className="border-b border-slate-100 pb-3 mb-4">
             <span className="font-bold text-sm text-slate-900 flex items-center gap-2">
-            <PlusCircle size={16} className="text-[#4F46E5]" /> {t('Quick Actions')}
+            {t('Quick Actions')}
             </span>
           </div>
 
           <div className="grid grid-cols-2 gap-3 flex-1 content-start">
             <Link to="/admin/businesses" className="col-span-2 bg-[#4F46E5] hover:bg-indigo-700 text-white py-2.5 px-4 rounded-lg font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition">
-              <Plus size={16} /> {t('Register Business')}
+              {t('Register Business')}
             </Link>
             <Link to="/admin/plans" className="border border-slate-200 hover:bg-slate-50 text-slate-700 py-2.5 px-4 rounded-lg font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition bg-white">
-              <FileText size={14} className="text-indigo-600" /> {t('Create Plan')}
+              {t('Create Plan')}
             </Link>
             <button onClick={onAddAdmin} className="border border-slate-200 hover:bg-slate-50 text-slate-700 py-2.5 px-4 rounded-lg font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition bg-white">
-              <Users size={14} className="text-indigo-600" /> {t('Add Super Admin')}
+              {t('Add Super Admin')}
             </button>
             <button onClick={onExportReports} disabled={exporting} className="col-span-2 border border-slate-200 hover:bg-slate-50 text-slate-700 py-2.5 px-4 rounded-lg font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition bg-white mt-1 disabled:opacity-50">
-              <BarChart3 size={14} className="text-indigo-600" /> {exporting ? t('Exporting...') : t('Export Reports')}
+              {exporting ? t('Exporting...') : t('Export Reports')}
             </button>
           </div>
         </div>
@@ -601,7 +586,7 @@ function Overview({ metrics, recentBusinesses, chartData, pendingVerification, e
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col justify-between">
           <div className="border-b border-slate-100 pb-3 mb-4">
             <span className="font-bold text-sm text-slate-900 flex items-center gap-2">
-              <ShieldAlert size={16} className="text-[#4F46E5]" /> {t('System Status')}
+              {t('System Status')}
             </span>
           </div>
 

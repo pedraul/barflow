@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react'
 import { useOwner } from '../../context/OwnerContext'
-import { FileSpreadsheet, FileText as FileExcel, FileJson, Filter, ChevronLeft, ChevronRight, ShieldCheck } from 'lucide-react'
 import { usePreferences } from '../../context/PreferencesContext'
 
 export default function AuditLogViewer() {
@@ -46,13 +45,13 @@ export default function AuditLogViewer() {
     <div className="flex flex-col gap-4">
       <div className="flex gap-3 items-center flex-wrap">
         <button onClick={() => handleExport('csv')} className="inline-flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white border border-transparent rounded-md px-3.5 py-1.5 cursor-pointer text-sm font-medium transition">
-          <FileSpreadsheet size={15} /> {t('Export CSV')}
+          {t('Export CSV')}
         </button>
         <button onClick={() => handleExport('xls')} className="inline-flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white border border-transparent rounded-md px-3.5 py-1.5 cursor-pointer text-sm font-medium transition">
-          <FileExcel size={15} /> {t('Export Excel')}
+          {t('Export Excel')}
         </button>
         <button onClick={() => handleExport('json')} className="inline-flex items-center gap-1.5 bg-slate-700 hover:bg-slate-800 text-white border border-transparent rounded-md px-3.5 py-1.5 cursor-pointer text-sm font-medium transition">
-          <FileJson size={15} /> {t('Export JSON')}
+          {t('Export JSON')}
         </button>
         <span className="text-xs text-slate-500">
           {pagination.total} {t('records • Page')} {pagination.page} {t('of')} {pagination.totalPages}
@@ -76,7 +75,7 @@ export default function AuditLogViewer() {
             className="px-2.5 py-1.5 border border-slate-300 rounded-md text-sm focus:outline-none focus:border-indigo-500" />
         </div>
         <button onClick={handleFilter} className="inline-flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white border border-transparent rounded-md px-3.5 py-1.5 cursor-pointer text-sm font-medium transition">
-          <Filter size={15} /> {t('Apply Filters')}
+          {t('Apply Filters')}
         </button>
       </div>
 
@@ -115,14 +114,14 @@ export default function AuditLogViewer() {
         <div className="flex justify-center items-center gap-2">
           <button onClick={() => handlePageChange(pagination.page - 1)} disabled={pagination.page <= 1}
             className="inline-flex items-center gap-1 bg-slate-200 border-0 rounded-md px-3 py-1.5 cursor-pointer text-sm disabled:opacity-50 disabled:cursor-default transition hover:bg-slate-300">
-            <ChevronLeft size={15} /> {t('Previous')}
+            {t('Previous')}
           </button>
           <span className="text-sm text-slate-500">
             {t('Page')} {pagination.page} {t('of')} {pagination.totalPages}
           </span>
           <button onClick={() => handlePageChange(pagination.page + 1)} disabled={pagination.page >= pagination.totalPages}
             className="inline-flex items-center gap-1 bg-slate-200 border-0 rounded-md px-3 py-1.5 cursor-pointer text-sm disabled:opacity-50 disabled:cursor-default transition hover:bg-slate-300">
-            {t('Next')} <ChevronRight size={15} />
+            {t('Next')} 
           </button>
         </div>
       )}

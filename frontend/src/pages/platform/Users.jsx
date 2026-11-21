@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { UserCog, Search, Plus, Pencil, Trash2, KeyRound, Power, X, ShieldCheck } from 'lucide-react'
+import { X } from 'lucide-react'
 import { fetchAdmins, createAdmin, updateAdmin, resetAdminPassword, deleteAdmin } from '../../api/endpoints'
 import { useToast } from '../../context/ToastContext'
 import { usePreferences } from '../../context/PreferencesContext'
@@ -118,14 +118,13 @@ export default function Users() {
           <p className="text-sm text-slate-500 mt-1">{admins.length} {t('platform administrators')}</p>
         </div>
         <button onClick={openCreate} className="px-4 py-2 text-sm bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition inline-flex items-center gap-2">
-          <Plus size={16} /> {t('Create Admin')}
+          {t('Create Admin')}
         </button>
       </div>
 
       <div className="relative max-w-md">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Search admins...')}
-          className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+          className="w-full pl-3 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -159,12 +158,12 @@ export default function Users() {
                   <td className="px-3 py-2">
                     <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${a.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>{a.isActive ? t('Active') : t('Inactive')}</span>
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-2 text-right">
                     <div className="flex justify-end gap-1.5">
-                      <button title={t('Edit')} onClick={() => openEdit(a)} className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50"><Pencil size={15} /></button>
-                      <button title={t('Reset password')} onClick={() => resetPw(a)} disabled={busy === `${a.id}-pw`} className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 disabled:opacity-40"><KeyRound size={15} /></button>
-                      <button title={t(a.isActive ? 'Deactivate' : 'Activate')} onClick={() => toggleActive(a)} disabled={busy === `${a.id}-toggle`} className={`p-1.5 rounded-lg disabled:opacity-40 ${a.isActive ? 'text-slate-600 hover:bg-slate-100' : 'text-emerald-600 hover:bg-emerald-50'}`}><Power size={15} /></button>
-                      <button title={t('Delete')} onClick={() => remove(a)} disabled={busy === `${a.id}-del`} className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 disabled:opacity-40"><Trash2 size={15} /></button>
+                      <button title={t('Edit')} onClick={() => openEdit(a)} className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50">{t('Edit')}</button>
+                      <button title={t('Reset password')} onClick={() => resetPw(a)} disabled={busy === `${a.id}-pw`} className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 disabled:opacity-40">{t('Reset password')}</button>
+                      <button title={t(a.isActive ? 'Deactivate' : 'Activate')} onClick={() => toggleActive(a)} disabled={busy === `${a.id}-toggle`} className={`p-1.5 rounded-lg disabled:opacity-40 ${a.isActive ? 'text-slate-600 hover:bg-slate-100' : 'text-emerald-600 hover:bg-emerald-50'}`}>{t(a.isActive ? 'Deactivate' : 'Activate')}</button>
+                      <button title={t('Delete')} onClick={() => remove(a)} disabled={busy === `${a.id}-del`} className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 disabled:opacity-40">{t('Delete')}</button>
                     </div>
                   </td>
                 </tr>
@@ -178,7 +177,7 @@ export default function Users() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setForm(null)}>
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white">
-              <h2 className="font-bold text-slate-900 flex items-center gap-2"><UserCog size={18} className="text-[#4F46E5]" /> {form.mode === 'create' ? t('Create Admin') : t('Edit Admin')}</h2>
+              <h2 className="font-bold text-slate-900 flex items-center gap-2">{form.mode === 'create' ? t('Create Admin') : t('Edit Admin')}</h2>
               <button onClick={() => setForm(null)} aria-label={t('Close')} title={t('Close')} className="text-slate-400 hover:text-slate-700"><X size={20} /></button>
             </div>
             <div className="p-6 space-y-4">
@@ -193,7 +192,7 @@ export default function Users() {
                 </select>
               </div>
               <div className="space-y-2">
-                <label className="block text-sm font-semibold text-slate-700 flex items-center gap-1.5"><ShieldCheck size={14} /> {t('Permissions')}</label>
+                <label className="block text-sm font-semibold text-slate-700 flex items-center gap-1.5">{t('Permissions')}</label>
                 <div className="grid grid-cols-2 gap-2">
                   {ALL_PERMISSIONS.map((p) => (
                     <label key={p} className="flex items-center gap-2 text-sm text-slate-600 capitalize">

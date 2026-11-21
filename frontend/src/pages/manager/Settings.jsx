@@ -82,7 +82,7 @@ export default function Settings({ workspaceLabel = 'Manager workspace', pageTit
         </div>
       </section>
 
-      {msg && <p className="creation-success"><span>✓</span>{msg}</p>}
+      {msg && <p className="creation-success">{msg}</p>}
       {err && <p style={{ color: '#cc0000' }}>{err}</p>}
     </div>
   )

@@ -114,9 +114,7 @@ export default function StationDisplay({
           <div style={styles.itemImage}>
             {item.imageUrl ? (
               <img src={item.imageUrl} alt={item.name} style={styles.thumbImg} />
-            ) : (
-              <div style={styles.thumbPlaceholder}>🍺</div>
-            )}
+            ) : null}
           </div>
           <div style={styles.itemInfo}>
             <span style={styles.itemName}>{item.name}</span>
@@ -257,7 +255,6 @@ export default function StationDisplay({
 
       {orders.length === 0 && (
         <div style={styles.emptyState}>
-          <div style={styles.emptyIcon}>{stationLabel === 'Bar' ? '🍺' : '🍳'}</div>
           <h2>{t('No orders yet')}</h2>
           <p>{t('Waiting for new')} {t(stationLabel.toLowerCase())} {t('orders to come in...')}</p>
         </div>

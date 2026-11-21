@@ -1,28 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fetchAccountantSummary } from '../../api/endpoints'
-import {
-  TrendingUp,
-  CreditCard,
-  Receipt,
-  RotateCcw,
-  BarChart3,
-  FileText,
-  BookOpen,
-  DollarSign,
-  Settings,
-  Bell,
-  ChevronDown,
-  TrendingDown,
-  Building2,
-  Menu,
-  FileSpreadsheet,
-  CheckCircle2,
-  AlertCircle,
-  HelpCircle,
-  LogOut,
-  ChevronLeft
-} from 'lucide-react';
+;
 import { usePreferences } from '../../context/PreferencesContext'
 
 const money = (value) => `${Number(value || 0).toLocaleString()}`
@@ -99,9 +78,6 @@ export default function AccountantDashboard() {
                 <span>{t('12.5')}</span> <span className="text-slate-400 font-normal">{t('vs Apr 2026')}</span>
               </div>
             </div>
-            <div className="p-2.5 bg-emerald-50 rounded-lg text-emerald-600">
-              <TrendingUp className="w-5 h-5" />
-            </div>
           </button>
 
           <button type="button" onClick={() => navigate('/accountant/sales-revenue')} className="w-full text-left bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between transition hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -109,18 +85,12 @@ export default function AccountantDashboard() {
               <div className="text-xs font-medium text-slate-500">{t('Total Sales')}</div>
               <div className="text-xl font-bold text-slate-900 mt-1">{money(totalSales)}</div>
             </div>
-            <div className="p-2.5 bg-blue-50 rounded-lg text-blue-600">
-              <BarChart3 className="w-5 h-5" />
-            </div>
           </button>
 
           <button type="button" onClick={() => navigate('/accountant/taxes')} className="w-full text-left bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between transition hover:border-amber-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-amber-500">
             <div>
               <div className="text-xs font-medium text-slate-500">{t('VAT Total')}</div>
               <div className="text-xl font-bold text-slate-900 mt-1">{money(vatTotal)}</div>
-            </div>
-            <div className="p-2.5 bg-amber-50 rounded-lg text-amber-600">
-              <Receipt className="w-5 h-5" />
             </div>
           </button>
 
@@ -133,9 +103,6 @@ export default function AccountantDashboard() {
                 <span>{t('8.3')}</span> <span className="text-slate-400 font-normal">{t('vs Apr 2026')}</span>
               </div>
             </div>
-            <div className="p-2.5 bg-rose-50 rounded-lg text-rose-600">
-              <TrendingDown className="w-5 h-5" />
-            </div>
           </button>
 
           {/* Net Profit */}
@@ -146,9 +113,6 @@ export default function AccountantDashboard() {
               <div className="text-[11px] text-emerald-600 font-medium flex items-center gap-0.5 mt-1">
                 <span>{t('15.7')}</span> <span className="text-slate-400 font-normal">{t('vs Apr 2026')}</span>
               </div>
-            </div>
-            <div className="p-2.5 bg-indigo-50 rounded-lg text-indigo-600">
-              <CreditCard className="w-5 h-5" />
             </div>
           </button>
 
@@ -161,9 +125,6 @@ export default function AccountantDashboard() {
                 <span>{t('5.4')}</span> <span className="text-slate-400 font-normal">{t('vs Apr 2026')}</span>
               </div>
             </div>
-            <div className="p-2.5 bg-blue-50 rounded-lg text-blue-600">
-              <Receipt className="w-5 h-5" />
-            </div>
           </button>
 
           {/* Bank Balance */}
@@ -174,9 +135,6 @@ export default function AccountantDashboard() {
               <div className="text-[11px] text-emerald-600 font-medium flex items-center gap-0.5 mt-1">
                 <span>{t('6.2')}</span> <span className="text-slate-400 font-normal">{t('vs Apr 2026')}</span>
               </div>
-            </div>
-            <div className="p-2.5 bg-amber-50 rounded-lg text-amber-600">
-              <Building2 className="w-5 h-5" />
             </div>
           </button>
 
@@ -377,7 +335,6 @@ export default function AccountantDashboard() {
             {/* Banner Footer inside card */}
             <div className="p-4 bg-indigo-50/60 border-t border-indigo-100 flex items-center justify-between text-xs text-indigo-900">
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-indigo-600" />
                 <span><strong>{t('Reconciliation Status:')}</strong> {t('You have')} {data.unreconciled?.total || 0} {t('unreconciled transactions')}</span>
               </div>
               <button 
@@ -399,9 +356,6 @@ export default function AccountantDashboard() {
             <div className="space-y-3 text-xs">
               <div className="flex items-center justify-between p-3 bg-rose-50/50 rounded-xl border border-rose-100">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-rose-100 rounded-lg text-rose-600">
-                    <FileText className="w-4 h-4" />
-                  </div>
                   <span className="font-medium text-slate-700">{t('Unmatched Bank Transactions')}</span>
                 </div>
                 <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700">{data.unreconciled?.unmatchedBank || 0}</span>
@@ -409,9 +363,6 @@ export default function AccountantDashboard() {
 
               <div className="flex items-center justify-between p-3 bg-amber-50/50 rounded-xl border border-amber-100">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-amber-100 rounded-lg text-amber-600">
-                    <Receipt className="w-4 h-4" />
-                  </div>
                   <span className="font-medium text-slate-700">{t('In System Only')}</span>
                 </div>
                 <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">{data.unreconciled?.inSystemOnly || 0}</span>
@@ -419,9 +370,6 @@ export default function AccountantDashboard() {
 
               <div className="flex items-center justify-between p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
-                    <CreditCard className="w-4 h-4" />
-                  </div>
                   <span className="font-medium text-slate-700">{t('In Statement Only')}</span>
                 </div>
                 <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700">{data.unreconciled?.inStatementOnly || 0}</span>
@@ -435,7 +383,6 @@ export default function AccountantDashboard() {
 
             {/* Status Alert Box */}
             <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center gap-3 text-emerald-900 text-xs">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
               <div>
                 <div className="font-bold">{t('All Accounts Balanced')}</div>
                 <div className="text-[11px] text-emerald-700">{t('Great job! All your accounts are balanced.')}</div>

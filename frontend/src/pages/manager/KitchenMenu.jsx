@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { ArrowLeft, UtensilsCrossed } from 'lucide-react'
 import {
   fetchProducts,
   createProduct,
@@ -170,7 +169,6 @@ export default function ManagerKitchenMenu() {
                 <button key={category} type="button" onClick={() => handleSelectCategory(category)} className="stock-card"
                   style={{ textAlign: 'left', cursor: 'pointer', color: 'inherit' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <UtensilsCrossed size={18} />
                     <strong>{category}</strong>
                   </div>
                   <span style={{ fontSize: '0.85rem', color: 'var(--text-3)' }}>{count} {t('item')}{count === 1 ? '' : 's'}</span>
@@ -185,7 +183,7 @@ export default function ManagerKitchenMenu() {
         <>
           <button type="button" className="secondary-action"
             onClick={() => { setSelectedCategory(null); setEditingId(null); setForm({ ...emptyForm }); setImagePreview(''); setError(null) }}>
-            <ArrowLeft size={16} style={{ marginRight: '0.35rem', verticalAlign: 'middle' }} /> {t('Back to categories')}
+            {t('Back to categories')}
           </button>
 
           <section className="user-section">

@@ -7,11 +7,7 @@ import { useOwner } from '../../context/OwnerContext'
 import { fetchOperatorDashboard, routeOrder, updateOperatorOrderStatus, fetchQRCodes, fetchKitchenOrders, fetchBarOrders } from '../../api/endpoints'
 import QRCode from '../../components/QRCode'
 import { buildTableMenuUrl } from '../../config/tableMenuUrl'
-import {
-  LayoutDashboard, ShoppingBag, ChefHat, CheckCircle2, BarChart3,
-  Clock, FileText, Printer, Utensils, GlassWater, Users,
-  FileSpreadsheet, User, LogOut, Menu, Share2
-} from 'lucide-react'
+import { ChefHat, CheckCircle2, FileText, Printer, GlassWater, FileSpreadsheet, User, LogOut } from 'lucide-react'
 import { SidebarLink, StatCard, OrderListItem, StepIcon, StepLine, QuickActionButton } from '../../components/ui/SharedComponents'
 import { getOrderLocation } from '../../utils/orderDisplay'
 import { isDrinkCategory } from '../../utils/orderStation'
@@ -368,17 +364,17 @@ export default function OperatorDashboard() {
           {routingNotice && (
             <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 shadow-sm" role="status">
               <div className="flex items-center gap-2 text-sm font-semibold">
-                <CheckCircle2 size={18} className="shrink-0" />{t("Order")}{routingNotice.orderNumber}{' '}{t("was sent to the")}{' '}{t(routingNotice.destination)}.
+                {t("Order")}{routingNotice.orderNumber}{' '}{t("was sent to the")}{' '}{t(routingNotice.destination)}.
               </div>
               <button type="button" onClick={() => setRoutingNotice(null)} className="text-xs font-bold text-emerald-700 hover:text-emerald-900" aria-label={t("Dismiss routing confirmation")}>{t("Dismiss")}</button>
             </div>
           )}
           {/* Stat Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard icon={<ShoppingBag size={24} className="text-blue-600" />} iconBg="bg-blue-50" label={t("Active Orders")} value={String(currentStats.newOrders + currentStats.preparing + currentStats.ready)} linkText={t("View all")} onClick={() => navigate('/operator/orders?tab=all')} />
-            <StatCard icon={<ChefHat size={24} className="text-amber-600" />} iconBg="bg-amber-50" label={t("Preparing")} value={String(currentStats.preparing)} linkText={t("View all")} onClick={() => navigate('/operator/orders?tab=preparing')} />
-            <StatCard icon={<CheckCircle2 size={24} className="text-emerald-600" />} iconBg="bg-emerald-50" label={t("Ready")} value={String(currentStats.ready)} linkText={t("View all")} onClick={() => navigate('/operator/orders?tab=ready')} />
-            <StatCard icon={<BarChart3 size={24} className="text-purple-600" />} iconBg="bg-purple-50" label={t("Today's Sales")} value={MONEY(dashboard.todaySales)} linkText={t("View report")} onClick={() => navigate('/operator/reports')} />
+            <StatCard iconBg="bg-blue-50" label={t("Active Orders")} value={String(currentStats.newOrders + currentStats.preparing + currentStats.ready)} linkText={t("View all")} onClick={() => navigate('/operator/orders?tab=all')} />
+            <StatCard iconBg="bg-amber-50" label={t("Preparing")} value={String(currentStats.preparing)} linkText={t("View all")} onClick={() => navigate('/operator/orders?tab=preparing')} />
+            <StatCard iconBg="bg-emerald-50" label={t("Ready")} value={String(currentStats.ready)} linkText={t("View all")} onClick={() => navigate('/operator/orders?tab=ready')} />
+            <StatCard iconBg="bg-purple-50" label={t("Today's Sales")} value={MONEY(dashboard.todaySales)} linkText={t("View report")} onClick={() => navigate('/operator/reports')} />
           </div>
 
           {/* Revenue Summary */}
@@ -505,7 +501,7 @@ export default function OperatorDashboard() {
             <section className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-emerald-700 font-semibold">
-                  <ChefHat size={18} />{t("Kitchen (live)")}</div>
+                  {t("Kitchen (live)")}</div>
                 <button onClick={() => navigate('/kitchen')} className="text-xs font-semibold text-emerald-600 hover:underline">{t("Open screen")}</button>
               </div>
               {kitchenOrders.length === 0 ? (
@@ -526,7 +522,7 @@ export default function OperatorDashboard() {
             <section className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-purple-700 font-semibold">
-                  <GlassWater size={18} />{t("Bar (live)")}</div>
+                  {t("Bar (live)")}</div>
                 <button onClick={() => navigate('/bar')} className="text-xs font-semibold text-purple-600 hover:underline">{t("Open screen")}</button>
               </div>
               {barOrders.length === 0 ? (
@@ -595,7 +591,7 @@ export default function OperatorDashboard() {
                       if (hasFood && hasDrink) {
                         return (
                           <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-lg p-3 flex items-center gap-2 font-medium">
-                            <span className="text-amber-500 font-bold text-base leading-none">⚠️</span>{t("This order contains items from multiple categories.")}</div>
+                            {t("This order contains items from multiple categories.")}</div>
                         )
                       }
                       return null
@@ -609,7 +605,7 @@ export default function OperatorDashboard() {
                       return (
                         <div className="border border-slate-100 rounded-xl p-4 bg-slate-50/50 space-y-3">
                           <div className="flex items-center gap-2 text-emerald-700 font-semibold text-sm">
-                            <div className="p-1 bg-emerald-50 rounded-lg text-emerald-600"><ChefHat size={16} /></div>{t("Food (Kitchen)")}</div>
+                            {t("Food (Kitchen)")}</div>
                           {foodItems.map((item, idx) => (
                             <div key={idx} className="flex justify-between text-sm text-slate-700">
                               <span>{item.name}</span>
@@ -635,7 +631,7 @@ export default function OperatorDashboard() {
                       return (
                         <div className="border border-slate-100 rounded-xl p-4 bg-slate-50/50 space-y-3">
                           <div className="flex items-center gap-2 text-purple-700 font-semibold text-sm">
-                            <div className="p-1 bg-purple-50 rounded-lg text-purple-600"><GlassWater size={16} /></div>{t("Drinks (Bar)")}</div>
+                            {t("Drinks (Bar)")}</div>
                           {drinkItems.map((item, idx) => (
                             <div key={idx} className="flex justify-between text-sm text-slate-700">
                               <span>{item.name}</span>
@@ -740,8 +736,8 @@ export default function OperatorDashboard() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 pt-2">
-                    <button onClick={() => handlePrintDraft(selectedOrder)} className="flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-600 border border-slate-200 py-2 rounded-lg shadow-sm hover:bg-slate-50"><Printer size={14} />{' '}{t("Reprint")}</button>
-                    <button className="flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-600 border border-slate-200 py-2 rounded-lg shadow-sm hover:bg-slate-50"><Share2 size={14} />{' '}{t("Share")}</button>
+                    <button onClick={() => handlePrintDraft(selectedOrder)} className="flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-600 border border-slate-200 py-2 rounded-lg shadow-sm hover:bg-slate-50">{' '}{t("Reprint")}</button>
+                    <button className="flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-600 border border-slate-200 py-2 rounded-lg shadow-sm hover:bg-slate-50">{' '}{t("Share")}</button>
                   </div>
                 </div>
               )}
@@ -751,13 +747,13 @@ export default function OperatorDashboard() {
                 <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3">
                   <h3 className="font-bold text-slate-900 text-sm">{t("Order Status")}</h3>
                   <div className="flex items-center justify-between px-2 relative">
-                    <StepIcon active={true} icon={<CheckCircle2 size={16} />} title={t("Received")} subtitle={selectedOrder.createdAt?.split(' ')[1] || ''} done={true} />
+                    <StepIcon active={true} icon={1} title={t("Received")} subtitle={selectedOrder.createdAt?.split(' ')[1] || ''} done={true} />
                     <StepLine active={selectedOrder.status === 'Preparing' || selectedOrder.status === 'Ready'} />
-                    <StepIcon active={selectedOrder.status === 'Preparing' || selectedOrder.status === 'Ready'} icon={<ChefHat size={16} />} title={t("Kitchen")} subtitle={selectedOrder.status === 'Preparing' ? 'Preparing' : 'Pending'} done={selectedOrder.status === 'Ready'} />
+                    <StepIcon active={selectedOrder.status === 'Preparing' || selectedOrder.status === 'Ready'} icon={2} title={t("Kitchen")} subtitle={selectedOrder.status === 'Preparing' ? 'Preparing' : 'Pending'} done={selectedOrder.status === 'Ready'} />
                     <StepLine active={selectedOrder.status === 'Ready'} />
-                    <StepIcon active={selectedOrder.status === 'Ready'} icon={<GlassWater size={16} />} title={t("Bar")} subtitle={selectedOrder.status === 'Ready' ? 'Ready' : 'Pending'} done={false} />
+                    <StepIcon active={selectedOrder.status === 'Ready'} icon={3} title={t("Bar")} subtitle={selectedOrder.status === 'Ready' ? 'Ready' : 'Pending'} done={false} />
                     <StepLine active={false} />
-                    <StepIcon active={false} icon={<Clock size={16} />} title={t("Ready")} subtitle="Pending" done={false} />
+                    <StepIcon active={false} icon={4} title={t("Ready")} subtitle="Pending" done={false} />
                   </div>
                 </div>
               )}
@@ -766,9 +762,9 @@ export default function OperatorDashboard() {
               <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3">
                 <h3 className="font-bold text-slate-900 text-sm">{t("Quick Actions")}</h3>
                 <div className="grid grid-cols-2 gap-2">
-                  <QuickActionButton icon={<ChefHat size={16} className="text-emerald-600" />} label={t("View Kitchen Screen")} onClick={() => navigate('/kitchen')} />
-                  <QuickActionButton icon={<GlassWater size={16} className="text-purple-600" />} label={t("View Bar Screen")} onClick={() => navigate('/bar')} />
-                  <QuickActionButton icon={<LayoutDashboard size={16} className="text-slate-600" />} label={t("All Tables")} onClick={loadQRCodes} />
+                  <QuickActionButton label={t("View Kitchen Screen")} onClick={() => navigate('/kitchen')} />
+                  <QuickActionButton label={t("View Bar Screen")} onClick={() => navigate('/bar')} />
+                  <QuickActionButton label={t("All Tables")} onClick={loadQRCodes} />
                 </div>
               </div>
             </section>
@@ -803,7 +799,7 @@ export default function OperatorDashboard() {
               </div>
               <div className="mt-6 flex justify-end">
                 <button onClick={() => window.print()} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition">
-                  <Printer size={16} />{t("Print All QR Codes")}</button>
+                  {t("Print All QR Codes")}</button>
               </div>
             </div>
           </div>

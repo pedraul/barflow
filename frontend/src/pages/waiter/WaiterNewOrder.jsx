@@ -1,7 +1,6 @@
 import { usePreferences } from '../../context/PreferencesContext'
 import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Plus, Minus, Trash2, ShoppingCart, CheckCircle2, ArrowLeft, UtensilsCrossed } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { fetchMenu } from '../../api/endpoints'
 
@@ -131,16 +130,15 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
   }
 
   return <div className="page waiter-new-order bg-white min-h-screen">
-    {cartNotice && <div role="status" aria-live="polite" className="customer-cart-toast"><CheckCircle2 size={19} />{cartNotice}</div>}
+    {cartNotice && <div role="status" aria-live="polite" className="customer-cart-toast">{cartNotice}</div>}
     <div className="p-6 lg:p-8">
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-5"><div><p className="text-xs font-bold text-amber-600 uppercase tracking-wider">{t("Waiter workspace")}</p><h1 className="text-3xl font-extrabold text-slate-950">{t("New Order for Customer")}</h1><p className="text-slate-500 mt-1">{t("Build the customer's order and send it to the operator for routing.")}</p></div><button type="button" onClick={() => setCartOpen((open) => !open)} aria-expanded={cartOpen} className="flex items-center gap-2 rounded-lg bg-slate-900 px-5 py-3 font-bold text-white shadow-sm hover:bg-slate-700"><ShoppingCart size={19}/>{' '}{t("My Cart")}{' '}<span className="grid h-6 min-w-6 place-items-center rounded-full bg-orange-500 px-1 text-xs">{count}</span></button></div>
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-5"><div><p className="text-xs font-bold text-amber-600 uppercase tracking-wider">{t("Waiter workspace")}</p><h1 className="text-3xl font-extrabold text-slate-950">{t("New Order for Customer")}</h1><p className="text-slate-500 mt-1">{t("Build the customer's order and send it to the operator for routing.")}</p></div><button type="button" onClick={() => setCartOpen((open) => !open)} aria-expanded={cartOpen} className="flex items-center gap-2 rounded-lg bg-slate-900 px-5 py-3 font-bold text-white shadow-sm hover:bg-slate-700">{' '}{t("My Cart")}{' '}<span className="grid h-6 min-w-6 place-items-center rounded-full bg-orange-500 px-1 text-xs">{count}</span></button></div>
       <div className="waiter-order-layout min-h-[680px]">
         <section className="waiter-order-menu w-full rounded-xl border border-slate-200 bg-white p-5 md:p-7">
           {/* Search bar always visible */}
           <div className="flex justify-between gap-4 mb-5">
             <div className="relative w-full max-w-xl">
-              <Search size={18} className="absolute left-3 top-3 text-slate-400"/>
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("Search menu...")} className="w-full border rounded-lg py-2 pl-9 pr-3"/>
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("Search menu...")} className="w-full border rounded-lg py-2 pl-3 pr-3"/>
             </div>
           </div>
 
@@ -148,7 +146,7 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
           {selectedCategory ? (
             <>
               <button onClick={() => { setSelectedCategory(null); setSearch('') }} className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-lg font-bold text-sm hover:bg-slate-800 transition shadow-md mb-4">
-                <ArrowLeft size={18} />{t("Back to categories")}</button>
+                {t("Back to categories")}</button>
               <h2 className="text-2xl font-extrabold">{t(selectedCategory)}</h2>
               <p className="text-slate-500 text-sm mt-1">{t("Choose items to add to the customer's order")}</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 mt-5">
@@ -158,16 +156,16 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
                   return (
                     <article key={item.id} className="waiter-market-card overflow-hidden border border-slate-200 rounded-xl bg-white">
                       <div className="relative h-44 bg-slate-100 overflow-hidden">
-                        <div className="absolute inset-0 grid place-items-center text-slate-400"><UtensilsCrossed size={30} /><span className="text-xs mt-1">{t("No image")}</span></div>
+                        <div className="absolute inset-0 grid place-items-center text-slate-400"><span className="text-xs mt-1">{t("No image")}</span></div>
                         {item.imageUrl && <img src={item.imageUrl} alt={item.name} className="relative z-10 w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} />}
                       </div>
                       <div className="p-3">
                         <h3 className="font-bold text-base">{item.name}</h3>
                         <p className="font-bold text-base mt-1">{money(item.price)}</p>
                         <button disabled={soldOut} onClick={() => add(item)} className="mt-3 w-full border border-slate-300 rounded-lg py-1.5 flex justify-between px-3 font-semibold text-sm hover:border-amber-500 disabled:opacity-50">
-                          {soldOut ? t("Sold out") : t("Add")} <Plus className="rounded bg-amber-600 text-white p-0.5" size={18} />
+                          {soldOut ? t("Sold out") : t("Add")} 
                         </button>
-                        {inCart && <p className="text-xs text-emerald-600 mt-2 flex gap-1 items-center"><CheckCircle2 size={14} />{inCart.quantity}{' '}{t("in order")}</p>}
+                        {inCart && <p className="text-xs text-emerald-600 mt-2 flex gap-1 items-center">{inCart.quantity}{' '}{t("in order")}</p>}
                       </div>
                     </article>
                   )
@@ -190,16 +188,16 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
                   return (
                     <article key={item.id} className="waiter-market-card overflow-hidden border border-slate-200 rounded-xl bg-white">
                       <div className="relative h-44 bg-slate-100 overflow-hidden">
-                        <div className="absolute inset-0 grid place-items-center text-slate-400"><UtensilsCrossed size={30} /><span className="text-xs mt-1">{t("No image")}</span></div>
+                        <div className="absolute inset-0 grid place-items-center text-slate-400"><span className="text-xs mt-1">{t("No image")}</span></div>
                         {item.imageUrl && <img src={item.imageUrl} alt={item.name} className="relative z-10 w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} />}
                       </div>
                       <div className="p-3">
                         <h3 className="font-bold text-base">{item.name}</h3>
                         <p className="font-bold text-base mt-1">{money(item.price)}</p>
                         <button disabled={soldOut} onClick={() => add(item)} className="mt-3 w-full border border-slate-300 rounded-lg py-1.5 flex justify-between px-3 font-semibold text-sm hover:border-amber-500 disabled:opacity-50">
-                          {soldOut ? t("Sold out") : t("Add")} <Plus className="rounded bg-amber-600 text-white p-0.5" size={18} />
+                          {soldOut ? t("Sold out") : t("Add")} 
                         </button>
-                        {inCart && <p className="text-xs text-emerald-600 mt-2 flex gap-1 items-center"><CheckCircle2 size={14} />{inCart.quantity}{' '}{t("in order")}</p>}
+                        {inCart && <p className="text-xs text-emerald-600 mt-2 flex gap-1 items-center">{inCart.quantity}{' '}{t("in order")}</p>}
                       </div>
                     </article>
                   )
@@ -235,7 +233,7 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
             /* Categories of the selected section */
             <>
               <button onClick={() => { setSelectedSection(null); setSelectedCategory(null); setSearch('') }} className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-lg font-bold text-sm hover:bg-slate-800 transition shadow-md mb-4">
-                <ArrowLeft size={18} />{t("Back to menu sections")}</button>
+                {t("Back to menu sections")}</button>
               <h2 className="text-2xl font-extrabold">{selectedSection === 'bar' ? t("Bar menu") : t("Food menu")}{' '}{t("— Categories")}</h2>
               <p className="text-slate-500 text-sm mt-1">{t("Select a category to browse items")}</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-5">
@@ -276,13 +274,13 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
                       <strong>{item.name}</strong>
                       <p className="text-sm">{money(item.price)}</p>
                       <span className="border rounded inline-flex gap-3 items-center px-2 mt-2">
-                        <button aria-label={t('Decrease quantity')} onClick={() => change(item.productId, -1)}><Minus size={14}/></button>
+                        <button aria-label={t('Decrease quantity')} onClick={() => change(item.productId, -1)} className="px-1 font-bold">-</button>
                         {item.quantity}
-                        <button aria-label={t('Increase quantity')} onClick={() => change(item.productId, 1)}><Plus size={14}/></button>
+                        <button aria-label={t('Increase quantity')} onClick={() => change(item.productId, 1)} className="px-1 font-bold">+</button>
                       </span>
                     </div>
                     <div className="text-right">
-                      <button aria-label={t('Remove item')} onClick={() => change(item.productId, -item.quantity)}><Trash2 size={16} className="text-slate-400"/></button>
+                      <button aria-label={t('Remove item')} onClick={() => change(item.productId, -item.quantity)} className="text-sm font-semibold text-red-600 hover:underline">{t('Remove')}</button>
                       <p className="font-bold mt-5">{money(item.price * item.quantity)}</p>
                     </div>
                   </div>
@@ -292,7 +290,7 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
                 <div className="flex justify-between"><span>{t("Subtotal")}</span><span>{money(total)}</span></div>
                 <div className="flex justify-between text-xl font-extrabold mt-3"><span>{t("Total")}</span><span className="text-amber-600">{money(total)}</span></div>
                 <button disabled={!cart.length} onClick={proceed} className="w-full mt-5 bg-gradient-to-r from-amber-500 to-orange-600 text-white py-3 rounded-lg font-bold disabled:opacity-50 flex justify-center gap-2">
-                  <ShoppingCart size={19}/>{t("View Cart & Place Order")}</button>
+                  {t("View Cart & Place Order")}</button>
               </div>
             </>
           )}

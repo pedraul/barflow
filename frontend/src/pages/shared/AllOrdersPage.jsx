@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { RefreshCw, Search } from 'lucide-react'
 import { fetchOrders } from '../../api/endpoints'
 import { useAuth } from '../../context/AuthContext'
 import { usePreferences } from '../../context/PreferencesContext'
@@ -146,13 +145,12 @@ export default function AllOrdersPage({ eyebrow = 'Orders' }) {
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="relative min-w-[220px] flex-1">
-          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t('Search order #, table, waiter or item')}
-            className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm"
+            className="w-full rounded-lg border border-slate-300 py-2 pl-3 pr-3 text-sm"
           />
         </div>
         <select value={period} onChange={(e) => setPeriod(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
@@ -169,7 +167,7 @@ export default function AllOrdersPage({ eyebrow = 'Orders' }) {
           onClick={() => { setLoading(true); load() }}
           className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200"
         >
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> {t('Refresh')}
+          {t('Refresh')}
         </button>
       </div>
 

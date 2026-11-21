@@ -1,7 +1,6 @@
 import { usePreferences } from '../../context/PreferencesContext'
 import React, { useEffect, useMemo, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { Search, ShoppingCart, Plus, Minus, Trash2, CheckCircle2, UtensilsCrossed, ArrowLeft, ClipboardList } from 'lucide-react'
 import { useCustomer } from '../../context/CustomerContext'
 import useMyCustomerOrders from '../../hooks/useMyCustomerOrders'
 
@@ -110,26 +109,25 @@ export default function MenuPage() {
   if (menuError) return <div className="min-h-screen grid place-items-center text-red-600">{t("Unable to load the menu.")}{' '}<button className="underline" onClick={() => loadMenu()}>{t("Try again")}</button></div>
 
   return <div className="customer-storefront min-h-screen text-slate-900">
-    {cartNotice && <div role="status" aria-live="polite" className="customer-cart-toast"><CheckCircle2 size={19} />{cartNotice}</div>}
+    {cartNotice && <div role="status" aria-live="polite" className="customer-cart-toast">{cartNotice}</div>}
     <header className="customer-menu-header customer-store-header sticky top-0 z-30 flex items-center gap-4 border-b border-slate-200 bg-white px-5 py-3 md:px-8">
-      <div className="customer-menu-brand flex shrink-0 items-center gap-3"><UtensilsCrossed className="text-orange-600" size={34} /><div><h1 className="font-extrabold tracking-tight text-xl">{menu?.businessName || t("BARFLOW")}</h1><p className="text-[10px] font-semibold tracking-[.2em] text-slate-500">{t("RESTAURANT & BAR")}</p></div></div>
+      <div className="customer-menu-brand flex shrink-0 items-center gap-3"><div><h1 className="font-extrabold tracking-tight text-xl">{menu?.businessName || t("BARFLOW")}</h1><p className="text-[10px] font-semibold tracking-[.2em] text-slate-500">{t("RESTAURANT & BAR")}</p></div></div>
       {scannedTable && (
         <span className="customer-table-badge inline-flex shrink-0 items-center whitespace-nowrap rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-sm font-bold text-orange-700">
           {t("Table")}{' '}{scannedTable}
         </span>
       )}
       <div className="customer-store-search relative ml-auto flex min-w-0 flex-1">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={19} />
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("Search the menu")} aria-label={t("Search the menu")} className="w-full rounded-l-lg border border-slate-400 bg-white py-3 pl-10 pr-3 outline-none focus:border-slate-700" />
-        <button type="button" aria-label={t("Search menu")} className="rounded-r-lg bg-slate-800 px-4 text-white hover:bg-slate-700"><Search size={19} /></button>
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("Search the menu")} aria-label={t("Search the menu")} className="w-full rounded-l-lg border border-slate-400 bg-white py-3 pl-3 pr-3 outline-none focus:border-slate-700" />
+        <button type="button" aria-label={t("Search menu")} className="rounded-r-lg bg-slate-800 px-4 text-white hover:bg-slate-700">{t("Search")}</button>
       </div>
       {activeOrders.length > 0 && (
         <button type="button" onClick={() => navigate(myOrdersUrl)} className="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 font-semibold text-slate-800 hover:bg-slate-100">
-          <ClipboardList size={22} /> <span className="hidden sm:inline">{t("My orders")}</span>
+          <span className="hidden sm:inline">{t("My orders")}</span>
           <span className="grid h-5 min-w-5 place-items-center rounded-full bg-emerald-600 px-1 text-xs text-white">{activeOrders.length}</span>
         </button>
       )}
-      <button type="button" onClick={() => setCartOpen((open) => !open)} aria-expanded={cartOpen} aria-controls="customer-cart-panel" className="relative flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 font-semibold text-slate-800 hover:bg-slate-100"><ShoppingCart size={22} /> <span>{t("My Cart")}</span><span className="grid h-5 min-w-5 place-items-center rounded-full bg-orange-600 px-1 text-xs text-white">{getCartCount()}</span></button>
+      <button type="button" onClick={() => setCartOpen((open) => !open)} aria-expanded={cartOpen} aria-controls="customer-cart-panel" className="relative flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 font-semibold text-slate-800 hover:bg-slate-100"><span>{t("My Cart")}</span><span className="grid h-5 min-w-5 place-items-center rounded-full bg-orange-600 px-1 text-xs text-white">{getCartCount()}</span></button>
     </header>
 
     {activeOrders.length > 0 && (
@@ -173,7 +171,7 @@ export default function MenuPage() {
       <div className="mx-auto w-full max-w-screen-2xl">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="flex items-center gap-2 text-xl font-extrabold"><ShoppingCart size={21} />{' '}{t("My Cart")}{' '}<span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-sm text-amber-800">{getCartCount()}</span></h2>
+            <h2 className="flex items-center gap-2 text-xl font-extrabold">{' '}{t("My Cart")}{' '}<span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-sm text-amber-800">{getCartCount()}</span></h2>
             <p className="mt-1 text-sm text-slate-600">{t("Your selected items stay here while you browse.")}</p>
           </div>
           <div className="flex items-center gap-3">
@@ -193,17 +191,17 @@ export default function MenuPage() {
           <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
             {cart.map((item) => (
               <div key={item.productId} className="flex min-w-0 items-center gap-3 rounded-lg border border-slate-200 bg-white p-3">
-                {item.imageUrl ? <img src={item.imageUrl} alt="" className="h-12 w-12 rounded-md object-cover" /> : <div className="grid h-12 w-12 place-items-center rounded-md bg-slate-100"><UtensilsCrossed size={18} className="text-slate-400" /></div>}
+                {item.imageUrl ? <img src={item.imageUrl} alt="" className="h-12 w-12 rounded-md object-cover" /> : null}
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold">{item.name}</p>
                   <p className="text-sm text-slate-500">{money(item.price * item.quantity)}</p>
                 </div>
                 <div className="flex items-center gap-2 rounded-md border px-2 py-1">
-                  <button type="button" aria-label={`${t('Remove one')} ${item.name}`} onClick={() => updateQuantity(item.productId, item.quantity - 1)}><Minus size={14} /></button>
+                  <button type="button" aria-label={`${t('Remove one')} ${item.name}`} onClick={() => updateQuantity(item.productId, item.quantity - 1)} className="px-1 font-bold">-</button>
                   <span className="min-w-4 text-center text-sm font-semibold">{item.quantity}</span>
-                  <button type="button" aria-label={`${t('Add one')} ${item.name}`} onClick={() => updateQuantity(item.productId, item.quantity + 1)}><Plus size={14} /></button>
+                  <button type="button" aria-label={`${t('Add one')} ${item.name}`} onClick={() => updateQuantity(item.productId, item.quantity + 1)} className="px-1 font-bold">+</button>
                 </div>
-                <button type="button" aria-label={`${t('Remove')} ${item.name}`} onClick={() => removeFromCart(item.productId)}><Trash2 size={16} className="text-slate-400 hover:text-red-600" /></button>
+                <button type="button" aria-label={`${t('Remove')} ${item.name}`} onClick={() => removeFromCart(item.productId)} className="text-sm font-semibold text-red-600 hover:underline">{t("Remove")}</button>
               </div>
             ))}
           </div>
@@ -215,7 +213,7 @@ export default function MenuPage() {
       {search ? null : selectedCategory ? (
         <section className="customer-product-section p-5 md:p-8">
           <button onClick={() => setSelectedCategory(null)} className="inline-flex items-center gap-3 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold text-base hover:bg-slate-800 transition shadow-md mb-4">
-            <ArrowLeft size={22} />{t("Back to categories")}</button>
+            {t("Back to categories")}</button>
           <h2 className="text-2xl font-extrabold">{selectedCategory}</h2>
           <p className="text-slate-500 text-sm mt-1">{t("Choose your favorite from our menu")}</p>
           <div className="customer-product-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4 mt-4">
@@ -225,14 +223,14 @@ export default function MenuPage() {
               return (
                   <article key={item.id} className="customer-product-card overflow-hidden border border-slate-200 rounded-xl bg-white w-full">
                   <div className="customer-product-image relative h-40 sm:h-52 bg-slate-100 flex items-center justify-center overflow-hidden">
-                    <div className="absolute inset-0 grid place-items-center text-slate-400"><UtensilsCrossed size={24} /><span className="text-[10px] mt-1">{t("No image")}</span></div>
+                    <div className="absolute inset-0 grid place-items-center text-slate-400"><span className="text-[10px] mt-1">{t("No image")}</span></div>
                     {item.imageUrl && <img src={item.imageUrl} alt={item.name} className="relative z-10 w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} />}
                   </div>
                     <div className="p-2 sm:p-2.5">
                       <h3 className="font-bold text-[11px] sm:text-sm text-slate-900 leading-tight line-clamp-1">{item.name}</h3>
                       <p className="font-bold text-xs sm:text-sm mt-0.5 text-slate-900">{money(item.price)}</p>
                       <button disabled={soldOut} onClick={() => addMenuItem(item)} className="mt-1.5 w-full border border-slate-300 rounded-md py-1 flex justify-between px-1.5 font-semibold text-[11px] hover:border-amber-500 disabled:opacity-50">
-                        {soldOut ? t("Sold out") : t("Add")} <Plus className="rounded bg-amber-600 text-white p-0.5" size={14} />
+                        {soldOut ? t("Sold out") : t("Add")} 
                       </button>
                       {inCart && (
                         <div className="mt-1.5 flex items-center justify-between border border-slate-200 rounded-md px-1.5 py-0.5">
@@ -271,7 +269,7 @@ export default function MenuPage() {
       ) : (
         <section className="p-7">
           <button onClick={() => setSelectedSection(null)} className="inline-flex items-center gap-3 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold text-base hover:bg-slate-800 transition shadow-md mb-4">
-            <ArrowLeft size={22} />{t("Back to menu sections")}</button>
+            {t("Back to menu sections")}</button>
           <h2 className="text-3xl font-extrabold mb-2">{selectedSection === 'bar' ? t("Bar menu") : t("Food menu")}{' '}{t("— Categories")}</h2>
           <p className="text-slate-500 mt-1">{t("Select a category to browse items")}</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 mt-5">
@@ -305,14 +303,14 @@ export default function MenuPage() {
                 return (
                 <article key={item.id} className="customer-product-card overflow-hidden border border-slate-200 rounded-xl bg-white w-full">
                   <div className="customer-product-image relative h-40 sm:h-52 bg-slate-100 flex items-center justify-center overflow-hidden">
-                    <div className="absolute inset-0 grid place-items-center text-slate-400"><UtensilsCrossed size={24} /><span className="text-[10px] mt-1">{t("No image")}</span></div>
+                    <div className="absolute inset-0 grid place-items-center text-slate-400"><span className="text-[10px] mt-1">{t("No image")}</span></div>
                     {item.imageUrl && <img src={item.imageUrl} alt={item.name} className="relative z-10 w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} />}
                   </div>
                     <div className="p-2 sm:p-2.5">
                       <h3 className="font-bold text-[11px] sm:text-sm text-slate-900 leading-tight line-clamp-1">{item.name}</h3>
                       <p className="font-bold text-xs sm:text-sm mt-0.5 text-slate-900">{money(item.price)}</p>
                       <button disabled={soldOut} onClick={() => addMenuItem(item)} className="mt-1.5 w-full border border-slate-300 rounded-md py-1 flex justify-between px-1.5 font-semibold text-[11px] hover:border-amber-500 disabled:opacity-50">
-                        {soldOut ? t("Sold out") : t("Add")} <Plus className="rounded bg-amber-600 text-white p-0.5" size={14} />
+                        {soldOut ? t("Sold out") : t("Add")} 
                       </button>
                       {inCart && (
                         <div className="mt-1.5 flex items-center justify-between border border-slate-200 rounded-md px-1.5 py-0.5">

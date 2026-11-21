@@ -4,12 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { fetchOperatorOrders, fetchReadyOrders, routeOrder, updateOperatorOrderStatus, markOrderAsPaid } from '../../api/endpoints'
 import { getOrderLocation } from '../../utils/orderDisplay'
-import {
-  LayoutDashboard, ShoppingBag, ChefHat, CheckCircle2, BarChart3,
-  Clock, FileText, Printer, GlassWater,
-  FileSpreadsheet, User, LogOut, Menu, Share2
-} from 'lucide-react'
-
+import { ChefHat, CheckCircle2, FileText, Printer, GlassWater, FileSpreadsheet, User, LogOut } from 'lucide-react'
 const MONEY = (v) => `${Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
 
 function SidebarLink({ icon, label, badge, badgeColor, status, active, onClick }) {
@@ -276,9 +271,9 @@ export default function OperatorOrderManagement() {
           </div>
           <div className="flex items-center gap-6">
             <button onClick={handlePrintReadyReceipts} className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm">
-              <Printer size={16} />{t("Print Ready Receipts")}</button>
+              {t("Print Ready Receipts")}</button>
             <button className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm">
-              <Printer size={16} />{t("Print")}</button>
+              {t("Print")}</button>
             <div className="flex items-center gap-3 border-l pl-6 border-slate-200">
               <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold text-sm">{t("OP")}</div>
               <div className="text-left">
@@ -340,7 +335,7 @@ export default function OperatorOrderManagement() {
                         <td className="px-3 py-2"><span className={`inline-flex px-2 py-1 rounded-full text-[10px] ${statusStyle}`}>{status || t("Unknown")}</span>{order.station && <span className={`ml-1 inline-flex items-center gap-0.5 px-2 py-1 rounded-full text-[10px] font-bold ${stationBadge}`}>{stationLabel}</span>}</td>
                         <td className="px-3 py-2 font-semibold text-slate-900">{MONEY(order.total)}</td>
                         <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{order.createdAt}</td>
-                        <td className="px-3 py-2"><div className="flex justify-end flex-wrap gap-2" onClick={(e) => e.stopPropagation()}><button onClick={() => setSelectedOrder(order)} className="text-xs border border-slate-300 text-slate-700 px-2.5 py-1.5 rounded-md hover:bg-white">{t("View")}</button>{isOpen && <><button onClick={() => handleRoute(order.id, 'kitchen')} disabled={actionLoading || order.station === 'kitchen' || order.station === 'both'} title={order.station === 'kitchen' || order.station === 'both' ? t("Already sent to Kitchen") : undefined} className="text-xs bg-emerald-600 text-white px-2.5 py-1.5 rounded-md disabled:opacity-50 disabled:cursor-not-allowed">{t("Kitchen")}</button><button onClick={() => handleRoute(order.id, 'bar')} disabled={actionLoading || order.station === 'bar' || order.station === 'both'} title={order.station === 'bar' || order.station === 'both' ? t("Already sent to Bar") : undefined} className="text-xs bg-purple-600 text-white px-2.5 py-1.5 rounded-md disabled:opacity-50 disabled:cursor-not-allowed">{t("Bar")}</button><button onClick={() => handleRoute(order.id, 'both')} disabled={actionLoading || order.station === 'both' || order.station === 'kitchen' || order.station === 'bar'} title={order.station ? `${t('Already sent to')} ${order.station === 'both' ? t('Kitchen + Bar') : order.station.charAt(0).toUpperCase() + order.station.slice(1)}` : undefined} className="text-xs bg-amber-600 text-white px-2.5 py-1.5 rounded-md disabled:opacity-50 disabled:cursor-not-allowed">{t("Both")}</button></>}{isReady && <><button onClick={() => handleStatus(order.id, 'Served')} disabled={actionLoading} className="text-xs bg-emerald-600 text-white px-2.5 py-1.5 rounded-md disabled:opacity-50">{t("Serve")}</button><button onClick={() => handleStatus(order.id, 'Paid')} disabled={actionLoading} className="text-xs bg-blue-600 text-white px-2.5 py-1.5 rounded-md disabled:opacity-50">{t("Serve & Pay")}</button></>}{['ready', 'served', 'paid'].includes(statusKey) && <button onClick={() => navigate(`/operator/receipt/${order.id}`)} className="text-xs border border-slate-300 text-slate-700 px-2.5 py-1.5 rounded-md">{t("Receipt")}</button>}</div></td>
+                        <td className="px-3 py-2 text-right"><div className="flex justify-end flex-wrap gap-2" onClick={(e) => e.stopPropagation()}><button onClick={() => setSelectedOrder(order)} className="text-xs border border-slate-300 text-slate-700 px-2.5 py-1.5 rounded-md hover:bg-white">{t("View")}</button>{isOpen && <><button onClick={() => handleRoute(order.id, 'kitchen')} disabled={actionLoading || order.station === 'kitchen' || order.station === 'both'} title={order.station === 'kitchen' || order.station === 'both' ? t("Already sent to Kitchen") : undefined} className="text-xs bg-emerald-600 text-white px-2.5 py-1.5 rounded-md disabled:opacity-50 disabled:cursor-not-allowed">{t("Kitchen")}</button><button onClick={() => handleRoute(order.id, 'bar')} disabled={actionLoading || order.station === 'bar' || order.station === 'both'} title={order.station === 'bar' || order.station === 'both' ? t("Already sent to Bar") : undefined} className="text-xs bg-purple-600 text-white px-2.5 py-1.5 rounded-md disabled:opacity-50 disabled:cursor-not-allowed">{t("Bar")}</button><button onClick={() => handleRoute(order.id, 'both')} disabled={actionLoading || order.station === 'both' || order.station === 'kitchen' || order.station === 'bar'} title={order.station ? `${t('Already sent to')} ${order.station === 'both' ? t('Kitchen + Bar') : order.station.charAt(0).toUpperCase() + order.station.slice(1)}` : undefined} className="text-xs bg-amber-600 text-white px-2.5 py-1.5 rounded-md disabled:opacity-50 disabled:cursor-not-allowed">{t("Both")}</button></>}{isReady && <><button onClick={() => handleStatus(order.id, 'Served')} disabled={actionLoading} className="text-xs bg-emerald-600 text-white px-2.5 py-1.5 rounded-md disabled:opacity-50">{t("Serve")}</button><button onClick={() => handleStatus(order.id, 'Paid')} disabled={actionLoading} className="text-xs bg-blue-600 text-white px-2.5 py-1.5 rounded-md disabled:opacity-50">{t("Serve & Pay")}</button></>}{['ready', 'served', 'paid'].includes(statusKey) && <button onClick={() => navigate(`/operator/receipt/${order.id}`)} className="text-xs border border-slate-300 text-slate-700 px-2.5 py-1.5 rounded-md">{t("Receipt")}</button>}</div></td>
                       </tr>
                     })}
                   </tbody>

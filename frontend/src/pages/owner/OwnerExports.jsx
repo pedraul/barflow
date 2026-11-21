@@ -34,7 +34,7 @@ export default function OwnerExports({ onExport }) {
         </div>
 
         {exported && (
-          <p className="creation-success"><span>✓</span>{exported}</p>
+          <p className="creation-success">{exported}</p>
         )}
       </section>
     </div>

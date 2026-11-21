@@ -981,6 +981,13 @@ export async function getTransferLogs(req, res) {
 //  6. Revenue Tracking
 // ──────────────────────────────────────────────
 
+// An order counts as paid when its status is Paid, or when a payment for it
+// completed (orders paid up front later move on to Served).
+const ORDER_IS_PAID_SQL = `(LOWER(BTRIM(o.status::text)) = 'paid' OR EXISTS (
+  SELECT 1 FROM payments pay WHERE pay.order_id = o.id AND pay.paid_at IS NOT NULL
+))`
+const ORDER_NOT_CANCELLED_SQL = `LOWER(BTRIM(o.status::text)) NOT IN ('cancelled', 'canceled')`
+
 // GET /api/v1/owner/revenue
 export async function getRevenue(req, res) {
   try {
@@ -991,6 +998,7 @@ export async function getRevenue(req, res) {
     if (!businessId) {
       return res.json({
         revenueReceived: 0,
+        revenueAwaiting: { orders: 0, value: 0 },
         stockAvailable: { items: 0, quantity: 0 },
         stockOrdered: { orders: 0, value: 0 },
         currentStockValue: 0,
@@ -998,7 +1006,22 @@ export async function getRevenue(req, res) {
       })
     }
 
-    const financialSummary = await getFinancialSummary(businessId, scope.branchId)
+    const orderBranchFilter = scope.branchId ? ' AND o.branch_id = $2' : ''
+    const { rows: paymentTotals } = await query(
+      `SELECT COALESCE(SUM(o.total_amount) FILTER (WHERE ${ORDER_IS_PAID_SQL}), 0) AS paid_value,
+              COUNT(*) FILTER (WHERE NOT ${ORDER_IS_PAID_SQL}) AS awaiting_orders,
+              COALESCE(SUM(o.total_amount) FILTER (WHERE NOT ${ORDER_IS_PAID_SQL}), 0) AS awaiting_value
+       FROM orders o
+       WHERE o.business_id = $1 AND ${ORDER_NOT_CANCELLED_SQL}${orderBranchFilter}`,
+      branchParams
+    )
+    const { rows: refundTotals } = await query(
+      `SELECT COALESCE(SUM(amount), 0) AS refunds
+       FROM refunds
+       WHERE business_id = $1 AND LOWER(BTRIM(status::text)) = 'approved'${branchFilter}`,
+      branchParams
+    )
+    const revenueReceived = Math.max(0, Number(paymentTotals[0].paid_value) - Number(refundTotals[0].refunds))
 
     const { rows: stockAvailable } = await query(
       `SELECT COUNT(DISTINCT p.id) FILTER (WHERE bs.quantity > 0) AS total_items,
@@ -1032,7 +1055,11 @@ export async function getRevenue(req, res) {
     )
 
     res.json({
-      revenueReceived: financialSummary.totalSales,
+      revenueReceived,
+      revenueAwaiting: {
+        orders: Number(paymentTotals[0].awaiting_orders) || 0,
+        value: Number(paymentTotals[0].awaiting_value) || 0,
+      },
       stockAvailable: {
         items: Number(stockAvailable[0].total_items) || 0,
         quantity: Number(stockAvailable[0].total_quantity) || 0,
@@ -1044,6 +1071,113 @@ export async function getRevenue(req, res) {
       currentStockValue: Number(stockValue[0].total_value) || 0,
       soldStockValue: Number(soldValue[0].total_value) || 0,
     })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+}
+
+// GET /api/v1/owner/revenue/details?view=received|awaiting|stock|pending|stock-value|sold
+// Records behind each card on the owner Revenue page.
+export async function getRevenueDetails(req, res) {
+  try {
+    const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
+    const businessId = scope.businessId
+    const view = String(req.query.view || '')
+    if (!businessId) return res.json({ view, kind: 'orders', rows: [] })
+
+    const params = scope.branchId ? [businessId, scope.branchId] : [businessId]
+    const orderBranch = scope.branchId ? ' AND o.branch_id = $2' : ''
+    const stockBranch = scope.branchId ? ' AND bs.branch_id = $2' : ''
+
+    const orderSelect = `SELECT o.id, o.order_number, o.status, o.total_amount, o.table_number,
+            o.payment_method, o.created_at, b.name AS branch_name
+       FROM orders o
+       LEFT JOIN branches b ON b.id = o.branch_id`
+    const orderViews = {
+      received: `${ORDER_IS_PAID_SQL} AND ${ORDER_NOT_CANCELLED_SQL}`,
+      awaiting: `NOT ${ORDER_IS_PAID_SQL} AND ${ORDER_NOT_CANCELLED_SQL}`,
+      pending: `o.status = 'Open'`,
+    }
+
+    if (orderViews[view]) {
+      const { rows } = await query(
+        `${orderSelect}
+         WHERE o.business_id = $1 AND ${orderViews[view]}${orderBranch}
+         ORDER BY o.created_at DESC
+         LIMIT 200`,
+        params
+      )
+      return res.json({
+        view,
+        kind: 'orders',
+        rows: rows.map((o) => ({
+          id: o.id,
+          orderNumber: o.order_number,
+          status: o.status,
+          total: Number(o.total_amount) || 0,
+          tableNumber: o.table_number,
+          paymentMethod: o.payment_method,
+          branchName: o.branch_name,
+          createdAt: o.created_at,
+        })),
+      })
+    }
+
+    if (view === 'stock' || view === 'stock-value') {
+      const { rows } = await query(
+        `SELECT p.id AS product_id, p.name, b.name AS branch_name, bs.quantity, p.cost_price, p.selling_price,
+                bs.quantity * p.cost_price AS value
+         FROM branch_stock bs
+         JOIN products p ON p.id = bs.product_id
+         LEFT JOIN branches b ON b.id = bs.branch_id
+         WHERE p.is_active = TRUE AND p.business_id = $1${stockBranch}
+           ${view === 'stock' ? 'AND bs.quantity > 0' : ''}
+         ORDER BY ${view === 'stock' ? 'p.name' : 'value DESC'}
+         LIMIT 500`,
+        params
+      )
+      return res.json({
+        view,
+        kind: 'stock',
+        rows: rows.map((r) => ({
+          id: `${r.product_id}-${r.branch_name || ''}`,
+          name: r.name,
+          branchName: r.branch_name,
+          quantity: Number(r.quantity) || 0,
+          costPrice: Number(r.cost_price) || 0,
+          sellingPrice: Number(r.selling_price) || 0,
+          value: Number(r.value) || 0,
+        })),
+      })
+    }
+
+    if (view === 'sold') {
+      const { rows } = await query(
+        `SELECT p.id, p.name, SUM(oi.quantity) AS quantity, p.selling_price,
+                SUM(oi.quantity * p.selling_price) AS value
+         FROM order_items oi
+         JOIN products p ON p.id = oi.product_id
+         JOIN orders o ON o.id = oi.order_id AND LOWER(BTRIM(o.status::text)) IN ('paid', 'served')
+         WHERE o.business_id = $1${orderBranch}
+         GROUP BY p.id, p.name, p.selling_price
+         ORDER BY value DESC
+         LIMIT 500`,
+        params
+      )
+      return res.json({
+        view,
+        kind: 'sold',
+        rows: rows.map((r) => ({
+          id: r.id,
+          name: r.name,
+          quantity: Number(r.quantity) || 0,
+          price: Number(r.selling_price) || 0,
+          value: Number(r.value) || 0,
+        })),
+      })
+    }
+
+    return res.status(400).json({ error: 'Unknown revenue view.' })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

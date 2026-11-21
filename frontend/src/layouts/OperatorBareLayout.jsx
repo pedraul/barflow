@@ -3,7 +3,6 @@ import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useSubscription } from '../context/SubscriptionContext'
 import Navbar from '../components/Navbar'
-import { Users } from 'lucide-react'
 import ShiftControl from '../components/ShiftControl'
 import useMyGrants from '../hooks/useMyGrants'
 
@@ -18,7 +17,7 @@ function OperatorFloatingTools() {
           to="/staff"
           className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow ring-1 ring-slate-200 hover:bg-slate-50"
         >
-          <Users size={14} /> {t('Staff')}
+          {t('Staff')}
         </Link>
       )}
       <ShiftControl />

@@ -14,25 +14,6 @@ function Receipt({ data }) {
       />
 
       <div className="operator-receipt-content px-6 py-8 space-y-4">
-        <div className="flex justify-center mb-2">
-          <div className="w-14 h-14 rounded-full border-2 border-black flex items-center justify-center p-2">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="w-8 h-8 text-black"
-            >
-              <path d="M8 22h8" />
-              <path d="M7 10h4v12H7z" />
-              <path d="M8 2v8" />
-              <path d="M12 15a5 5 0 0 0 5-5V3h-5v7a5 5 0 0 0 0 5z" />
-              <path d="M14.5 22v-7" />
-            </svg>
-          </div>
-        </div>
 
         <div className="operator-receipt-business text-center">
           <h1 className="text-xl font-extrabold tracking-wide text-black uppercase">

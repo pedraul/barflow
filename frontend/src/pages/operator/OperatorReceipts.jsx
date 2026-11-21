@@ -5,12 +5,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { fetchOperatorOrders } from '../../api/endpoints'
 import api from '../../api/axios'
-import {
-  LayoutDashboard, ShoppingBag, ChefHat, CheckCircle2, BarChart3,
-  Clock, FileText, Printer, GlassWater,
-  FileSpreadsheet, User, LogOut, Menu
-} from 'lucide-react'
-
+import { ChefHat, CheckCircle2, FileText, Printer, GlassWater, FileSpreadsheet, User, LogOut } from 'lucide-react'
 const MONEY = (v) => `${Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
 
 function SidebarLink({ icon, label, badge, badgeColor, status, active, onClick }) {
@@ -180,7 +175,7 @@ export default function OperatorReceipts() {
           </div>
           <div className="flex items-center gap-6">
             <button className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm">
-              <Printer size={16} />{t("Print")}</button>
+              {t("Print")}</button>
             <div className="flex items-center gap-3 border-l pl-6 border-slate-200">
               <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold text-sm">{t("OP")}</div>
               <div className="text-left">
@@ -227,7 +222,7 @@ export default function OperatorReceipts() {
                   </div>
                   <div className="grid grid-cols-2 gap-1.5 pt-1">
                     <button onClick={() => navigate(`/operator/receipt/${receipt.id}`)} className="text-xs font-semibold border border-slate-200 text-slate-600 py-1.5 rounded-md hover:bg-white transition bg-white shadow-xs">{t("View")}</button>
-                    <button onClick={() => { navigate(`/operator/receipt/${receipt.id}`); }} className="text-xs font-semibold border border-slate-200 text-slate-600 py-1.5 rounded-md hover:bg-white transition flex items-center justify-center gap-1 bg-white shadow-xs"><Printer size={12} />{' '}{t("Print")}</button>
+                    <button onClick={() => { navigate(`/operator/receipt/${receipt.id}`); }} className="text-xs font-semibold border border-slate-200 text-slate-600 py-1.5 rounded-md hover:bg-white transition flex items-center justify-center gap-1 bg-white shadow-xs">{' '}{t("Print")}</button>
                   </div>
                 </div>
               ))}

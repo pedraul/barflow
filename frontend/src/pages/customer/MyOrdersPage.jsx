@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { CheckCircle2, ChefHat, Clock, ConciergeBell, UtensilsCrossed } from 'lucide-react'
 import { useCustomer } from '../../context/CustomerContext'
 import { usePreferences } from '../../context/PreferencesContext'
 import useMyCustomerOrders from '../../hooks/useMyCustomerOrders'
@@ -8,10 +7,10 @@ import useMyCustomerOrders from '../../hooks/useMyCustomerOrders'
 const money = (value) => `${Number(value || 0).toLocaleString('en-RW')} RWF`
 
 const STEPS = [
-  { key: 'Open', label: 'Received', icon: Clock },
-  { key: 'Preparing', label: 'Preparing', icon: ChefHat },
-  { key: 'Ready', label: 'Ready', icon: ConciergeBell },
-  { key: 'Served', label: 'Served', icon: CheckCircle2 },
+  { key: 'Open', label: 'Received' },
+  { key: 'Preparing', label: 'Preparing' },
+  { key: 'Ready', label: 'Ready' },
+  { key: 'Served', label: 'Served' },
 ]
 const stepIndex = (status) => Math.max(0, STEPS.findIndex((s) => s.key === status))
 
@@ -42,7 +41,6 @@ export default function MyOrdersPage() {
   return (
     <div className="customer-storefront min-h-screen bg-slate-50 text-slate-900">
       <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-slate-200 bg-white px-5 py-3 md:px-8">
-        <UtensilsCrossed className="text-orange-600" size={30} />
         <div className="min-w-0 flex-1">
           <h1 className="text-xl font-extrabold tracking-tight">{t('My orders')}</h1>
           {headerTable && <p className="text-sm text-slate-500">{t('Table')} {headerTable}</p>}
@@ -84,12 +82,11 @@ export default function MyOrdersPage() {
 
                   <ol className="my-4 grid grid-cols-4 gap-1" aria-label={t('Order progress')}>
                     {STEPS.map((step, i) => {
-                      const Icon = step.icon
                       const done = i <= current
                       return (
                         <li key={step.key} className="flex flex-col items-center gap-1 text-center">
                           <span className={`grid h-9 w-9 place-items-center rounded-full ${done ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400'} ${i === current ? 'ring-4 ring-emerald-100' : ''}`}>
-                            <Icon size={17} />
+                            <span className="text-sm font-bold">{i + 1}</span>
                           </span>
                           <span className={`text-xs font-semibold ${done ? 'text-emerald-700' : 'text-slate-400'}`}>{t(step.label)}</span>
                         </li>

@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { RefreshCw } from 'lucide-react'
 import { fetchShiftPerformance, fetchShifts } from '../../api/endpoints'
 import { useAuth } from '../../context/AuthContext'
 import { useOwner } from '../../context/OwnerContext'
@@ -131,7 +130,7 @@ export default function ShiftsPage() {
           onClick={load}
           className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200"
         >
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> {t('Refresh')}
+          {t('Refresh')}
         </button>
       </div>
 

@@ -188,7 +188,7 @@ export default function Reports() {
                 {t('Category')}
                 <select value={category} onChange={(e) => setCategory(e.target.value)} style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, minWidth: 180 }}>
                   {REPORT_CATEGORIES.map((c) => (
-                    <option key={c.id} value={c.id}>{c.icon} {t(c.label)}</option>
+                    <option key={c.id} value={c.id}>{t(c.label)}</option>
                   ))}
                 </select>
               </label>

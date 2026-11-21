@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from 'react'
-import { BarChart3, GitBranch, Scale } from 'lucide-react'
 import { usePreferences } from '../../context/PreferencesContext'
 
 const money = (value) => `${value.toLocaleString()} RWF`

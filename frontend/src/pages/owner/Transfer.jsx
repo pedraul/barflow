@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { useOwner } from '../../context/OwnerContext'
-import { ArrowLeftRight, Send, FileText, Smartphone, Banknote, CheckCircle2, XCircle, FileIcon } from 'lucide-react'
 import { usePreferences } from '../../context/PreferencesContext'
 
 const fmt = (v) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'RWF', minimumFractionDigits: 0 }).format(v || 0)
@@ -51,23 +50,16 @@ export default function OwnerTransfer() {
           <h1 className="text-2xl font-extrabold text-slate-900">{t('Transfer Funds')}</h1>
           <p className="text-sm text-slate-500">{t('Owner and accountant can create transfers. Manager must approve before completion.')}</p>
         </div>
-        <div className="p-3 bg-slate-100 rounded-xl text-slate-600">
-          <ArrowLeftRight size={24} />
-        </div>
       </div>
 
       {msg && (
         <div className={`p-4 rounded-xl text-sm font-medium border flex items-center gap-2 ${msg.startsWith('❌') ? 'bg-red-50 border-red-300 text-red-800' : 'bg-emerald-50 border-emerald-300 text-emerald-800'}`}>
-          {msg.startsWith('❌') ? <XCircle size={18} /> : <CheckCircle2 size={18} />}
-          {msg}
+          {msg.replace(/^[❌✅]\s*/u, '')}
         </div>
       )}
 
       <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
         <div className="flex items-center gap-3 mb-1">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-300 flex items-center justify-center text-white font-bold text-lg shrink-0">
-            <ArrowLeftRight size={20} />
-          </div>
           <div>
             <h2 className="text-lg font-bold text-slate-900 m-0 border-0 p-0">{t('New Transfer')}</h2>
             <p className="m-0 text-slate-500 text-sm">{t('Send money to a mobile money account after manager approval.')}</p>
@@ -75,7 +67,7 @@ export default function OwnerTransfer() {
         </div>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           <label className="flex flex-col gap-1.5 font-semibold text-sm text-slate-700">
-            <span className="flex items-center gap-1.5"><Smartphone size={15} /> {t('Phone Number')}</span>
+            <span className="flex items-center gap-1.5">{t('Phone Number')}</span>
             <input
               type="tel"
               value={toPhone}
@@ -86,14 +78,14 @@ export default function OwnerTransfer() {
             />
           </label>
           <label className="flex flex-col gap-1.5 font-semibold text-sm text-slate-700">
-            <span className="flex items-center gap-1.5"><Smartphone size={15} /> {t('Mobile money provider')}</span>
+            <span className="flex items-center gap-1.5">{t('Mobile money provider')}</span>
             <select value={method} onChange={(e) => setMethod(e.target.value)} required className="px-3 py-2 border border-slate-300 rounded-lg text-sm font-normal text-slate-700">
               <option value="mtn_momo">{t('MTN MoMo')}</option>
               <option value="airtel_money">{t('Airtel Money')}</option>
             </select>
           </label>
           <label className="flex flex-col gap-1.5 font-semibold text-sm text-slate-700">
-            <span className="flex items-center gap-1.5"><FileText size={15} /> {t('Purpose')}</span>
+            <span className="flex items-center gap-1.5">{t('Purpose')}</span>
             <input
               type="text"
               value={description}
@@ -103,7 +95,7 @@ export default function OwnerTransfer() {
             />
           </label>
           <label className="flex flex-col gap-1.5 font-semibold text-sm text-slate-700">
-            <span className="flex items-center gap-1.5"><Banknote size={15} /> {t('Amount (RWF)')}</span>
+            <span className="flex items-center gap-1.5">{t('Amount (RWF)')}</span>
             <input
               type="number"
               value={amount}
@@ -116,7 +108,6 @@ export default function OwnerTransfer() {
           </label>
           <div className="md:col-span-2 flex justify-end">
             <button className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-800 text-white border border-indigo-600 px-4 py-2 rounded-lg font-semibold text-sm transition disabled:opacity-50" type="submit" disabled={loading}>
-              <Send size={16} />
               {loading ? t('Processing…') : t('Initiate Transfer →')}
             </button>
           </div>
@@ -127,7 +118,6 @@ export default function OwnerTransfer() {
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-bold text-slate-900">{t('Transfer Logs')}</h2>
           <button className="inline-flex items-center gap-2 text-slate-700 bg-white border border-slate-300 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-slate-100 transition" onClick={loadLogs}>
-            <FileIcon size={16} />
             {viewLogs ? t('Hide Logs') : t('View Logs')}
           </button>
         </div>

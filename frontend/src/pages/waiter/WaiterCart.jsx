@@ -279,7 +279,7 @@ export default function WaiterCart() {
                   <div key={i.productId} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, background: 'white', borderRadius: 8 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 4, minWidth: 0 }}>
                       <div style={{ width: 50, height: 50, borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
-                        {i.imageUrl ? <img src={i.imageUrl} alt={i.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ width: 50, height: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, background: '#f0f0f0' }}>🍽</div>}
+                        {i.imageUrl ? <img src={i.imageUrl} alt={i.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ width: 50, height: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, background: '#f0f0f0' }} />}
                       </div>
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontWeight: 700 }}>{i.name}</div>

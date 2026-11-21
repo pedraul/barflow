@@ -139,7 +139,7 @@ export default function OwnerUserManagement() {
           <h2>{t('Create user')}</h2>
           <p>{t('Add a staff account and assign its role, branch, and salary.')}</p>
           {created ? (
-            <div className="creation-success"><span>✓</span><h2>{t('User created')}</h2><p>{createForm.name}{t('\'s account is ready. They can sign in with the email and temporary password you set.')}</p><button type="button" onClick={resetCreate}>{t('Add another')}</button></div>
+            <div className="creation-success"><h2>{t('User created')}</h2><p>{createForm.name}{t('\'s account is ready. They can sign in with the email and temporary password you set.')}</p><button type="button" onClick={resetCreate}>{t('Add another')}</button></div>
           ) : (
             <form className="create-user-form" onSubmit={submitCreate}>
               <label>{t('Full name')}<input value={createForm.name} onChange={(event) => setCreateForm({ ...createForm, name: event.target.value })} placeholder={t('e.g. Aline Uwimana')} required /></label>
@@ -274,7 +274,6 @@ export default function OwnerUserManagement() {
             <ul className="permission-list">
               {permissionSummary.map((item) => (
                 <li key={item.role}>
-                  <span className="permission-icon" aria-hidden="true">{item.icon}</span>
                   <div>
                     <strong>{t(item.role)}</strong>
                     <span>{t(item.description)}</span>

@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import { useOwner } from '../../context/OwnerContext'
-import { QrCode, ChevronDown, Eye, Package } from 'lucide-react'
 import OrderRestockModal from '../../components/OrderRestockModal'
 import { usePreferences } from '../../context/PreferencesContext'
 
@@ -61,9 +60,6 @@ export default function OwnerQRWorkspace() {
           <h1 className="text-2xl font-extrabold text-slate-900">{t('QR Orders')}</h1>
           <p className="text-sm text-slate-500">{t('All client orders placed by QR code scan across every table. Track each order and its full lifecycle.')}</p>
         </div>
-        <div className="p-3 bg-slate-100 rounded-xl text-slate-600">
-          <QrCode size={24} />
-        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -120,7 +116,6 @@ export default function OwnerQRWorkspace() {
                       <td className="p-2 text-right text-slate-400">{new Date(o.createdAt).toLocaleDateString()}</td>
                       <td className="p-2 text-right">
                         <button type="button" className="inline-flex items-center gap-1 text-indigo-600 hover:underline font-medium mr-3" onClick={() => toggleExpand(o.id)}>
-                          <Eye size={15} />
                           {expandedId === o.id ? t('Hide') : t('View')}
                         </button>
                         {canRestock && (

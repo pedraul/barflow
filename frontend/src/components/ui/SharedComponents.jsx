@@ -1,5 +1,4 @@
 import React from 'react'
-import { Printer } from 'lucide-react'
 import { usePreferences } from '../../context/PreferencesContext'
 
 export function SidebarLink({ icon, label, badge, badgeColor, status, active, onClick, className = '' }) {
@@ -24,7 +23,7 @@ export function SidebarLink({ icon, label, badge, badgeColor, status, active, on
   )
 }
 
-export function StatCard({ icon, iconBg, label, value, linkText, onClick }) {
+export function StatCard({ label, value, linkText, onClick }) {
   const { t } = usePreferences()
   return (
     <div
@@ -46,7 +45,6 @@ export function StatCard({ icon, iconBg, label, value, linkText, onClick }) {
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{t(label)}</p>
           <p className="text-2xl font-black text-slate-900">{value}</p>
         </div>
-        <div className={`p-3 rounded-xl ${iconBg}`}>{icon}</div>
       </div>
       {linkText && (
         <span className="text-xs font-bold text-blue-600 tracking-wide transition text-left">
@@ -67,7 +65,7 @@ export function OrderListItem({ id, type, typeColor = "bg-blue-100 text-blue-600
           <span className={`text-[10px] px-1.5 py-0.5 rounded ${typeColor}`}>{type}</span>
           {station && (
             <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold">
-              ✓ {t('Sent to')} {station === 'both' ? t('Kitchen + Bar') : station.charAt(0).toUpperCase() + station.slice(1)}
+              {t('Sent to')} {station === 'both' ? t('Kitchen + Bar') : station.charAt(0).toUpperCase() + station.slice(1)}
             </span>
           )}
           <span className="text-xs text-slate-500 font-medium">{table}</span>
@@ -118,11 +116,10 @@ export function StepLine({ active }) {
   )
 }
 
-export function QuickActionButton({ icon, label, onClick }) {
+export function QuickActionButton({ label, onClick }) {
   const { t } = usePreferences()
   return (
     <button onClick={onClick} className="flex items-center gap-2 border border-slate-200 rounded-lg p-2.5 text-left bg-slate-50/50 hover:bg-slate-50 transition shadow-xs w-full">
-      {icon}
       <span className="text-[11px] font-bold text-slate-800 leading-tight">{t(label)}</span>
     </button>
   )

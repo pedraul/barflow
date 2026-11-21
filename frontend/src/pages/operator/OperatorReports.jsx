@@ -4,8 +4,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { fetchOperatorRoutedReport } from '../../api/endpoints'
-import { FileSpreadsheet, Printer, Search, RefreshCw, Download } from 'lucide-react'
-
 const MONEY = (v) => `${Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
 
 export default function OperatorReports() {
@@ -114,9 +112,6 @@ export default function OperatorReports() {
       <aside className="operator-desktop-sidebar hidden md:flex w-64 bg-[#0B132B] text-slate-400 flex flex-col justify-between shrink-0">
         <div>
           <div className="h-16 flex items-center gap-2 px-6 border-b border-slate-800 text-white font-bold text-xl">
-            <div className="p-1.5 bg-blue-600 rounded-lg text-white">
-              <FileSpreadsheet size={20} />
-            </div>
             <span>BarFlow</span>
           </div>
           <nav className="p-4 space-y-6 text-sm">
@@ -147,9 +142,6 @@ export default function OperatorReports() {
       >
         <div>
           <div className="h-16 flex items-center gap-2 px-6 border-b border-slate-800 text-white font-bold text-xl">
-            <div className="p-1.5 bg-blue-600 rounded-lg text-white">
-              <FileSpreadsheet size={20} />
-            </div>
             <span>BarFlow</span>
           </div>
           <nav className="p-4 space-y-6 text-sm">
@@ -178,9 +170,9 @@ export default function OperatorReports() {
         <header className="operator-report-topbar bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
           <div><p className="text-xs font-semibold uppercase tracking-wider text-orange-600">{t("Operations")}</p><h1 className="text-lg font-bold text-slate-900">{t("Routed orders")}</h1></div>
           <div className="flex items-center gap-2">
-            <button type="button" onClick={load} disabled={loading} aria-label={t("Refresh report")} className="operator-report-button operator-report-secondary"><RefreshCw size={16} className={loading ? 'animate-spin' : ''} />{' '}{t("Refresh")}</button>
-            <button type="button" onClick={exportReport} disabled={!filteredEvents.length} aria-label={t("Export report as CSV")} className="operator-report-button operator-report-secondary"><Download size={16} />{' '}{t("Export CSV")}</button>
-            <button type="button" onClick={() => window.print()} aria-label={t("Print report")} className="operator-report-button operator-report-primary"><Printer size={16} />{' '}{t("Print")}</button>
+            <button type="button" onClick={load} disabled={loading} aria-label={t("Refresh report")} className="operator-report-button operator-report-secondary">{' '}{t("Refresh")}</button>
+            <button type="button" onClick={exportReport} disabled={!filteredEvents.length} aria-label={t("Export report as CSV")} className="operator-report-button operator-report-secondary">{' '}{t("Export CSV")}</button>
+            <button type="button" onClick={() => window.print()} aria-label={t("Print report")} className="operator-report-button operator-report-primary">{' '}{t("Print")}</button>
           </div>
         </header>
         <main className="operator-report-main flex-1 overflow-y-auto">
@@ -207,7 +199,7 @@ export default function OperatorReports() {
             <div ref={activityRef} />
             <div className="operator-report-panel-heading">
               <div><h3>{t("Routing activity")}</h3><p>{filteredEvents.length} {filteredEvents.length === 1 ? t("item") : t("items")}{' '}{t("shown")}</p></div>
-              <label className="operator-report-search"><Search size={17} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("Search item or order")} aria-label={t("Search routed items")} /></label>
+              <label className="operator-report-search"><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("Search item or order")} aria-label={t("Search routed items")} /></label>
               <select className="operator-report-filter" value={destination} onChange={(event) => setDestination(event.target.value)} aria-label={t("Filter by destination")}>
                 <option value="all">{t("All stations")}</option><option value="kitchen">{t("Kitchen")}</option><option value="bar">{t("Bar")}</option>
               </select>
@@ -237,7 +229,7 @@ export default function OperatorReports() {
       <div className="operator-report-legacy">
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
           <h1 className="text-lg font-semibold text-slate-900">{t("Routed Orders Report")}</h1>
-          <button onClick={() => window.print()} className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm"><Printer size={16} />{' '}{t("Print")}</button>
+          <button onClick={() => window.print()} className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm">{' '}{t("Print")}</button>
         </header>
 
         <main className="operator-main flex-1 overflow-y-auto p-6 space-y-4">

@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { useOwner } from '../../context/OwnerContext'
-import { Smartphone, ArrowDownToLine, FileText, CheckCircle2, XCircle } from 'lucide-react'
 import { usePreferences } from '../../context/PreferencesContext'
 
 const fmt = (v) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'RWF', minimumFractionDigits: 0 }).format(v || 0)
@@ -47,15 +46,11 @@ export default function OwnerWithdraw() {
           <h1 className="text-2xl font-extrabold text-slate-900">{t('Withdraw Funds')}</h1>
           <p className="text-sm text-slate-500">{t('Only the owner can create withdrawal requests. The manager must approve before the money is sent.')}</p>
         </div>
-        <div className="p-3 bg-slate-100 rounded-xl text-slate-600">
-          <Smartphone size={24} />
-        </div>
       </div>
 
       {msg && (
         <div className={`p-4 rounded-xl text-sm font-medium border flex items-center gap-2 ${msg.startsWith('❌') ? 'bg-red-50 border-red-300 text-red-800' : 'bg-emerald-50 border-emerald-300 text-emerald-800'}`}>
-          {msg.startsWith('❌') ? <XCircle size={18} /> : <CheckCircle2 size={18} />}
-          {msg}
+          {msg.replace(/^[❌✅]\s*/u, '')}
         </div>
       )}
 
@@ -83,7 +78,6 @@ export default function OwnerWithdraw() {
           </label>
           <div className="md:col-span-2 flex justify-end">
             <button className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-800 text-white border border-indigo-600 px-4 py-2 rounded-lg font-semibold text-sm transition disabled:opacity-50" type="submit" disabled={loading}>
-              <ArrowDownToLine size={16} />
               {loading ? t('Processing…') : t('Withdraw')}
             </button>
           </div>
@@ -94,7 +88,6 @@ export default function OwnerWithdraw() {
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-bold text-slate-900">{t('Withdrawal Logs')}</h2>
           <button className="inline-flex items-center gap-2 text-slate-700 bg-white border border-slate-300 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-slate-100 transition" onClick={loadLogs}>
-            <FileText size={16} />
             {viewLogs ? t('Hide Logs') : t('View Logs')}
           </button>
         </div>

@@ -175,6 +175,12 @@ export function OwnerProvider({ children }) {
     })
   }, [withLoading, withActiveBranch])
 
+  const fetchRevenueDetails = useCallback(async (view) => {
+    const qs = new URLSearchParams(withActiveBranch({ view })).toString()
+    const { data } = await api.get(`/v1/owner/revenue/details?${qs}`)
+    return data
+  }, [withActiveBranch])
+
   const fetchRevenueLogs = useCallback(async (params = {}) => {
     return withLoading(async () => {
       const qs = new URLSearchParams(withActiveBranch(params)).toString()
@@ -438,7 +444,7 @@ export function OwnerProvider({ children }) {
     fetchSalaries, processPayout, checkPayrollPayout, startPayrollPayout,
     createWithdrawal, fetchWithdrawalLogs,
     createTransfer, approveTransfer, fetchTransferLogs,
-    fetchRevenue, fetchRevenueLogs,
+    fetchRevenue, fetchRevenueLogs, fetchRevenueDetails,
     fetchReportSummary, exportReport,
     fetchQROrders, fetchWaiters, fetchWaiterOrders, fetchOrderHistory,
     fetchAuditLogs, fetchAuditLogsExport,

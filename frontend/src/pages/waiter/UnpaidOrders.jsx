@@ -79,7 +79,6 @@ export default function WaiterUnpaidOrders() {
         <div className="emptyState" style={{ padding: '60px', textAlign: 'center', color: '#6c757d' }}>{t("Loading unpaid orders...")}</div>
       ) : unpaidOrders.length === 0 ? (
         <div className="emptyState" style={{ padding: '60px', textAlign: 'center', color: '#6c757d' }}>
-          <div style={{ fontSize: '48px', marginBottom: '12px' }}>🧾</div>
           <h2 style={{ margin: '0 0 8px' }}>{t("No unpaid orders")}</h2>
           <p>{t("All of your active waiter orders are paid or there are no pending payments yet.")}</p>
         </div>

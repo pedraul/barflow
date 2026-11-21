@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Search, Eye, Pencil, Trash2, ShieldCheck, Ban, Play, X, RefreshCw, Building2 } from 'lucide-react'
+import { X } from 'lucide-react'
 import { fetchBusinesses, toggleBusinessStatus, setUnpaidBusinessAccess, updateBusiness, deleteBusiness } from '../../api/endpoints'
 import { PROVINCES, DISTRICTS_BY_PROVINCE } from '../../constants/locationOptions'
 import { useToast } from '../../context/ToastContext'
@@ -169,16 +169,15 @@ export default function BusinessList() {
           <p className="text-sm text-slate-500 mt-1">{businesses.length} {t('businesses registered on BarFlow')}</p>
         </div>
         <button onClick={load} className="px-4 py-2 text-sm bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition inline-flex items-center gap-2">
-          <RefreshCw size={16} /> {t('Refresh')}
+          {t('Refresh')}
         </button>
       </div>
 
       {/* Filters */}
       <div className="platform-business-filters flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[220px]">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Search name, email, code, phone...')}
-            className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+            className="w-full pl-3 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
         </div>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
           <option value="all">{t('All statuses')}</option>
@@ -256,19 +255,19 @@ export default function BusinessList() {
                       </button>
                     )}
                   </td>
-                  <td className="sticky right-0 z-10 px-3 py-2 bg-white">
+                  <td className="sticky right-0 z-10 px-3 py-2 bg-white text-right">
                     <div className="flex min-w-max justify-end gap-1.5">
-                      <IconBtn title="View" onClick={() => setViewing(b)} color="text-slate-600 hover:bg-slate-100"><Eye size={15} /></IconBtn>
-                      <IconBtn title="Edit" onClick={() => openEdit(b)} color="text-blue-600 hover:bg-blue-50"><Pencil size={15} /></IconBtn>
+                      <IconBtn title="View" onClick={() => setViewing(b)} color="text-slate-600 hover:bg-slate-100"></IconBtn>
+                      <IconBtn title="Edit" onClick={() => openEdit(b)} color="text-blue-600 hover:bg-blue-50"></IconBtn>
                       {!b.isVerified && !b.isSuspended && (
-                        <IconBtn title="Verify business" onClick={() => handleAction(b.id, 'verify')} disabled={actionLoading === `${b.id}-verify`} color="text-emerald-600 hover:bg-emerald-50"><ShieldCheck size={15} /></IconBtn>
+                        <IconBtn title="Verify business" onClick={() => handleAction(b.id, 'verify')} disabled={actionLoading === `${b.id}-verify`} color="text-emerald-600 hover:bg-emerald-50"></IconBtn>
                       )}
                       {b.isSuspended ? (
-                        <IconBtn title="Activate" onClick={() => handleAction(b.id, 'activate')} disabled={actionLoading === `${b.id}-activate`} color="text-emerald-600 hover:bg-emerald-50"><Play size={15} /></IconBtn>
+                        <IconBtn title="Activate" onClick={() => handleAction(b.id, 'activate')} disabled={actionLoading === `${b.id}-activate`} color="text-emerald-600 hover:bg-emerald-50"></IconBtn>
                       ) : (
-                        <IconBtn title="Suspend" onClick={() => handleAction(b.id, 'suspend')} disabled={actionLoading === `${b.id}-suspend`} color="text-amber-600 hover:bg-amber-50"><Ban size={15} /></IconBtn>
+                        <IconBtn title="Suspend" onClick={() => handleAction(b.id, 'suspend')} disabled={actionLoading === `${b.id}-suspend`} color="text-amber-600 hover:bg-amber-50"></IconBtn>
                       )}
-                      <IconBtn title="Delete" onClick={() => handleDelete(b)} disabled={actionLoading === `${b.id}-delete`} color="text-red-600 hover:bg-red-50"><Trash2 size={15} /></IconBtn>
+                      <IconBtn title="Delete" onClick={() => handleDelete(b)} disabled={actionLoading === `${b.id}-delete`} color="text-red-600 hover:bg-red-50"></IconBtn>
                     </div>
                   </td>
                 </tr>
@@ -419,7 +418,7 @@ function Modal({ title, children, onClose }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white">
-          <h2 className="font-bold text-slate-900 flex items-center gap-2"><Building2 size={18} className="text-[#4F46E5]" /> {title}</h2>
+          <h2 className="font-bold text-slate-900 flex items-center gap-2">{title}</h2>
           <button onClick={onClose} aria-label={t('Close')} title={t('Close')} className="text-slate-400 hover:text-slate-700"><X size={20} /></button>
         </div>
         <div className="p-6">{children}</div>

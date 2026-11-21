@@ -37,7 +37,7 @@ export default function CreateUserPage({ accessRole, embedded = false }) {
   }
 
   const inner = saved ? (
-    <div className="creation-success"><span>✓</span><h2>{t('User created')}</h2><p><strong>{form.name}</strong></p><p>{t('Their account is ready. They can sign in with the email and temporary password you set.')}</p><button type="button" onClick={() => navigate(dashboardPath)}>{t('Return to user management')}</button></div>
+    <div className="creation-success"><h2>{t('User created')}</h2><p><strong>{form.name}</strong></p><p>{t('Their account is ready. They can sign in with the email and temporary password you set.')}</p><button type="button" onClick={() => navigate(dashboardPath)}>{t('Return to user management')}</button></div>
   ) : (
     <form className="create-user-form" onSubmit={submitForm}>
       <label>{t('Full name')}<input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder={t('e.g. Aline Uwimana')} required /></label>

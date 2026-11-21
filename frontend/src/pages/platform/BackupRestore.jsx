@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react'
-import { Database, Upload, RefreshCw, HardDriveDownload, Clock, Trash2, Download } from 'lucide-react'
 import { fetchPlatformBackups, createPlatformBackup, deletePlatformBackup, restorePlatformBackup, fetchPlatformSettings, updatePlatformSettings } from '../../api/endpoints'
 import { useToast } from '../../context/ToastContext'
-import { usePreferences } from '../../context/PreferencesContext'
+import { usePreferences, stripIcons } from '../../context/PreferencesContext'
 
 const BACKUP_TYPE_LABELS = {
   full: 'Full Backup',
@@ -111,12 +110,12 @@ export default function BackupRestore() {
         <p className="text-sm text-slate-500 mt-1">{t('Protect and restore platform data')}</p>
       </div>
 
-      {message && <div className="p-3 rounded-lg text-sm font-medium border bg-emerald-50 border-emerald-200 text-emerald-700">{message}</div>}
+      {message && <div className="p-3 rounded-lg text-sm font-medium border bg-emerald-50 border-emerald-200 text-emerald-700">{stripIcons(message)}</div>}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Manual backup */}
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-          <div className="flex items-center gap-2 font-bold text-sm text-slate-900 border-b border-slate-100 pb-3 mb-4"><Database size={16} className="text-[#4F46E5]" /><span>{t('Manual Backup')}</span></div>
+          <div className="flex items-center gap-2 font-bold text-sm text-slate-900 border-b border-slate-100 pb-3 mb-4"><span>{t('Manual Backup')}</span></div>
           <div className="space-y-4">
             <div className="space-y-1.5">
               <label className="block text-sm font-semibold text-slate-700">{t('Backup Type')}</label>
@@ -129,14 +128,14 @@ export default function BackupRestore() {
               </select>
             </div>
             <button onClick={handleBackup} disabled={creating} className="w-full px-5 py-2.5 text-sm bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition inline-flex items-center justify-center gap-2">
-              <HardDriveDownload size={16} /> {creating ? t('Creating...') : t('Create Backup Now')}
+              {creating ? t('Creating...') : t('Create Backup Now')}
             </button>
           </div>
         </div>
 
         {/* Schedule */}
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-          <div className="flex items-center gap-2 font-bold text-sm text-slate-900 border-b border-slate-100 pb-3 mb-4"><Clock size={16} className="text-[#4F46E5]" /><span>{t('Backup Schedule')}</span></div>
+          <div className="flex items-center gap-2 font-bold text-sm text-slate-900 border-b border-slate-100 pb-3 mb-4"><span>{t('Backup Schedule')}</span></div>
           <div className="space-y-4">
             <div className="space-y-1.5">
               <label className="block text-sm font-semibold text-slate-700">{t('Automatic Backups')}</label>
@@ -168,8 +167,8 @@ export default function BackupRestore() {
       {/* History */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <div className="flex items-center gap-2 font-bold text-sm text-slate-900"><Clock size={16} className="text-[#4F46E5]" /><span>{t('Backup History')}</span></div>
-          <button onClick={load} className="text-xs font-bold text-[#4F46E5] hover:underline inline-flex items-center gap-1"><RefreshCw size={12} /> {t('Refresh')}</button>
+          <div className="flex items-center gap-2 font-bold text-sm text-slate-900"><span>{t('Backup History')}</span></div>
+          <button onClick={load} className="text-xs font-bold text-[#4F46E5] hover:underline inline-flex items-center gap-1">{t('Refresh')}</button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
@@ -192,11 +191,11 @@ export default function BackupRestore() {
                   <td className="px-3 py-2 text-slate-700">{h.size}</td>
                   <td className="px-3 py-2"><span className="px-2 py-0.5 text-[10px] font-semibold bg-emerald-100 text-emerald-700 rounded-full capitalize">{h.status === 'completed' ? t('Completed') : h.status}</span></td>
                   <td className="px-3 py-2 text-slate-400">{new Date(h.createdAt).toLocaleString()}</td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-2 text-right">
                     <div className="flex justify-end gap-1.5">
-                      <button title={t('Download')} onClick={() => handleDownload(h)} className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100"><Download size={15} /></button>
-                      <button title={t('Restore')} onClick={() => handleRestore(h)} className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50"><Upload size={15} /></button>
-                      <button title={t('Delete')} onClick={() => handleDelete(h.id)} className="p-1.5 rounded-lg text-red-600 hover:bg-red-50"><Trash2 size={15} /></button>
+                      <button title={t('Download')} onClick={() => handleDownload(h)} className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100">{t('Download')}</button>
+                      <button title={t('Restore')} onClick={() => handleRestore(h)} className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50">{t('Restore')}</button>
+                      <button title={t('Delete')} onClick={() => handleDelete(h.id)} className="p-1.5 rounded-lg text-red-600 hover:bg-red-50">{t('Delete')}</button>
                     </div>
                   </td>
                 </tr>

@@ -361,7 +361,7 @@ export default function Salary() {
         )
       })()}
 
-      {done && <p className="creation-success"><span>✓</span>{done}</p>}
+      {done && <p className="creation-success">{done}</p>}
     </div>
   )
 }

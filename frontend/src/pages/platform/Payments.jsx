@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { CircleDollarSign, Search, Download, RefreshCw, Receipt, Undo2 } from 'lucide-react'
 import { fetchPlatformPayments, fetchPaymentStats, refundPayment, settlePayment } from '../../api/endpoints'
 import { useToast } from '../../context/ToastContext'
 import { usePreferences } from '../../context/PreferencesContext'
@@ -117,23 +116,22 @@ export default function Payments() {
           <p className="text-sm text-slate-500 mt-1">{t('Track subscription payments across all businesses')}</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={exportCsv} className="px-4 py-2 text-sm bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition inline-flex items-center gap-2"><Download size={16} /> {t('Export')}</button>
-          <button onClick={load} className="px-4 py-2 text-sm bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition inline-flex items-center gap-2"><RefreshCw size={16} /> {t('Refresh')}</button>
+          <button onClick={exportCsv} className="px-4 py-2 text-sm bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition inline-flex items-center gap-2">{t('Export')}</button>
+          <button onClick={load} className="px-4 py-2 text-sm bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition inline-flex items-center gap-2">{t('Refresh')}</button>
         </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <SummaryCard title={t('Total Collected')} value={formatCurr(stats?.collected)} icon={<CircleDollarSign className="text-emerald-600" />} bg="bg-emerald-50" />
-        <SummaryCard title={t('Pending')} value={String(stats?.pending ?? 0)} icon={<CircleDollarSign className="text-amber-600" />} bg="bg-amber-50" />
-        <SummaryCard title={t('Failed')} value={String(stats?.failed ?? 0)} icon={<CircleDollarSign className="text-red-600" />} bg="bg-red-50" />
-        <SummaryCard title={t('Refunded')} value={String(stats?.refunded ?? 0)} icon={<CircleDollarSign className="text-slate-500" />} bg="bg-slate-100" />
+        <SummaryCard title={t('Total Collected')} value={formatCurr(stats?.collected)} />
+        <SummaryCard title={t('Pending')} value={String(stats?.pending ?? 0)} />
+        <SummaryCard title={t('Failed')} value={String(stats?.failed ?? 0)} />
+        <SummaryCard title={t('Refunded')} value={String(stats?.refunded ?? 0)} />
       </div>
 
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[220px]">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Search business, transaction, plan...')}
-            className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+            className="w-full pl-3 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
         </div>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white capitalize focus:ring-2 focus:ring-indigo-500 outline-none">
           <option value="all">{t('All statuses')}</option>
@@ -171,14 +169,14 @@ export default function Payments() {
                   <td className="px-3 py-2 text-slate-500 font-mono text-xs">{p.transactionId || '—'}</td>
                   <td className="px-3 py-2">{badge(p.status)}</td>
                   <td className="px-3 py-2 text-slate-400">{p.date ? new Date(p.date).toLocaleDateString() : '—'}</td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-2 text-right">
                     <div className="flex justify-end gap-1.5">
-                      <button title={t('Receipt')} onClick={() => downloadReceipt(p)} className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100"><Receipt size={15} /></button>
+                      <button title={t('Receipt')} onClick={() => downloadReceipt(p)} className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100">{t('Receipt')}</button>
                       {p.status === 'paid' && (
-                        <button title={t('Settle')} onClick={() => handleSettle(p)} disabled={busy === `${p.id}-settle`} className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 disabled:opacity-40"><CircleDollarSign size={15} /></button>
+                        <button title={t('Settle')} onClick={() => handleSettle(p)} disabled={busy === `${p.id}-settle`} className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 disabled:opacity-40">{t('Settle')}</button>
                       )}
                       {p.status === 'paid' && (
-                        <button title={t('Refund')} onClick={() => handleRefund(p)} disabled={busy === `${p.id}-refund`} className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 disabled:opacity-40"><Undo2 size={15} /></button>
+                        <button title={t('Refund')} onClick={() => handleRefund(p)} disabled={busy === `${p.id}-refund`} className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 disabled:opacity-40">{t('Refund')}</button>
                       )}
                     </div>
                   </td>
@@ -192,14 +190,13 @@ export default function Payments() {
   )
 }
 
-function SummaryCard({ title, value, icon, bg }) {
+function SummaryCard({ title, value }) {
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-start justify-between shadow-xs">
       <div className="space-y-1.5">
         <span className="text-[11px] font-bold tracking-wide text-slate-500 uppercase block">{title}</span>
         <p className="text-2xl font-black text-slate-900 tracking-tight">{value}</p>
       </div>
-      <div className={`p-2 rounded-lg ${bg} shrink-0`}>{icon}</div>
     </div>
   )
 }

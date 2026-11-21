@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import { fetchOrders } from '../../api/endpoints'
-import { QrCode, Eye } from 'lucide-react'
 import { usePreferences } from '../../context/PreferencesContext'
 
 const STATUS_OPTIONS = ['', 'Open', 'Preparing', 'Ready', 'Served', 'Paid', 'Cancelled']
@@ -54,9 +53,6 @@ export default function AccountantQR() {
           <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wider">{t('Accountant workspace')}</p>
           <h1 className="text-2xl font-extrabold text-slate-900">{t('QR Orders')}</h1>
           <p className="text-sm text-slate-500">{t('All client orders placed by QR code scan across every table. Track each order and its full lifecycle.')}</p>
-        </div>
-        <div className="p-3 bg-slate-100 rounded-xl text-slate-600">
-          <QrCode size={24} />
         </div>
       </div>
 
@@ -121,9 +117,7 @@ export default function AccountantQR() {
                     <td className="p-2 text-right font-semibold">{money(order.total)}</td>
                     <td className="p-2 text-slate-500">{new Date(order.createdAt).toLocaleDateString()}</td>
                     <td className="p-2 text-center">
-                      <button className="text-indigo-600 hover:text-indigo-800" title={t('View details')}>
-                        <Eye size={16} />
-                      </button>
+                      <button className="text-indigo-600 hover:text-indigo-800" title={t('View details')}>{t('View')}</button>
                     </td>
                   </tr>
                 ))}

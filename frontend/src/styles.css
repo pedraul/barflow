@@ -6535,14 +6535,17 @@ label {
 }
 
 .mobile-logout-btn {
-  width: 40px;
+  width: auto;
   height: 40px;
+  padding: 0 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: center;
   border: none;
   background: transparent;
-  border-radius: 50%;
+  border-radius: 999px;
   cursor: pointer;
   color: var(--text);
   transition: background 0.2s ease;
@@ -12808,3 +12811,23 @@ svg {
   line-height: 1.5;
 }
 :root[data-theme="dark"] .qr-access-note { background: var(--info-bg); border-color: transparent; color: var(--info-text); }
+
+/* Back buttons show a text label instead of an arrow icon */
+.back-btn,
+.desktop-topbar .back-btn,
+.mobile-topbar .back-btn,
+.app-topbar .back-btn {
+  width: auto !important;
+  min-width: 0 !important;
+  padding: 0 14px !important;
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.back-btn::after { display: none !important; }
+
+/* Table headings line up with their (left-aligned) content by default.
+   Kept in the base layer so utilities like text-right / text-center still win. */
+@layer base {
+  th { text-align: left; }
+}

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { CheckCircle2, Clock, Play, Square, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import * as api from '../api/endpoints'
 import { useAuth } from '../context/AuthContext'
 import { usePreferences } from '../context/PreferencesContext'
@@ -186,7 +186,6 @@ export default function ShiftControl({ compact = false, floating = false }) {
                 disabled={busy}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-60"
               >
-                <Square size={13} />
                 {busy ? t('Ending...') : t('End shift')}
               </button>
             </div>
@@ -197,7 +196,6 @@ export default function ShiftControl({ compact = false, floating = false }) {
       {dialog === 'summary' && summary && (
         <ShiftModal onClose={closeDialog} labelledBy="shift-summary-title">
           <div className="px-5 pb-2 pt-6 text-center">
-            <CheckCircle2 size={40} className="mx-auto text-emerald-500" />
             <h2 id="shift-summary-title" className="mt-3 text-lg font-semibold text-slate-900">{t('Shift ended')}</h2>
             <p className="mt-1 text-sm text-slate-500">{t('Total time')}: {formatDuration(summary.durationMinutes)}</p>
           </div>
@@ -257,8 +255,7 @@ export default function ShiftControl({ compact = false, floating = false }) {
           title={t('Start shift')}
           className="shift-btn-start inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
         >
-          <Play size={14} fill="currentColor" />
-          {!compact && <span className="shift-label">{busy ? t('Starting...') : t('Start shift')}</span>}
+          <span className="shift-label">{busy ? t('Starting...') : compact ? t('Start') : t('Start shift')}</span>
         </button>
         {modals}
       </div>
@@ -268,7 +265,6 @@ export default function ShiftControl({ compact = false, floating = false }) {
   return (
     <div style={wrapperStyle} className="shift-pill inline-flex items-center gap-1 rounded-full bg-emerald-50 py-1 pl-3 pr-1 text-xs font-semibold text-emerald-800">
       <span className="shift-live-dot" aria-hidden="true" />
-      <Clock size={14} className="shift-clock-icon" />
       <span className="shift-timer" title={`${t('On shift since')} ${new Date(shift.startedAt).toLocaleTimeString()}`}>
         {!compact && <span className="shift-label shift-label-prefix">{t('On shift')} · </span>}{formatDuration(minutesSince(shift.startedAt))}
       </span>
@@ -279,12 +275,9 @@ export default function ShiftControl({ compact = false, floating = false }) {
         title={t('End shift')}
         className="shift-btn-end ml-1 inline-flex items-center gap-1 rounded-full bg-rose-600 px-2.5 py-1 text-white hover:bg-rose-700 disabled:opacity-60"
       >
-        <Square size={11} fill="currentColor" />
-        {!compact && (
-          <span className="shift-label">
-            {busy ? t('Ending...') : <><span className="shift-label-full">{t('End shift')}</span><span className="shift-label-short">{t('End')}</span></>}
-          </span>
-        )}
+        <span className="shift-label">
+          {busy ? t('Ending...') : compact ? t('End') : <><span className="shift-label-full">{t('End shift')}</span><span className="shift-label-short">{t('End')}</span></>}
+        </span>
       </button>
       {modals}
     </div>

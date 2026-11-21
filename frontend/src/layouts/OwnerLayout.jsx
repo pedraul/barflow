@@ -211,9 +211,7 @@ export default function OwnerLayout({ children }) {
             <BackButton fallback="/owner" />
             <div className="mobile-brand">{t('BarFlow')}</div>
             <BranchBadge />
-            <button type="button" className="mobile-logout-btn" onClick={handleLogout} title={t('Logout')} style={{ marginLeft: 'auto' }}>
-              <LogOut size={20} />
-            </button>
+            <button type="button" className="mobile-logout-btn" onClick={handleLogout} title={t('Logout')} style={{ marginLeft: 'auto' }}>{t('Logout')}</button>
           </header>
         </>
       )}

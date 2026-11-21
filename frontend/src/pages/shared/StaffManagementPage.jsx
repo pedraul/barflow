@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { KeyRound, UserPlus, UserX } from 'lucide-react'
 import * as api from '../../api/endpoints'
 import { useAuth } from '../../context/AuthContext'
 import { usePreferences } from '../../context/PreferencesContext'
@@ -116,7 +115,7 @@ export default function StaffManagementPage() {
 
       {canCreate && (
         <form onSubmit={handleCreate} className="mb-8 rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-slate-900"><UserPlus size={18} /> {t('Create employee')}</h2>
+          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-slate-900">{t('Create employee')}</h2>
           <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
             <label className="text-sm">{t('Full name')}<input required className={input} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
             <label className="text-sm">{t('Email')}<input required type="email" className={input} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label>
@@ -168,12 +167,12 @@ export default function StaffManagementPage() {
                     <div className="flex gap-2">
                       {canReset && (
                         <button type="button" onClick={() => handleReset(u)} className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-200">
-                          <KeyRound size={12} /> {t('Reset password')}
+                          {t('Reset password')}
                         </button>
                       )}
                       {canEdit && (
                         <button type="button" onClick={() => handleDeactivate(u)} className="inline-flex items-center gap-1 rounded bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100">
-                          <UserX size={12} /> {t('Deactivate')}
+                          {t('Deactivate')}
                         </button>
                       )}
                     </div>

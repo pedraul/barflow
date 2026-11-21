@@ -3,7 +3,6 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import * as api from '../../api/endpoints'
-import { ClipboardList, Clock, CheckCircle, DollarSign, MoreHorizontal } from 'lucide-react'
 import { StatCard } from '../../components/ui/SharedComponents'
 import { getOrderLocation } from '../../utils/orderDisplay'
 
@@ -81,11 +80,11 @@ export default function WaiterDashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard icon={<ClipboardList size={24} className="text-blue-600" />} iconBg="bg-blue-50" label={t("Orders handled")} value={String(waiterOrders.length)} linkText={t("View orders")} onClick={() => navigate('/waiter/orders', { state: { orderFilter: 'my' } })} />
-        <StatCard icon={<Clock size={24} className="text-amber-600" />} iconBg="bg-amber-50" label={t("Open / pending")} value={String(openOrders.length)} linkText={t("View pending")} onClick={() => navigate('/waiter/orders', { state: { orderFilter: 'open' } })} />
-        <StatCard icon={<CheckCircle size={24} className="text-emerald-600" />} iconBg="bg-emerald-50" label={t("Served")} value={String(servedOrders.length)} linkText={t("View served")} onClick={() => navigate('/waiter/orders', { state: { orderFilter: 'served' } })} />
-        <StatCard icon={<DollarSign size={24} className="text-purple-600" />} iconBg="bg-purple-50" label={t("Revenue collected")} value={money(revenue)} linkText={t("View details")} onClick={() => navigate('/waiter/order-history')} />
-        <StatCard icon={<CheckCircle size={24} className="text-teal-600" />} iconBg="bg-teal-50" label={t("Ready order pickup")} value={String(readyOrders.length)} linkText={t("Open pickup queue")} onClick={() => navigate('/waiter/orders', { state: { orderFilter: 'ready' } })} />
+        <StatCard label={t("Orders handled")} value={String(waiterOrders.length)} linkText={t("View orders")} onClick={() => navigate('/waiter/orders', { state: { orderFilter: 'my' } })} />
+        <StatCard label={t("Open / pending")} value={String(openOrders.length)} linkText={t("View pending")} onClick={() => navigate('/waiter/orders', { state: { orderFilter: 'open' } })} />
+        <StatCard label={t("Served")} value={String(servedOrders.length)} linkText={t("View served")} onClick={() => navigate('/waiter/orders', { state: { orderFilter: 'served' } })} />
+        <StatCard label={t("Revenue collected")} value={money(revenue)} linkText={t("View details")} onClick={() => navigate('/waiter/order-history')} />
+        <StatCard label={t("Ready order pickup")} value={String(readyOrders.length)} linkText={t("Open pickup queue")} onClick={() => navigate('/waiter/orders', { state: { orderFilter: 'ready' } })} />
       </div>
 
       <section className="bg-white border border-emerald-200 rounded-xl shadow-sm overflow-hidden">
@@ -135,7 +134,6 @@ export default function WaiterDashboard() {
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm">
         <div className="p-5 border-b border-slate-200 flex justify-between items-center">
           <h3 className="font-bold text-slate-900">{t("Recent Orders")}</h3>
-          <button type="button" aria-label={t('More options')} className="text-slate-400 hover:text-slate-600"><MoreHorizontal size={18} /></button>
         </div>
         {waiterOrders.length ? (
           <div className="overflow-x-auto">

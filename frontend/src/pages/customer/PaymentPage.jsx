@@ -357,7 +357,6 @@ export default function PaymentPage() {
     return (
       <div style={styles.container}>
         <div style={styles.ussdContainer}>
-          <div style={styles.ussdIcon}>💵</div>
           <h2 style={styles.ussdTitle}>{t("Completing cash payment")}</h2>
           <p style={styles.ussdSubtitle}>{t("Your order will be marked paid automatically. No staff approval is needed.")}</p>
           <div style={styles.ussdDetails}>
@@ -375,7 +374,6 @@ export default function PaymentPage() {
     return (
       <div style={styles.container}>
         <div style={styles.ussdContainer}>
-          <div style={styles.ussdIcon}>📱</div>
           <h2 style={styles.ussdTitle}>{t("Approve payment on your phone")}</h2>
           <p style={styles.ussdSubtitle}>{paymentResult.message}</p>
 
@@ -436,7 +434,6 @@ export default function PaymentPage() {
       <div style={styles.container}>
         <div style={styles.receiptContainer}>
           <div style={styles.receiptHeader}>
-            <div style={styles.successIcon}>✅</div>
             <h1 style={styles.receiptTitle}>{t("Payment Successful!")}</h1>
           </div>
 
@@ -548,9 +545,7 @@ export default function PaymentPage() {
             }}
             onClick={() => setSelectedMethod(method.id)}
           >
-            <span style={styles.methodIcon}>{method.icon}</span>
             <span style={styles.methodName}>{t(method.name)}</span>
-            {selectedMethod === method.id && <span style={styles.checkMark}>✓</span>}
           </button>
         ))}
       </div>

@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import QRCode from '../QRCode'
-import { Printer } from 'lucide-react'
 import { buildTableMenuUrl } from '../config/tableMenuUrl'
 import { fetchManagedTables } from '../api/endpoints'
 import { usePreferences } from '../context/PreferencesContext'
@@ -104,14 +103,14 @@ export default function MenuQRWidget({
               />
               {table.branchName && <span>{table.branchName}</span>}
               <button type="button" onClick={() => printTables([table])}>
-                <Printer size={14} /> {t('Print CLIENT TABLE')} {table.tableNumber}
+                {t('Print CLIENT TABLE')} {table.tableNumber}
               </button>
             </article>
           )
         })}
       </div>
       <button type="button" className="account-table-qr-print-all" onClick={() => printTables(tables)}>
-        <Printer size={16} /> {t('Print QR codes for all tables')}
+        {t('Print QR codes for all tables')}
       </button>
       {printError && <p role="alert" className="error-box">{printError}</p>}
       {printSelection && createPortal(

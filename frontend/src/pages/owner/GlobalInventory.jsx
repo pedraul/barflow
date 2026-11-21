@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react'
 import { useOwner } from '../../context/OwnerContext'
-import { PackageSearch, Search } from 'lucide-react'
 import { usePreferences } from '../../context/PreferencesContext'
 
 export default function GlobalInventory() {
@@ -48,9 +47,8 @@ export default function GlobalInventory() {
         <>
           <div className="flex gap-3 items-center">
             <div className="relative flex-1">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input type="text" placeholder={t('Search by name or SKU...')} value={search} onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:border-indigo-500" />
+                className="w-full pl-3 pr-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:border-indigo-500" />
             </div>
             <select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} className="px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:border-indigo-500">
               <option value="">{t('All Branches')}</option>
