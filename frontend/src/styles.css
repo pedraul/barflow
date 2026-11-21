@@ -12872,3 +12872,62 @@ svg {
 :root[data-theme="dark"] .app-preferences-theme {
   color: #facc15;
 }
+
+/* Top bar must always fit: Logout (and the shift control) never get pushed off-screen.
+   Only the brand and branch badge may shrink. */
+.app-topbar {
+  overflow: hidden;
+}
+.app-topbar > * {
+  flex-shrink: 0;
+}
+.app-topbar .mobile-brand,
+.app-topbar .branch-badge {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-topbar .mobile-logout-wrapper {
+  margin-left: auto;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+@media (max-width: 560px) {
+  .app-topbar {
+    gap: 6px;
+    padding: 0 8px;
+  }
+  .app-topbar .mobile-brand,
+  .app-topbar .branch-badge-label {
+    display: none;
+  }
+  .app-topbar .back-btn {
+    padding: 0 10px !important;
+    height: 36px;
+  }
+  .app-topbar .mobile-logout-btn {
+    padding: 0 10px;
+    height: 36px;
+  }
+}
+
+/* Pages inside a role layout already have the app top bar (menu, back, logout):
+   don't stack the generic page header above it. */
+.page-screen:has(.app-topbar) > .mobile-header {
+  display: none;
+}
+
+/* Back / Logout labels: one line, normal size, never squeezed. */
+.app-topbar .back-btn,
+.mobile-header .back-btn,
+.app-topbar .mobile-logout-btn {
+  font-size: 0.875rem !important;
+  line-height: 1 !important;
+  font-weight: 600;
+  white-space: nowrap !important;
+  flex-shrink: 0;
+  min-width: max-content;
+}

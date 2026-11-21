@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import * as api from '../api/endpoints'
 import { useAuth } from '../context/AuthContext'
 import { useOwner } from '../context/OwnerContext'
 import { usePreferences } from '../context/PreferencesContext'
 import OrderTableHeading from './OrderTableHeading'
-import { orderCardStyle } from '../utils/orderStatus'
+import { orderCardStyle, orderStatusColors } from '../utils/orderStatus'
 
 function formatCurrency(amount) {
   return 'RWF ' + Number(amount).toLocaleString('en-US', {
@@ -12,6 +13,13 @@ function formatCurrency(amount) {
     maximumFractionDigits: 0,
   })
 }
+
+const STATUS_FILTERS = [
+  { key: 'new', label: 'New', status: 'Open' },
+  { key: 'preparing', label: 'Preparing', status: 'Preparing' },
+  { key: 'ready', label: 'Ready', status: 'Ready' },
+  { key: 'paid', label: 'Paid', status: 'Paid' },
+]
 
 function formatOrderNumber(number) {
   return String(number ?? 0).padStart(3, '0')
@@ -39,6 +47,8 @@ export default function StationDisplay({
   const { user } = useAuth()
   const { activeBranchId } = useOwner()
   const { t } = usePreferences()
+  const [searchParams] = useSearchParams()
+  const statusFilter = (searchParams.get('status') || '').toLowerCase()
   const branchId = String(user?.role || '').toLowerCase() === 'owner'
     ? activeBranchId
     : user?.branchId
@@ -109,6 +119,12 @@ export default function StationDisplay({
   const readyOrders = orders.filter((o) => o.status === 'Ready')
   const paidOrders = orders.filter((o) => o.status === 'Paid')
 
+  // Status filter from the counters (?status=new|preparing|ready|paid).
+  const filter = STATUS_FILTERS.some((f) => f.key === statusFilter) ? statusFilter : ''
+  const show = (key) => !filter || filter === key
+  const counts = { new: newOrders.length, preparing: preparingOrders.length, ready: readyOrders.length, paid: paidOrders.length }
+  const activeFilter = STATUS_FILTERS.find((f) => f.key === filter)
+
   const renderItem = (item, idx) => {
     if (showImage) {
       return (
@@ -160,17 +176,40 @@ export default function StationDisplay({
 
       <div style={styles.header}>
         <h1 style={styles.title}>{t(title)}</h1>
-        <div style={styles.stats}>
-          <span style={styles.stat}>{t('New:')} {newOrders.length}</span>
-          <span style={styles.stat}>{t('Preparing:')} {preparingOrders.length}</span>
-          <span style={styles.stat}>{t('Ready:')} {readyOrders.length}</span>
-          <span style={styles.stat}>{t('Paid:')} {paidOrders.length}</span>
-        </div>
+        <nav style={styles.stats} aria-label={t('Filter orders by status')}>
+          {STATUS_FILTERS.map((f) => {
+            const active = filter === f.key
+            const c = orderStatusColors(f.status)
+            return (
+              <Link
+                key={f.key}
+                to={{ search: active ? '' : `?status=${f.key}` }}
+                aria-current={active ? 'true' : undefined}
+                title={active ? t('Show all orders') : `${t('Show only')} ${t(f.label)}`}
+                style={{
+                  ...styles.stat,
+                  textDecoration: 'none',
+                  cursor: 'pointer',
+                  border: `2px solid ${c.solid}`,
+                  backgroundColor: active ? c.solid : '#ffffff',
+                  color: active ? '#ffffff' : c.text,
+                }}
+              >
+                {t(f.label)}: {counts[f.key]}
+              </Link>
+            )
+          })}
+          {filter && (
+            <Link to={{ search: '' }} style={{ ...styles.stat, textDecoration: 'none', color: '#334155', border: '2px solid #cbd5e1' }}>
+              {t('Show all')}
+            </Link>
+          )}
+        </nav>
       </div>
 
       {error && <div style={styles.errorBox}>{t('Error:')} {error}</div>}
 
-      {newOrders.length > 0 && (
+      {show('new') && newOrders.length > 0 && (
         <div style={styles.section}>
           <h2 style={styles.sectionTitle}>{t(newHeading)}</h2>
           <div style={styles.ordersGrid}>
@@ -187,7 +226,7 @@ export default function StationDisplay({
         </div>
       )}
 
-      {preparingOrders.length > 0 && (
+      {show('preparing') && preparingOrders.length > 0 && (
         <div style={styles.section}>
           <h2 style={styles.sectionTitle}>{t(preparingHeading)}</h2>
           <div style={styles.ordersGrid}>
@@ -204,7 +243,7 @@ export default function StationDisplay({
         </div>
       )}
 
-      {readyOrders.length > 0 && (
+      {show('ready') && readyOrders.length > 0 && (
         <div style={styles.section}>
           <h2 style={{ ...styles.sectionTitle, color: '#28a745' }}>{t(readyHeading)}</h2>
           <div style={styles.ordersGrid}>
@@ -228,7 +267,14 @@ export default function StationDisplay({
         </div>
       )}
 
-      {paidOrders.length > 0 && (
+      {filter && counts[filter] === 0 && (
+        <div style={styles.emptyState}>
+          <h2>{t('No')} {t(activeFilter.label).toLowerCase()} {t('orders right now')}</h2>
+          <Link to={{ search: '' }} style={{ color: accent, fontWeight: 700 }}>{t('Show all orders')}</Link>
+        </div>
+      )}
+
+      {show('paid') && paidOrders.length > 0 && (
         <div style={styles.section}>
           <h2 style={{ ...styles.sectionTitle, color: '#0d6efd' }}>{t(paidHeading)}</h2>
           <div style={styles.ordersGrid}>
@@ -302,7 +348,8 @@ const styles = {
   },
   stats: {
     display: 'flex',
-    gap: '16px',
+    flexWrap: 'wrap',
+    gap: '10px',
   },
   stat: {
     padding: '8px 16px',
