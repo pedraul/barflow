@@ -18,7 +18,9 @@ export default function Refunds() {
     return () => { active = false }
   }, [])
 
-  const total = refunds.reduce((sum, r) => sum + (Number(r.amount) || 0), 0)
+  const total = refunds
+    .filter((r) => String(r.status).toLowerCase() === 'approved')
+    .reduce((sum, r) => sum + (Number(r.amount) || 0), 0)
 
   return (
     <div className="page accountant-refunds">
@@ -38,7 +40,7 @@ export default function Refunds() {
         </div>
         <div className="summary-card">
           <strong>{money(total)}</strong>
-          <span>{t('Total Refunded')}</span>
+          <span>{t('Total Refunded (approved)')}</span>
         </div>
       </div>
 
@@ -52,7 +54,7 @@ export default function Refunds() {
             <table className="user-table">
               <thead>
                 <tr>
-                  <th>{t('ID')}</th>
+                  <th>{t('Order')}</th>
                   <th style={{ textAlign: 'right' }}>{t('Amount')}</th>
                   <th>{t('Reason')}</th>
                   <th>{t('Status')}</th>
@@ -62,12 +64,12 @@ export default function Refunds() {
               <tbody>
                 {refunds.map((r) => (
                   <tr key={r.id}>
-                    <td className="obw-strong">{r.id.slice(0, 8)}</td>
+                    <td className="obw-strong">{r.orderNumber || String(r.id).slice(0, 8)}</td>
                     <td style={{ textAlign: 'right', fontWeight: 600, color: '#ef4444' }}>{money(r.amount)}</td>
                     <td>{r.reason || '—'}</td>
                     <td>
                       <span className={r.status === 'approved' ? 'user-active' : r.status === 'rejected' ? 'user-inactive' : 'user-pending'}>
-                        {r.status}
+                        {t(r.status)}
                       </span>
                     </td>
                     <td style={{ textAlign: 'right', color: 'var(--text-4)' }}>{r.date}</td>

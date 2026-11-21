@@ -20,7 +20,7 @@ export default function SalesRevenue() {
       if (to) params.to = to
       const [salesData, refundsData] = await Promise.all([
         fetchAccountantSales(params),
-        fetchRefunds(),
+        fetchRefunds(params),
       ])
       setSales(salesData || [])
       setRefunds(refundsData || [])
@@ -38,8 +38,10 @@ export default function SalesRevenue() {
 
   const totals = useMemo(() => {
     const revenue = sales.reduce((acc, s) => acc + (Number(s.total) || 0), 0)
-    const refundTotal = refunds.reduce((acc, r) => acc + (Number(r.amount) || 0), 0)
-    return { revenue, refundTotal, netRevenue: revenue - refundTotal }
+    const refundTotal = refunds
+      .filter((r) => String(r.status).toLowerCase() === 'approved')
+      .reduce((acc, r) => acc + (Number(r.amount) || 0), 0)
+    return { revenue, refundTotal, netRevenue: Math.max(0, revenue - refundTotal) }
   }, [sales, refunds])
 
   return (
@@ -49,22 +51,26 @@ export default function SalesRevenue() {
         <div>
           <p className="eyebrow">{t('Accountant workspace')}</p>
           <h1>{t('Sales & Revenue')}</h1>
-          <p>{t('All paid/served orders and revenue figures. View only.')}</p>
+          <p>{t('Paid orders and revenue for the selected dates. View only.')}</p>
         </div>
       </div>
 
       <div className="user-info-grid">
         <div className="summary-card">
           <strong>{sales.length}</strong>
-          <span>{t('Orders')}</span>
+          <span>{t('Paid Orders')}</span>
+        </div>
+        <div className="summary-card">
+          <strong>{money(totals.revenue)}</strong>
+          <span>{t('Gross Sales')}</span>
+        </div>
+        <div className="summary-card">
+          <strong>{money(totals.refundTotal)}</strong>
+          <span>{t('Approved Refunds')}</span>
         </div>
         <div className="summary-card">
           <strong>{money(totals.netRevenue)}</strong>
           <span>{t('Net Revenue')}</span>
-        </div>
-        <div className="summary-card">
-          <strong>{money(totals.refundTotal)}</strong>
-          <span>{t('Refunds')}</span>
         </div>
       </div>
 
@@ -93,6 +99,7 @@ export default function SalesRevenue() {
                   <th>{t('Order')}</th>
                   <th>{t('Table')}</th>
                   <th>{t('Source')}</th>
+                  <th>{t('Method')}</th>
                   <th style={{ textAlign: 'right' }}>{t('Total')}</th>
                   <th>{t('Status')}</th>
                   <th style={{ textAlign: 'right' }}>{t('Date')}</th>
@@ -104,10 +111,11 @@ export default function SalesRevenue() {
                     <td className="obw-strong">{s.orderNumber ?? s.id}</td>
                     <td>{s.table ?? '—'}</td>
                     <td style={{ textTransform: 'capitalize' }}>{s.source ?? '—'}</td>
+                    <td>{s.method ? t(s.method) : '—'}</td>
                     <td style={{ textAlign: 'right', fontWeight: 600 }}>{money(s.total)}</td>
                     <td>
-                      <span className={s.status === 'Paid' || s.status === 'Served' ? 'user-active' : 'user-pending'}>
-                        {s.status}
+                      <span className="user-active">
+                        {t('Paid')}
                       </span>
                     </td>
                     <td style={{ textAlign: 'right', color: 'var(--text-4)' }}>{s.date}</td>

@@ -74,6 +74,12 @@ export async function updateUser(id, changes) {
   return data
 }
 
+// Payroll details only (bonus, promotion note, payout phone) — owner, manager or accountant.
+export async function updatePayrollDetails(id, changes) {
+  const { data } = await api.patch(`/users/${id}/payroll`, changes)
+  return data
+}
+
 export async function deleteUser(id) {
   const { data } = await api.delete(`/users/${id}`)
   return data
@@ -164,8 +170,8 @@ export async function createOutgoingPayment(payload) {
 }
 
 // ===== ACCOUNTANT =====
-export async function fetchAccountantSummary() {
-  const { data } = await api.get('/accountant/summary')
+export async function fetchAccountantSummary(params = {}) {
+  const { data } = await api.get('/accountant/summary', { params })
   return data
 }
 
@@ -179,8 +185,8 @@ export async function createTransfer(payload) {
   return data
 }
 
-export async function fetchRefunds() {
-  const { data } = await api.get('/accountant/refunds')
+export async function fetchRefunds(params = {}) {
+  const { data } = await api.get('/accountant/refunds', { params })
   return data
 }
 
@@ -199,6 +205,21 @@ export async function fetchReconciliationTransactions(params = {}) {
   return data
 }
 
+export async function matchReconciliationItems(ids) {
+  const { data } = await api.post('/accountant/reconciliation/match', { ids })
+  return data
+}
+
+export async function autoMatchReconciliation() {
+  const { data } = await api.post('/accountant/reconciliation/auto-match')
+  return data
+}
+
+export async function unmatchReconciliationItem(id) {
+  const { data } = await api.post('/accountant/reconciliation/unmatch', { id })
+  return data
+}
+
 export async function uploadBankStatement(payload) {
   const { data } = await api.post('/accountant/bank-statements/upload', payload)
   return data
@@ -211,6 +232,46 @@ export async function createAdjustment(payload) {
 
 export async function fetchAccountantExpenses() {
   const { data } = await api.get('/accountant/expenses')
+  return data
+}
+
+export async function fetchExpenses(params = {}) {
+  const { data } = await api.get('/accountant/expenses', { params })
+  return data
+}
+
+export async function createExpense(payload) {
+  const { data } = await api.post('/accountant/expenses', payload)
+  return data
+}
+
+export async function importExpenses(rows, documentId = null) {
+  const { data } = await api.post('/accountant/expenses/import', { rows, documentId })
+  return data
+}
+
+export async function deleteExpense(id) {
+  const { data } = await api.delete(`/accountant/expenses/${id}`)
+  return data
+}
+
+export async function fetchDocuments(params = {}) {
+  const { data } = await api.get('/accountant/documents', { params })
+  return data
+}
+
+export async function uploadDocument(payload) {
+  const { data } = await api.post('/accountant/documents', payload)
+  return data
+}
+
+export async function downloadDocument(id) {
+  const response = await api.get(`/accountant/documents/${id}/download`, { responseType: 'blob' })
+  return response.data
+}
+
+export async function deleteDocument(id) {
+  const { data } = await api.delete(`/accountant/documents/${id}`)
   return data
 }
 

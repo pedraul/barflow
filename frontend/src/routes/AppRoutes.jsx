@@ -47,6 +47,8 @@ import AccountantPayments from '../pages/accountant/Payments'
 import AccountantRefunds from '../pages/accountant/Refunds'
 import AccountantReports from '../pages/accountant/Reports'
 import AccountantTaxes from '../pages/accountant/Taxes'
+import AccountantExpenses from '../pages/accountant/Expenses'
+import AccountantDocuments from '../pages/accountant/Documents'
 import EmptyPage from '../pages/EmptyPage'
 import UserManagementPage from '../pages/UserManagementPage'
 import CreateUserPage from '../pages/CreateUserPage'
@@ -599,6 +601,28 @@ export default function AppRoutes() {
           <ProtectedRoute checkSubscription allow={['Accountant']}>
             <AccountantLayout>
               <AccountantReports />
+            </AccountantLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/accountant/expenses"
+        element={
+          <ProtectedRoute checkSubscription allow={['Accountant']}>
+            <AccountantLayout>
+              <AccountantExpenses />
+            </AccountantLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/accountant/documents"
+        element={
+          <ProtectedRoute checkSubscription allow={['Accountant']}>
+            <AccountantLayout>
+              <AccountantDocuments />
             </AccountantLayout>
           </ProtectedRoute>
         }

@@ -23,9 +23,25 @@ app.use(cors())
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ limit: '10mb', extended: true }))
 
+// Database status, so a missing/unreachable database shows a clear error
+// instead of crashing the whole function.
+const database = { ready: false, error: null }
+const databaseConfigured = Boolean(process.env.DATABASE_URL)
+
 // Routes
+app.get('/favicon.ico', (_req, res) => res.status(204).end())
 app.get('/', (_req, res) => {
-  res.json({ status: 'ok', message: 'BarSolution backend is running' })
+  res.json({
+    status: database.ready ? 'ok' : 'degraded',
+    message: 'BarSolution backend is running',
+    database: database.ready ? 'connected' : (databaseConfigured ? 'unreachable' : 'DATABASE_URL is not set'),
+  })
+})
+app.use('/api', (req, res, next) => {
+  if (!databaseConfigured) {
+    return res.status(503).json({ error: 'The server is not connected to a database (DATABASE_URL is not set).' })
+  }
+  next()
 })
 app.use('/api', apiRouter)
 
@@ -44,12 +60,15 @@ async function start() {
         '20261026_create_dining_tables.sql',
         '20261026_backfill_order_table_numbers.sql',
         '20261026_add_salary_payout_provider_fields.sql',
+        '20261026_add_outbound_payout_provider_fields.sql',
         '20261029_repair_branch_owned_stock.sql',
         '20261029_fix_order_station_assignments.sql',
         '20261119_create_staff_shifts.sql',
         '20261120_create_user_permissions.sql',
         '20261121_add_payment_methods.sql',
         '20261121_create_transaction_ledger.sql',
+        '20261121_scope_accounting_records.sql',
+        '20261122_create_expenses_and_documents.sql',
       ],
     }).catch((error) => {
       console.error('[startup] A database migration failed (server continues):', error.message)
@@ -61,12 +80,18 @@ async function start() {
     }
 
     console.log('Database preparation complete.')
-    if (!isTransactionEncryptionConfigured()) {
-      console.error('[security] TRANSACTION_ENCRYPTION_KEY is missing or invalid: financial transactions will not be sealed.')
-    }
+    database.ready = true
   } catch (error) {
-    console.error('Database preparation failed; server startup cancelled:', error.message)
-    process.exit(1)
+    // Keep serving: exiting here crashes every request on serverless hosts.
+    database.error = error.message
+    console.error(
+      databaseConfigured
+        ? `[startup] Database unreachable (${error.message}). Check DATABASE_URL for this environment.`
+        : '[startup] DATABASE_URL is not set for this environment: add it in the hosting settings and redeploy.'
+    )
+  }
+  if (!isTransactionEncryptionConfigured()) {
+    console.error('[security] TRANSACTION_ENCRYPTION_KEY is missing or invalid: financial transactions will not be sealed.')
   }
 
   const server = app.listen(port, () => {

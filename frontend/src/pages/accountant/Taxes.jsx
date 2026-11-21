@@ -45,7 +45,7 @@ export default function Taxes() {
         <div>
           <p className="eyebrow">{t('Accountant workspace')}</p>
           <h1>{t('Taxes')}</h1>
-          <p>{t('Tax figures from completed orders and recorded business expenses.')}</p>
+          <p>{t('VAT from paid orders. Input VAT on purchases is not recorded, so the full output VAT is payable.')}</p>
         </div>
       </div>
 
@@ -57,11 +57,11 @@ export default function Taxes() {
         <>
           <div className="user-info-grid">
             {summaryCard(money(taxes.vatCollected), 'VAT Collected (Output)', '/accountant/sales-revenue')}
-            {summaryCard(taxValue(taxes.vatPaid, t), `${t('VAT Paid (input)')}${taxes.vatInputTracked ? '' : ` — ${t('not recorded')}`}`, '/accountant/reports?category=taxes')}
-            {summaryCard(taxValue(taxes.vatPayable, t), `${t('VAT Payable')}${taxes.vatPayable == null ? ` — ${t('needs input VAT records')}` : ''}`, '/accountant/reports?category=taxes')}
-            {summaryCard(money(taxes.totalSales), 'Net Sales (paid / served)', '/accountant/sales-revenue')}
-            {summaryCard(money(taxes.totalExpenses), 'Recorded Payroll Expenses', '/accountant/reports?category=payroll')}
-            {summaryCard(taxes.reconciledOrders, 'Completed Orders (paid / served)', '/accountant/orders')}
+            {summaryCard(taxValue(taxes.vatPaid, t), taxes.vatInputTracked ? 'VAT Paid (input)' : 'VAT Paid (input) — not recorded', '/accountant/reports?category=taxes')}
+            {summaryCard(taxValue(taxes.vatPayable, t), 'VAT Payable', '/accountant/reports?category=taxes')}
+            {summaryCard(money(taxes.totalSales), 'Net Sales (paid orders)', '/accountant/sales-revenue')}
+            {summaryCard(money(taxes.totalExpenses), 'Total Expenses', '/accountant/reports?category=expenses')}
+            {summaryCard(taxes.reconciledOrders, 'Paid Orders', '/accountant/sales-revenue')}
           </div>
 
           <section className="user-section">
@@ -80,18 +80,16 @@ export default function Taxes() {
                     </tr>
                   </thead>
                   <tbody>
-                    {taxes.transactions.map((t) => (
-                      <tr key={t.id}>
-                        <td className="obw-strong">{t.orderNumber ?? t.id}</td>
-                        <td>{t.table ?? '—'}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 600 }}>{money(t.total)}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 600 }}>{money(t.vat)}</td>
+                    {taxes.transactions.map((tx) => (
+                      <tr key={tx.id}>
+                        <td className="obw-strong">{tx.orderNumber ?? tx.id}</td>
+                        <td>{tx.table ?? '—'}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 600 }}>{money(tx.total)}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 600 }}>{money(tx.vat)}</td>
                         <td>
-                          <span className={t.status === 'Paid' || t.status === 'Served' ? 'user-active' : 'user-pending'}>
-                            {t.status}
-                          </span>
+                          <span className="user-active">{t('Paid')}</span>
                         </td>
-                        <td style={{ textAlign: 'right', color: 'var(--text-4)' }}>{t.date}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--text-4)' }}>{tx.date}</td>
                       </tr>
                     ))}
                   </tbody>

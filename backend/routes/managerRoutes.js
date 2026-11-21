@@ -515,11 +515,18 @@ router.post('/payrolls/:id/approve', ...managerOrOwner, async (req, res) => {
         `UPDATE salary_payments SET status = 'rejected', approved_by = $1, approved_at = NOW()
           WHERE id = $2 AND business_id = $3
             AND ($4::uuid IS NULL OR branch_id = $4) AND status = 'pending'
-          RETURNING id, status`,
+          RETURNING id, status, user_id, bonus`,
         [req.user.id, id, scope.businessId, scope.branchId],
       )
       if (!rows.length) return res.status(404).json({ error: 'Pending payroll not found.' })
-      result = rows[0]
+      // The bonus was cleared when the request was made; give it back.
+      if (rows[0].user_id && Number(rows[0].bonus) > 0) {
+        await query(
+          `UPDATE users SET bonus = COALESCE(bonus, 0) + $1, updated_at = NOW() WHERE id = $2 AND business_id = $3`,
+          [Number(rows[0].bonus), rows[0].user_id, scope.businessId]
+        )
+      }
+      result = { id: rows[0].id, status: rows[0].status }
     }
 
     await logAudit({

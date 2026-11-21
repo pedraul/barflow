@@ -67,6 +67,10 @@ router.post('/', authMiddleware, roleMiddleware('accountant', 'manager', 'owner'
   if (!Number.isFinite(gross) || gross <= 0) {
     return res.status(400).json({ error: 'Salary amount must be greater than zero.' })
   }
+  const bonusAmount = Number(bonus) || 0
+  if (bonusAmount < 0 || bonusAmount > gross) {
+    return res.status(400).json({ error: 'The bonus must be between zero and the gross salary.' })
+  }
 
   const { grossAmount, taxAmount: tax, insuranceAmount: insurance, netAmount: net } = getTaxBreakdown(gross)
   if (net <= 0) {
@@ -97,8 +101,18 @@ router.post('/', authMiddleware, roleMiddleware('accountant', 'manager', 'owner'
     const { rows } = await query(
       `INSERT INTO salary_payments (business_id, branch_id, user_id, name, phone, gross_amount, tax_amount, insurance_amount, net_amount, amount, method, actor, bonus, promotion, status, pay_period_start)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'pending', $15) RETURNING id`,
-      [scope.businessId, scope.branchId, user_id, recipientName, recipientPhone.trim(), gross, tax, insurance, net, net, method, actor, bonus || 0, promotion || '', periodStart]
+      [scope.businessId, scope.branchId, user_id, recipientName, recipientPhone.trim(), gross, tax, insurance, net, net, method, actor, bonusAmount, promotion || '', periodStart]
     )
+
+    // A bonus is paid once: clear it from the employee now that it is in this
+    // request (it is given back if the manager rejects the request).
+    if (user_id && bonusAmount > 0) {
+      await query(
+        `UPDATE users SET bonus = GREATEST(COALESCE(bonus, 0) - $1, 0), updated_at = NOW()
+         WHERE id = $2 AND business_id = $3`,
+        [bonusAmount, user_id, scope.businessId]
+      )
+    }
 
     await logAudit({
       userId: req.user?.id,
@@ -109,7 +123,7 @@ router.post('/', authMiddleware, roleMiddleware('accountant', 'manager', 'owner'
       businessId: req.user?.businessId,
     })
 
-    res.status(201).json({ id: rows[0].id, gross, tax, insurance, net, status: 'pending' })
+    res.status(201).json({ id: rows[0].id, gross, tax, insurance, net, bonus: bonusAmount, status: 'pending' })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

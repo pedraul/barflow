@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react'
 import { useUsers } from '../../context/UsersContext'
 import { useSalary } from '../../context/SalaryContext'
 import { useAuditLog } from '../../context/AuditLogContext'
-import { updateUser } from '../../api/endpoints'
 import * as api from '../../api/endpoints'
 import { usePreferences } from '../../context/PreferencesContext'
 
@@ -35,7 +34,7 @@ function calculateTax(gross) {
 
 export default function Salary() {
   const { t } = usePreferences()
-  const { users: contextUsers, updateUser: updateUserCtx, loaded, error: usersError } = useUsers()
+  const { users: contextUsers, error: usersError } = useUsers()
   const { recordSalaryPayment, salaryPayments } = useSalary()
   const { log: auditLog } = useAuditLog()
   const [paying, setPaying] = useState(null)
@@ -52,28 +51,22 @@ export default function Salary() {
   useEffect(() => {
     let active = true
     if (!contextUsers || contextUsers.length === 0) {
-      console.log('[Salary] contextUsers empty, fetching directly...')
       setDirectLoading(true)
       setDirectError(null)
       api.fetchUsers()
-        .then((data) => {
-          console.log('[Salary] fetchUsers result:', data)
-          if (active) setDirectUsers(data || [])
-        })
-        .catch((err) => {
-          console.error('[Salary] fetchUsers error:', err)
-          if (active) setDirectError(err.message)
-        })
+        .then((data) => { if (active) setDirectUsers(data || []) })
+        .catch((err) => { if (active) setDirectError(err.response?.data?.error || err.message) })
         .finally(() => { if (active) setDirectLoading(false) })
-    } else {
-      console.log('[Salary] using contextUsers:', contextUsers.length)
     }
     return () => { active = false }
   }, [contextUsers])
 
-  const users = (contextUsers && contextUsers.length > 0) ? contextUsers : directUsers
-
-  console.log('[Salary] render - users count:', users.length, 'contextUsers:', contextUsers?.length, 'directUsers:', directUsers.length, 'error:', usersError || directError)
+  // Payroll changes saved on this page, shown immediately on top of the loaded list.
+  const [overrides, setOverrides] = useState({})
+  const baseUsers = (contextUsers && contextUsers.length > 0) ? contextUsers : directUsers
+  const users = baseUsers.map((u) => (overrides[u.id] ? { ...u, ...overrides[u.id] } : u))
+  const [editError, setEditError] = useState(null)
+  const [savingEdit, setSavingEdit] = useState(false)
 
   const totalSalary = users.reduce((sum, u) => {
     const base = Number(u.salary) || 0
@@ -92,20 +85,29 @@ export default function Salary() {
 
   const saveEdit = async () => {
     if (!editingUser) return
+    const bonus = Number(editForm.bonus)
+    if (!Number.isFinite(bonus) || bonus < 0) {
+      setEditError(t('Bonus must be zero or a positive amount.'))
+      return
+    }
+    setSavingEdit(true)
+    setEditError(null)
     try {
-      await updateUser(editingUser.id, {
-        bonus: Number(editForm.bonus) || 0,
+      const updated = await api.updatePayrollDetails(editingUser.id, {
+        bonus,
         promotion: editForm.promotion,
         phone: editForm.phone,
       })
-      await updateUserCtx(editingUser.id, {
-        bonus: Number(editForm.bonus) || 0,
-        promotion: editForm.promotion,
-        phone: editForm.phone,
-      })
+      setOverrides((current) => ({
+        ...current,
+        [editingUser.id]: { bonus: updated.bonus, promotion: updated.promotion, phone: updated.phone },
+      }))
+      setDone(`${t('Saved payroll details for')} ${updated.name}: ${t('bonus')} ${money(updated.bonus)}.`)
       setEditingUser(null)
     } catch (e) {
-      alert(e.message)
+      setEditError(e.response?.data?.error || e.message || t('Failed to save. Please try again.'))
+    } finally {
+      setSavingEdit(false)
     }
   }
 
@@ -137,10 +139,12 @@ export default function Salary() {
         type: 'salary',
       })
 
-      setDone(`Salary payment request sent to manager for approval. ${paying.name} will receive ${money(net)} once approved.`)
+      // The server clears a paid bonus so it is not paid again next time.
+      if (bonus > 0) setOverrides((current) => ({ ...current, [paying.id]: { ...(current[paying.id] || {}), bonus: 0 } }))
+      setDone(`${t('Salary payment request sent to manager for approval.')} ${paying.name} ${t('will receive')} ${money(net)} ${t('once approved.')}${bonus > 0 ? ` ${t('Includes bonus:')} ${money(bonus)}.` : ''}`)
       setPaying(null)
     } catch (e) {
-      setError(e.message || t('Failed to send salary payment request. Please try again.'))
+      setError(e.response?.data?.error || e.message || t('Failed to send salary payment request. Please try again.'))
     } finally {
       setSending(false)
     }
@@ -159,17 +163,15 @@ export default function Salary() {
 
       {(usersError || directError) && (
         <div style={{ background: '#fee2e2', color: '#991b1b', padding: '12px 16px', borderRadius: '8px', marginBottom: '16px', fontSize: '14px' }}>
-          <strong>{t('Error loading users:')}</strong> {usersError || directError}
+          <strong>{t('Could not load workers:')}</strong> {usersError || directError}
           <br />
-          <span style={{ fontSize: '12px', opacity: 0.8 }}>{t('Check browser console and backend logs for details. Make sure the backend is running and you are logged in.')}</span>
+          <span style={{ fontSize: '12px', opacity: 0.8 }}>{t('Refresh the page. If this keeps happening, log out and log in again.')}</span>
         </div>
       )}
 
       {!usersError && !directError && users.length === 0 && !directLoading && (
         <div style={{ background: '#fef3c7', color: '#92400e', padding: '12px 16px', borderRadius: '8px', marginBottom: '16px', fontSize: '14px' }}>
-          <strong>{t('No workers found.')}</strong> {t('The API returned an empty list.')}
-          <br />
-          <span style={{ fontSize: '12px', opacity: 0.8 }}>{t('UsersContext loaded:')} {loaded ? t('yes') : t('no')} {t('| Context users:')} {contextUsers?.length || 0} {t('| Direct users:')} {directUsers.length}</span>
+          <strong>{t('No workers found.')}</strong> {t('Workers added by the owner or manager will appear here.')}
         </div>
       )}
 
@@ -288,9 +290,13 @@ export default function Salary() {
                 placeholder={t('e.g. 0788123456')}
               />
             </label>
+            <p style={{ fontSize: 12, color: 'var(--text-4)', margin: '4px 0 0' }}>
+              {t('The bonus is added to the next salary payment and then cleared, so it is only paid once.')}
+            </p>
+            {editError && <div role="alert" style={{ color: '#b91c1c', fontSize: 13, marginTop: 8 }}>{editError}</div>}
             <div className="create-user-form-actions">
-              <button type="button" className="secondary-action" onClick={() => setEditingUser(null)}>{t('Cancel')}</button>
-              <button type="submit" className="pay-action">{t('Save')}</button>
+              <button type="button" className="secondary-action" onClick={() => { setEditingUser(null); setEditError(null) }}>{t('Cancel')}</button>
+              <button type="submit" className="pay-action" disabled={savingEdit}>{savingEdit ? t('Saving…') : t('Save')}</button>
             </div>
           </form>
         </div>

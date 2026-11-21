@@ -4,7 +4,7 @@ import Layout from '../components/Layout'
 import {
   LayoutDashboard, ShoppingBag, CheckCircle2, BarChart3,
   FileText, User, ArrowLeftRight, TrendingUp,
-  Scale, Receipt, RotateCcw, DollarSign, Settings, LogOut, MessageSquare, QrCode
+  Scale, Receipt, RotateCcw, DollarSign, Settings, LogOut, MessageSquare, QrCode, Wallet, FolderOpen
 } from 'lucide-react'
 import { SidebarLink } from '../components/ui/SharedComponents'
 import { useAuth } from '../context/AuthContext'
@@ -24,6 +24,8 @@ const ACCOUNTANT_LINKS = [
     { path: '/accountant/refunds', label: 'Refunds', icon: <RotateCcw size={18} /> },
   ]},
   { section: 'Finance', items: [
+    { path: '/accountant/expenses', label: 'Expenses', icon: <Wallet size={18} /> },
+    { path: '/accountant/documents', label: 'Documents', icon: <FolderOpen size={18} /> },
     { path: '/accountant/salary', label: 'Payroll', icon: <DollarSign size={18} /> },
     { path: '/accountant/transfers', label: 'Transfers', icon: <ArrowLeftRight size={18} /> },
     { path: '/accountant/profit', label: 'Profit & Revenue', icon: <TrendingUp size={18} /> },

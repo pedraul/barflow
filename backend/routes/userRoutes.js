@@ -5,6 +5,7 @@ import { logAudit, getClientIp } from '../utils/audit.js'
 import authMiddleware from '../middleware/authMiddleware.js'
 import { getBranchContext } from '../middleware/branchContext.js'
 import { isOwner, hasGrant, checkCanManageUser, DELEGABLE_ROLES } from '../utils/staffPermissions.js'
+import { normalizeRwandaPhone } from '../services/mobileMoneyProviders.js'
 
 const router = Router()
 
@@ -175,9 +176,79 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 })
 
+// PATCH /users/:id/payroll — payroll details only (bonus, promotion note, payout phone).
+// Allowed for the owner, and for the accountant or manager of the employee's branch.
+router.patch('/:id/payroll', authMiddleware, async (req, res) => {
+  const role = String(req.user?.role || '').toLowerCase()
+  if (!isOwner(req) && !['accountant', 'manager'].includes(role)) {
+    return res.status(403).json({ error: 'Only the owner, manager or accountant can change payroll details.' })
+  }
+  const { bonus, promotion, phone } = req.body || {}
+  const fields = []
+  const params = []
+  if (bonus !== undefined) {
+    const value = Number(bonus)
+    if (!Number.isFinite(value) || value < 0) return res.status(400).json({ error: 'Bonus must be zero or a positive amount.' })
+    params.push(Math.round(value * 100) / 100)
+    fields.push(`bonus = $${params.length}`)
+  }
+  if (promotion !== undefined) {
+    params.push(String(promotion || '').trim().slice(0, 255))
+    fields.push(`promotion = $${params.length}`)
+  }
+  if (phone !== undefined) {
+    const text = String(phone || '').trim()
+    if (text) {
+      try {
+        normalizeRwandaPhone(text)
+      } catch (error) {
+        return res.status(400).json({ error: error.message })
+      }
+    }
+    params.push(text)
+    fields.push(`phone = $${params.length}`)
+  }
+  if (!fields.length) return res.status(400).json({ error: 'Nothing to update.' })
+
+  try {
+    const branchId = isOwner(req) ? null : (req.user?.branchId || null)
+    params.push(req.params.id, req.user.businessId, branchId)
+    const n = params.length
+    const { rows } = await query(
+      `UPDATE users SET ${fields.join(', ')}, updated_at = NOW()
+       WHERE id = $${n - 2} AND business_id = $${n - 1}
+         AND ($${n}::uuid IS NULL OR branch_id = $${n}::uuid)
+         AND LOWER(role::text) <> 'owner'
+       RETURNING id`,
+      params
+    )
+    if (!rows.length) return res.status(404).json({ error: 'Employee not found in your branch.' })
+    const { rows: userRows } = await query(
+      `SELECT u.*, b.name AS branch_name FROM users u LEFT JOIN branches b ON b.id = u.branch_id WHERE u.id = $1`,
+      [req.params.id]
+    )
+    const updated = mapUser(userRows[0])
+    await logAudit({
+      userId: req.user?.id,
+      actorName: req.user?.full_name || req.user?.email || 'System',
+      action: `Updated payroll details for "${updated.name}": bonus ${updated.bonus}${updated.promotion ? `, note "${updated.promotion}"` : ''}`,
+      targetModule: 'Payroll',
+      ipAddress: getClientIp(req),
+      businessId: req.user?.businessId,
+    })
+    res.json(updated)
+  } catch (error) {
+    if (/invalid input syntax for type uuid/i.test(error.message)) return res.status(404).json({ error: 'Employee not found.' })
+    res.status(500).json({ error: error.message })
+  }
+})
+
 router.patch('/:id', authMiddleware, async (req, res) => {
-  const { name, email, phone, role, status, salary } = req.body
+  const { name, email, phone, role, status, salary, bonus, promotion } = req.body
   let { branch } = req.body
+  if (bonus !== undefined && (!Number.isFinite(Number(bonus)) || Number(bonus) < 0)) {
+    return res.status(400).json({ error: 'Bonus must be zero or a positive amount.' })
+  }
   if (!isOwner(req)) {
     if (!(await hasGrant(req, 'edit_employees'))) {
       return res.status(403).json({ error: 'Only the business owner, or staff granted access, can update branch users.' })
@@ -201,6 +272,8 @@ router.patch('/:id', authMiddleware, async (req, res) => {
   if (phone !== undefined) { fields.push(`phone = $${i++}`); params.push(phone) }
   if (role !== undefined) { fields.push(`role = $${i++}`); params.push(role) }
   if (salary !== undefined) { fields.push(`salary = $${i++}`); params.push(salary) }
+  if (bonus !== undefined) { fields.push(`bonus = $${i++}`); params.push(Number(bonus) || 0) }
+  if (promotion !== undefined) { fields.push(`promotion = $${i++}`); params.push(String(promotion || '').slice(0, 255)) }
   if (status !== undefined) { fields.push(`is_active = $${i++}`); params.push(status === 'Active') }
   if (branch !== undefined) {
     fields.push(`branch_id = (SELECT id FROM branches WHERE (id::text = $${i} OR LOWER(name) = LOWER($${i})) AND business_id = $${i + 1})`)

@@ -17,6 +17,8 @@ export const mapUser = (u) => ({
   branch: u.branch_name || '',
   status: u.is_active ? 'Active' : 'Inactive',
   salary: Number(u.salary) || 0,
+  bonus: Number(u.bonus) || 0,
+  promotion: u.promotion || '',
   lastLogin: u.last_login ? new Date(u.last_login).toLocaleString() : 'Never',
 })
 

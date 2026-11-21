@@ -19,6 +19,11 @@ export default function Payments() {
   }, [])
 
   const total = payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+  const byMethod = payments.reduce((acc, p) => {
+    const key = p.methodLabel || p.method || '—'
+    acc[key] = (acc[key] || 0) + (Number(p.amount) || 0)
+    return acc
+  }, {})
 
   return (
     <div className="page accountant-payments">
@@ -40,6 +45,12 @@ export default function Payments() {
           <strong>{money(total)}</strong>
           <span>{t('Total Payments')}</span>
         </div>
+        {Object.entries(byMethod).map(([method, amount]) => (
+          <div className="summary-card" key={method}>
+            <strong>{money(amount)}</strong>
+            <span>{t(method)}</span>
+          </div>
+        ))}
       </div>
 
       <section className="user-section">
@@ -62,8 +73,11 @@ export default function Payments() {
               <tbody>
                 {payments.map((p) => (
                   <tr key={p.id}>
-                    <td className="obw-strong">{p.orderId ?? '—'}</td>
-                    <td style={{ textTransform: 'capitalize' }}>{p.method}</td>
+                    <td>
+                      <div className="obw-strong">{p.table || '—'}</div>
+                      {p.orderNumber && <div style={{ fontSize: 12, color: 'var(--text-4)' }}>{t('Order')} {p.orderNumber}</div>}
+                    </td>
+                    <td>{t(p.methodLabel || p.method)}</td>
                     <td style={{ textAlign: 'right', fontWeight: 600 }}>{money(p.amount)}</td>
                     <td>{p.reference || '—'}</td>
                     <td style={{ textAlign: 'right', color: 'var(--text-4)' }}>{p.date}</td>
