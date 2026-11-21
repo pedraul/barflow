@@ -39,6 +39,7 @@ export default function Expenses() {
   const [importFile, setImportFile] = useState(null)
   const [importRows, setImportRows] = useState([])
   const [importing, setImporting] = useState(false)
+  const [reading, setReading] = useState(false)
   const [importResult, setImportResult] = useState(null)
   const receiptInput = useRef(null)
   const importInput = useRef(null)
@@ -115,12 +116,13 @@ export default function Expenses() {
       setMessage({ tone: 'error', text: t('Choose a CSV or Excel file.') })
       return
     }
+    setReading(true)
     try {
-      const rows = toExpenseRows(await readSpreadsheet(file))
-      if (!rows.length) setMessage({ tone: 'error', text: t('No expenses found. The file needs at least Description and Amount columns.') })
-      setImportRows(rows)
+      setImportRows(toExpenseRows(await readSpreadsheet(file)))
     } catch (err) {
       setMessage({ tone: 'error', text: apiError(err, t('This file could not be read.')) })
+    } finally {
+      setReading(false)
     }
   }
 
@@ -257,10 +259,21 @@ export default function Expenses() {
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           <input ref={importInput} type="file" accept=".csv,.xlsx,.xls" onChange={(e) => chooseImport(e.target.files?.[0])} style={{ ...field, width: 'auto', padding: 7 }} />
           <button type="button" className="secondary-action" onClick={() => downloadTextFile(EXPENSE_TEMPLATE, 'expenses-template.csv')}>{t('Download template')}</button>
-          <button type="button" className="pay-action" disabled={!importRows.length || importing} onClick={runImport} style={{ padding: '10px 18px' }}>
-            {importing ? t('Importing…') : `${t('Import')} ${importRows.length || ''} ${t('expense(s)')}`}
+          <button
+            type="button"
+            className="pay-action"
+            disabled={importing || reading}
+            onClick={() => (importRows.length ? runImport() : importInput.current?.click())}
+            style={{ padding: '10px 18px' }}
+          >
+            {importing ? t('Importing…') : reading ? t('Reading file…') : importRows.length ? `${t('Import')} ${importRows.length} ${t('expense(s)')}` : t('Choose file to import')}
           </button>
         </div>
+        {importFile && !reading && !importRows.length && (
+          <p role="alert" style={{ fontSize: 13, color: '#b45309', marginTop: 8 }}>
+            {t('No expenses were found in')} {importFile.name}. {t('Make sure the first row has column names such as Description and Amount, or use the template.')}
+          </p>
+        )}
         {importRows.length > 0 && (
           <div className="user-table-wrap" style={{ marginTop: 12, maxHeight: 260, overflow: 'auto' }}>
             <table className="user-table">

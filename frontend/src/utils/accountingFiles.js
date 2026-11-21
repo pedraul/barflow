@@ -42,8 +42,15 @@ export async function readSpreadsheet(file) {
   const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true })
   const sheet = workbook.Sheets[workbook.SheetNames[0]]
   if (!sheet) return []
-  const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false, dateNF: 'yyyy-mm-dd' })
-  return rows.map((row) => Object.fromEntries(Object.entries(row).map(([k, v]) => [normalizeKey(k), v])))
+  // raw values: real numbers for amounts and Date objects for dates (not display text).
+  const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: true })
+  const cell = (v) => {
+    if (v instanceof Date && !Number.isNaN(v.getTime())) {
+      return `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, '0')}-${String(v.getDate()).padStart(2, '0')}`
+    }
+    return v == null ? '' : String(v)
+  }
+  return rows.map((row) => Object.fromEntries(Object.entries(row).map(([k, v]) => [normalizeKey(k), cell(v)])))
 }
 
 const pick = (row, names) => {
