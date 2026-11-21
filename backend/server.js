@@ -35,6 +35,8 @@ async function start() {
     await ensureBaseSchema()
 
     console.log('Ensuring branch data schema is up to date...')
+    // A failed migration is logged but must not take the API down: the
+    // tables the newest features need are also created on first use.
     await migrate({
       only: [
         '20261005_add_branch_owned_products.sql',
@@ -49,6 +51,8 @@ async function start() {
         '20261121_add_payment_methods.sql',
         '20261121_create_transaction_ledger.sql',
       ],
+    }).catch((error) => {
+      console.error('[startup] A database migration failed (server continues):', error.message)
     })
 
     if (process.env.RUN_DB_BOOTSTRAP === 'true') {

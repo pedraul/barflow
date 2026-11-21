@@ -3,21 +3,21 @@ import dotenv from 'dotenv'
 
 dotenv.config()
 
-// Encrypt the connection to the database (TLS) whenever it is not on this machine.
-// - If DATABASE_URL already sets sslmode, pg follows it.
-// - DB_SSL=false turns TLS off (only for databases that don't support it).
-// - DB_SSL_STRICT=true also verifies the server certificate.
+// Database connection encryption (TLS).
+// - If DATABASE_URL sets sslmode (e.g. ?sslmode=require), pg follows it.
+// - DB_SSL=true turns TLS on for a database that supports it;
+//   DB_SSL_STRICT=true also verifies the server certificate.
+// TLS is never forced otherwise: a database without TLS support would refuse
+// every connection and take the whole API down.
 function sslConfig(connectionString) {
-  if (String(process.env.DB_SSL).toLowerCase() === 'false') return false
   try {
     const url = new URL(connectionString)
     if (url.searchParams.has('sslmode')) return undefined
-    const isLocal = ['localhost', '127.0.0.1', '::1'].includes(url.hostname)
-    if (isLocal) return false
-    return { rejectUnauthorized: String(process.env.DB_SSL_STRICT).toLowerCase() === 'true' }
   } catch {
     return undefined
   }
+  if (String(process.env.DB_SSL).toLowerCase() !== 'true') return undefined
+  return { rejectUnauthorized: String(process.env.DB_SSL_STRICT).toLowerCase() === 'true' }
 }
 
 const pool = new pg.Pool({
