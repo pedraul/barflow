@@ -8,12 +8,13 @@ export default function Refunds() {
   const { t } = usePreferences()
   const [refunds, setRefunds] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     let active = true
     fetchRefunds()
       .then((data) => active && setRefunds(data || []))
-      .catch(() => active && setRefunds([]))
+      .catch((err) => { if (active) { setRefunds([]); setError(err?.response?.data?.error || t('Unable to load refunds.')) } })
       .finally(() => active && setLoading(false))
     return () => { active = false }
   }, [])
@@ -32,6 +33,8 @@ export default function Refunds() {
           <p>{t('Refund requests and their status.')}</p>
         </div>
       </div>
+
+      {error && <p role="alert" style={{ color: '#dc2626', marginBottom: 12 }}>{error}</p>}
 
       <div className="user-info-grid">
         <div className="summary-card">

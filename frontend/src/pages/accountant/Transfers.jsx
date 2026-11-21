@@ -17,7 +17,10 @@ export default function Transfers() {
     api
       .fetchTransfers()
       .then((data) => setTransfers(data || []))
-      .catch(() => setTransfers([]))
+      .catch((err) => {
+        setTransfers([])
+        setError(err?.response?.data?.error || t('Unable to load transfers.'))
+      })
       .finally(() => setLoading(false))
   }
 
@@ -53,7 +56,7 @@ export default function Transfers() {
       setForm({ name: '', phone: '', amount: '', purpose: '', method: 'mtn_momo' })
       load()
     } catch (err) {
-      setError(err.message || t('Transfer failed.'))
+      setError(err?.response?.data?.error || err.message || t('Transfer failed.'))
     } finally {
       setSending(false)
     }

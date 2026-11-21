@@ -98,8 +98,14 @@ router.post('/transfers', ...accountantOnly, async (req, res) => {
   if (!name || !phone || !amount || !purpose) {
     return res.status(400).json({ error: 'All fields are required.' })
   }
+  let payout
   try {
-    const payout = createOutboundPayoutRequest({ phone, amount, method })
+    // Validation only (phone, amount, provider): every error here is the user's input.
+    payout = createOutboundPayoutRequest({ phone, amount, method })
+  } catch (error) {
+    return res.status(400).json({ error: error.message })
+  }
+  try {
     const scope = await getBranchContext(req, { requestedBranchId: req.body.branchId, allowOwnerAll: false })
     const { rows } = await query(
       `INSERT INTO transfers (business_id, branch_id, from_user, to_phone, amount, description, status, payout_method)
@@ -109,8 +115,7 @@ router.post('/transfers', ...accountantOnly, async (req, res) => {
     await audit(req, `Created ${payout.method} transfer of ${payout.amount} to ${name} (${payout.phone})`, 'Transfers')
     res.status(201).json({ id: rows[0].id })
   } catch (error) {
-    const status = /required|greater than zero|Choose MTN|phone/i.test(error.message) ? 400 : 500
-    res.status(status).json({ error: error.message })
+    sendError(res, error)
   }
 })
 

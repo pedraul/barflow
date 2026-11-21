@@ -8,12 +8,13 @@ export default function Payments() {
   const { t } = usePreferences()
   const [payments, setPayments] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     let active = true
     fetchAccountantPayments()
       .then((data) => active && setPayments(data || []))
-      .catch(() => active && setPayments([]))
+      .catch((err) => { if (active) { setPayments([]); setError(err?.response?.data?.error || t('Unable to load payments.')) } })
       .finally(() => active && setLoading(false))
     return () => { active = false }
   }, [])
@@ -35,6 +36,8 @@ export default function Payments() {
           <p>{t('All payment transactions recorded in the system.')}</p>
         </div>
       </div>
+
+      {error && <p role="alert" style={{ color: '#dc2626', marginBottom: 12 }}>{error}</p>}
 
       <div className="user-info-grid">
         <div className="summary-card">
