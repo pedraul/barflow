@@ -1,3 +1,10 @@
+import { sendMail } from './mailer.js'
+import { settingBool, settingText } from './platformSettings.js'
+
+// Platform-admin switches (Settings → Notifications) for whole groups of emails.
+const platformAllows = (key) => settingBool(key, true)
+// Where admin alerts go: the platform contact email, else the environment.
+const adminRecipient = async () => settingText('platform_contact_email', process.env.ADMIN_NOTIFICATION_EMAIL || process.env.SMTP_USER || process.env.EMAIL_USER || '')
 import { query } from '../config/database.js'
 import { sendVerificationEmail } from './emailService.js'
 
@@ -73,24 +80,7 @@ async function sendAndRecord({ toEmail, toName, subject, text, html, notificatio
   if (!toEmail) return false
 
   try {
-    const { default: nodemailer } = await import('nodemailer')
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: Number(process.env.SMTP_PORT) || 587,
-      secure: false,
-      auth: {
-        user: process.env.SMTP_USER || '',
-        pass: process.env.SMTP_PASS || '',
-      },
-    })
-
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM || 'BarFlow <no-reply@barflow.com>',
-      to: toEmail,
-      subject,
-      text: text || '',
-      html: html || text || '',
-    })
+    await sendMail({ to: toEmail, subject, text, html })
 
     await recordEmail({
       businessId,
@@ -190,8 +180,9 @@ The BarFlow Team`
 // 2. New Business Registration Notification (to admin)
 // ──────────────────────────────────────────────
 export async function sendAdminNewBusinessNotification({ businessName, ownerName, ownerEmail, ownerPhone, registrationDate, businessId }) {
-  if (!(await isEmailNotificationsEnabled())) return false
-  const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || process.env.SMTP_USER || 'admin@barflow.com'
+  if (!(await isEmailNotificationsEnabled()) || !(await platformAllows('notify_new_business'))) return false
+  const adminEmail = await adminRecipient()
+  if (!adminEmail) return false
   const subject = `New Business Registration: ${businessName}`
   const text = `A new business has registered on BarFlow.
 
@@ -305,8 +296,9 @@ The BarFlow Team`
 // 4. Subscription Activation Notification (to admin)
 // ──────────────────────────────────────────────
 export async function sendAdminSubscriptionActivation({ businessName, ownerName, ownerEmail, planName, amount, businessId }) {
-  if (!(await isEmailNotificationsEnabled())) return false
-  const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || process.env.SMTP_USER || 'admin@barflow.com'
+  if (!(await isEmailNotificationsEnabled()) || !(await platformAllows('notify_payment_received'))) return false
+  const adminEmail = await adminRecipient()
+  if (!adminEmail) return false
   const subject = `Subscription Payment Verified – ${businessName}`
   const text = `A subscription payment has been verified for ${businessName}.
 
@@ -359,7 +351,7 @@ The business account has been activated successfully.`
 // 5. Subscription Expiry Reminder (to owner)
 // ──────────────────────────────────────────────
 export async function sendExpiryReminder({ businessName, ownerName, ownerEmail, planName, expiryDate, daysRemaining, businessId }) {
-  if (!(await isNotificationEnabled('notify_expiry_reminder', businessId))) return false
+  if (!(await platformAllows('notify_subscription_expiry')) || !(await isNotificationEnabled('notify_expiry_reminder', businessId))) return false
   const subject = `Subscription Expiry Reminder – ${daysRemaining} Day${daysRemaining !== 1 ? 's' : ''} Left`
   const text = `Hello ${ownerName || 'Business Owner'},
 
@@ -517,7 +509,7 @@ The BarFlow Team`
 // 6. Subscription Expired Notification (to owner)
 // ──────────────────────────────────────────────
 export async function sendSubscriptionExpired({ businessName, ownerName, ownerEmail, planName, expiryDate, businessId }) {
-  if (!(await isNotificationEnabled('notify_subscription_expired', businessId))) return false
+  if (!(await platformAllows('notify_subscription_expiry')) || !(await isNotificationEnabled('notify_subscription_expired', businessId))) return false
   const subject = `Subscription Expired – ${businessName}`
   const text = `Hello ${ownerName || 'Business Owner'},
 

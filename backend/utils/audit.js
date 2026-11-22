@@ -1,4 +1,5 @@
 import { query } from '../config/database.js'
+import { settingBool } from '../services/platformSettings.js'
 
 function normalizeActorId(userId) {
   if (!userId) return null
@@ -78,6 +79,16 @@ export async function logAudit({ userId, actorName, action, targetModule, ipAddr
     const normalizedIp = ipAddress || '0.0.0.0'
     const normalizedBusinessId = businessId || null
     const normalizedMetadata = normalizeMetadata(metadata)
+
+    // Settings → Audit (platform admin). Platform-level records (no business) are always kept,
+    // so changes made by platform admins stay accountable.
+    if (normalizedBusinessId) {
+      if (!(await settingBool('audit_log_enabled', true))) return
+      const isLoginEvent = /authentication/i.test(normalizedTargetModule) || /\b(log ?in|log ?out|sign(ed)? ?(in|out))\b/i.test(normalizedAction)
+      if (isLoginEvent && !(await settingBool('audit_log_login_events', true))) return
+    } else if (/authentication/i.test(normalizedTargetModule) && !(await settingBool('audit_log_login_events', true))) {
+      return
+    }
 
     await query(
       `INSERT INTO audit_logs (actor_id, actor_name, action, entity_type, metadata, target_module, ip_address, business_id)

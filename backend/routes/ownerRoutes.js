@@ -1,4 +1,8 @@
 import { Router } from 'express'
+import bcrypt from 'bcryptjs'
+import { query } from '../config/database.js'
+import { logAudit, getClientIp } from '../utils/audit.js'
+import { deleteBusinessCompletely, describeStatus, ensureBusinessStatusSchema, loadBusinessStatus } from '../services/businessStatus.js'
 import authMiddleware from '../middleware/authMiddleware.js'
 import roleMiddleware from '../middleware/roleMiddleware.js'
 import { permissionMiddleware } from '../middleware/permissionMiddleware.js'
@@ -19,6 +23,7 @@ import {
   exportAuditLogs,
   getSubscription,
   getAvailableSubscriptionPlans,
+  getSubscriptionPaymentOptions,
   selectSubscriptionPlan,
   checkSubscriptionPayment,
   getReceipt,
@@ -125,6 +130,7 @@ router.get('/audit-logs/export', ...ownerOnly, exportAuditLogs)
 // ──────────────────────────────────────────────
 router.get('/subscription', ...ownerOnly, getSubscription)
 router.get('/subscription/plans', ...ownerOnly, getAvailableSubscriptionPlans)
+router.get('/subscription/payment-options', ...ownerOnly, getSubscriptionPaymentOptions)
 router.get('/subscription/receipt', ...ownerOnly, getReceipt)
 router.post('/subscription/select-plan', ...ownerOnly, selectSubscriptionPlan)
 router.get('/subscription/payment/:paymentId/status', ...ownerOnly, checkSubscriptionPayment)
@@ -162,5 +168,98 @@ router.get('/payment-settings', ...ownerOnly, getPaymentSettings)
 router.put('/payment-settings', ...ownerOnly, updatePaymentSettings)
 router.get('/qr-payment/merchant', ...ownerOnly, generateMerchantQRPayment)
 router.get('/qr-payment/:orderId', ...qrPaymentUsers, generateQRPayment)
+
+// ──────────────────────────────────────────────
+// Business account (owner): status, pause / reactivate, permanent deletion
+// ──────────────────────────────────────────────
+async function checkOwnerPassword(req, password) {
+  if (!password) return false
+  const { rows } = await query('SELECT password_hash FROM users WHERE id = $1 AND role = $2', [req.user.id, 'owner'])
+  return rows[0]?.password_hash ? bcrypt.compare(String(password), rows[0].password_hash).catch(() => false) : false
+}
+
+async function ownerAudit(req, action) {
+  await logAudit({
+    userId: req.user?.id,
+    actorName: req.user?.full_name || req.user?.email || 'Owner',
+    action,
+    targetModule: 'Business',
+    ipAddress: getClientIp(req),
+    businessId: req.user?.businessId,
+  }).catch(() => {})
+}
+
+// GET /v1/owner/business/status
+router.get('/business/status', ...ownerOnly, async (req, res) => {
+  try {
+    const business = await loadBusinessStatus(req.user.businessId)
+    if (!business) return res.status(404).json({ error: 'Business not found.' })
+    res.json({ id: business.id, name: business.name, isVerified: business.is_verified === true, ...describeStatus(business) })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// POST /v1/owner/business/deactivate  { password, reason? } — pause: staff can no longer sign in.
+router.post('/business/deactivate', ...ownerOnly, async (req, res) => {
+  try {
+    if (!(await checkOwnerPassword(req, req.body?.password))) return res.status(400).json({ error: 'Your password is not correct.' })
+    await ensureBusinessStatusSchema()
+    const reason = String(req.body?.reason || '').trim().slice(0, 500) || 'Paused by the owner'
+    const { rows } = await query(
+      `UPDATE businesses SET is_deactivated = TRUE, deactivated_by = 'owner', status_reason = $2, status_changed_at = NOW()
+       WHERE id = $1 AND COALESCE(is_deactivated, FALSE) = FALSE AND COALESCE(is_suspended, FALSE) = FALSE
+       RETURNING id, name`,
+      [req.user.businessId, reason]
+    )
+    if (!rows.length) return res.status(409).json({ error: 'The business is already paused, deactivated or suspended.' })
+    await ownerAudit(req, `Paused the business: ${reason}`)
+    res.json({ paused: true })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// POST /v1/owner/business/reactivate — only undoes the owner's own pause.
+router.post('/business/reactivate', ...ownerOnly, async (req, res) => {
+  try {
+    await ensureBusinessStatusSchema()
+    const { rows } = await query(
+      `UPDATE businesses SET is_deactivated = FALSE, deactivated_by = NULL, status_reason = NULL, status_changed_at = NOW()
+       WHERE id = $1 AND is_deactivated = TRUE AND deactivated_by = 'owner'
+       RETURNING id, name`,
+      [req.user.businessId]
+    )
+    if (!rows.length) return res.status(409).json({ error: 'Only a business you paused yourself can be reactivated here.' })
+    await ownerAudit(req, 'Reactivated the business')
+    res.json({ reactivated: true })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// POST /v1/owner/business/delete  { password, confirmName } — permanent: removes the business and all its data.
+router.post('/business/delete', ...ownerOnly, async (req, res) => {
+  try {
+    const business = await loadBusinessStatus(req.user.businessId)
+    if (!business) return res.status(404).json({ error: 'Business not found.' })
+    if (String(req.body?.confirmName || '').trim() !== String(business.name || '').trim()) {
+      return res.status(400).json({ error: 'Type the business name exactly as shown to confirm.' })
+    }
+    if (!(await checkOwnerPassword(req, req.body?.password))) return res.status(400).json({ error: 'Your password is not correct.' })
+    const deleted = await deleteBusinessCompletely(business.id)
+    if (!deleted) return res.status(404).json({ error: 'Business not found.' })
+    // The business's own audit log is gone with it; keep a platform-level record.
+    await logAudit({
+      actorName: req.user?.full_name || req.user?.email || 'Owner',
+      action: `Owner deleted business "${deleted.name}" (${deleted.id})`,
+      targetModule: 'Platform',
+      ipAddress: getClientIp(req),
+    }).catch(() => {})
+    res.json({ deleted: true })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
 
 export default router

@@ -1,22 +1,18 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { fetchPlans, fetchSubscriptionStatus, fetchPlatformSettings } from '../../api/endpoints'
+import { fetchPlans, fetchSubscriptionStatus } from '../../api/endpoints'
 import { usePreferences } from '../../context/PreferencesContext'
 
 const BILLING_CYCLE_LABELS = { monthly: 'Monthly', quarterly: 'Quarterly', annually: 'Annually' }
 
-// Same pricing rules as the backend (/v1/owner/subscription/plans):
-// quarterly = 3 months minus the quarterly discount; annually = the plan's
-// yearly price, or 12 months minus the annual discount.
+// Prices come from the server (services/subscriptionPricing.js), exactly as they are charged.
 function billingOptions(plan) {
   const monthly = Number(plan.priceMonthly) || 0
-  const quarterly = Number(plan.priceQuarterly) || Math.round(monthly * 3 * (1 - (Number(plan.discountQuarterly) || 0) / 100))
-  const annually = Number(plan.priceAnnually) || Number(plan.priceYearly) || Math.round(monthly * 12 * (1 - (Number(plan.discountAnnually) || 0) / 100))
   return [
     { cycle: 'monthly', label: 'Monthly', periodText: 'billed every month', months: 1, total: monthly },
-    { cycle: 'quarterly', label: 'Quarterly', periodText: 'billed every 3 months', months: 3, total: quarterly },
-    { cycle: 'annually', label: 'Annually', periodText: 'billed every 12 months', months: 12, total: annually },
+    { cycle: 'quarterly', label: 'Quarterly', periodText: 'billed every 3 months', months: 3, total: Number(plan.priceQuarterly) || 0 },
+    { cycle: 'annually', label: 'Annually', periodText: 'billed every 12 months', months: 12, total: Number(plan.priceAnnually) || 0 },
   ].map((option) => {
     const full = monthly * option.months
     const savings = Math.max(0, full - option.total)
@@ -30,7 +26,7 @@ export default function RenewSubscription() {
   const navigate = useNavigate()
   const [plans, setPlans] = useState([])
   const [currentSub, setCurrentSub] = useState(null)
-  const [platform, setPlatform] = useState(null)
+  const isOwner = String(user?.role || '').toLowerCase() === 'owner'
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -43,16 +39,13 @@ export default function RenewSubscription() {
 
   const loadData = async () => {
     try {
-      const [plansData, subscriptionData, platformData] =
-        await Promise.all([
-          fetchPlans(),
-          fetchSubscriptionStatus(),
-          fetchPlatformSettings(),
-        ]);
-
-      setPlans(plansData);
-      setCurrentSub(subscriptionData);
-      setPlatform(platformData);
+      // Loaded separately: one failing request must not hide the plans.
+      const [plansResult, subscriptionResult] = await Promise.allSettled([
+        fetchPlans(),
+        fetchSubscriptionStatus(),
+      ])
+      if (plansResult.status === 'fulfilled') setPlans(plansResult.value || [])
+      if (subscriptionResult.status === 'fulfilled') setCurrentSub(subscriptionResult.value)
 
     } catch (error) {
       console.error(error);
@@ -98,7 +91,9 @@ export default function RenewSubscription() {
             <div>
               <h2 className="text-lg font-bold text-red-800">{t('Subscription Expired')}</h2>
               <p className="text-sm text-red-600 mt-1">
-                {t('Your subscription has expired. Please renew to regain access to all features.')}
+                {isOwner
+                  ? t('Your subscription has ended or is not paid yet. Renew it to use BarFlow again.')
+                  : t('Your business subscription has ended. Ask your business owner to renew it.')}
                 {currentSub?.daysRemaining > 0 && ` ${t('Your subscription expired')} ${currentSub.daysRemaining} ${t('days ago.')}`}
               </p>
             </div>
@@ -124,6 +119,9 @@ export default function RenewSubscription() {
 
         {/* Available Plans */}
         <h2 className="text-xl font-bold text-slate-900 mb-4">{t('Choose a Plan to Renew')}</h2>
+        {!plans.length && (
+          <p className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500">{t('No plans are available right now. Contact the platform administrator.')}</p>
+        )}
         {plans.filter((plan) => plan.isActive !== false).map((plan) => (
           <section key={plan.id} className="mb-8">
             {plans.filter((p) => p.isActive !== false).length > 1 && (
@@ -165,12 +163,14 @@ export default function RenewSubscription() {
                       </li>
                     ))}
                   </ul>
-                  <Link
-                    to={`/owner/subscription?plan=${plan.id}&cycle=${option.cycle}`}
-                    className="mt-6 block w-full py-2.5 bg-indigo-600 text-white text-center font-semibold rounded-lg hover:bg-indigo-700 transition"
-                  >
-                    {t('Select Plan')}
-                  </Link>
+                  {isOwner ? (
+                    <Link
+                      to={`/owner/subscription?plan=${plan.id}&cycle=${option.cycle}`}
+                      className="mt-6 block w-full py-2.5 bg-indigo-600 text-white text-center font-semibold rounded-lg hover:bg-indigo-700 transition"
+                    >
+                      {t('Select Plan')}
+                    </Link>
+                  ) : null}
                 </div>
               ))}
             </div>

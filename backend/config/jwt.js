@@ -3,7 +3,8 @@ import crypto from 'crypto'
 const SECRET = process.env.JWT_SECRET || 'barflow-dev-secret'
 
 export function sign(payload) {
-  const body = Buffer.from(JSON.stringify(payload)).toString('base64url')
+  // iat (issued at, seconds) lets the server end sessions after the configured timeout.
+  const body = Buffer.from(JSON.stringify({ ...payload, iat: Math.floor(Date.now() / 1000) })).toString('base64url')
   const signature = crypto.createHmac('sha256', SECRET).update(body).digest('base64url')
   return `${body}.${signature}`
 }

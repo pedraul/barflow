@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { X } from 'lucide-react'
+import { useAdminAccess } from './adminAccess'
 import { fetchBusinesses, toggleBusinessStatus, setUnpaidBusinessAccess, updateBusiness, deleteBusiness } from '../../api/endpoints'
 import { PROVINCES, DISTRICTS_BY_PROVINCE } from '../../constants/locationOptions'
 import { useToast } from '../../context/ToastContext'
@@ -14,6 +15,15 @@ const BUSINESS_TYPE_LABELS = {
   lounge: 'Lounge',
   other: 'Other',
 }
+const STATUS_DONE = {
+  verify: 'Business approved.',
+  suspend: 'Business suspended. The owner has been notified.',
+  deactivate: 'Business deactivated. The owner has been notified.',
+  activate: 'Business reactivated.',
+}
+const SUSPEND_REASONS = ['Subscription not paid', 'Policy violation', 'Suspected fraud under investigation', 'Complaints under review']
+const DEACTIVATE_REASONS = ['Business has closed', 'Requested by the owner', 'Inactive for a long time', 'Duplicate registration']
+
 const BUSINESS_SUBSCRIPTION_STATUS_LABELS = {
   active: 'Active',
   pending: 'Pending',
@@ -37,6 +47,7 @@ export default function BusinessList() {
   const [editing, setEditing] = useState(null)
   const [editForm, setEditForm] = useState({})
   const [saving, setSaving] = useState(false)
+  const [managing, setManaging] = useState(null)
 
   useEffect(() => { load() }, [])
 
@@ -61,15 +72,17 @@ export default function BusinessList() {
     }
   }
 
-  const handleAction = async (id, action) => {
+  // Returns an error message, or '' when it worked (shown inside the Manage dialog).
+  const handleAction = async (id, action, reason = '') => {
     setActionLoading(`${id}-${action}`)
     try {
-      await toggleBusinessStatus(id, action)
+      await toggleBusinessStatus(id, action, reason)
       await load()
-      showSuccess(t('Status updated successfully.'))
+      showSuccess(t(STATUS_DONE[action] || 'Status updated successfully.'))
+      return ''
     } catch (e) {
       console.error('Action failed:', e)
-      alert(e.response?.data?.error || t('Action failed.'))
+      return e.response?.data?.error || t('Action failed.')
     } finally {
       setActionLoading(null)
     }
@@ -94,14 +107,14 @@ export default function BusinessList() {
   }
 
   const handleDelete = async (b) => {
-    if (!window.confirm(`${t('Delete')} "${b.name}"? ${t('This permanently removes the business and all its data.')}`)) return
     setActionLoading(`${b.id}-delete`)
     try {
       await deleteBusiness(b.id)
       await load()
-      showSuccess(t('Deleted successfully.'))
+      showSuccess(t('Business deleted permanently.'))
+      return ''
     } catch (e) {
-      alert(e.response?.data?.error || t('Delete failed.'))
+      return e.response?.data?.error || t('Delete failed.')
     } finally {
       setActionLoading(null)
     }
@@ -139,7 +152,7 @@ export default function BusinessList() {
   }
 
   const hasPendingRenewal = (b) => b.isVerified && b.subPaymentStatus === 'pending'
-  const getStatus = (b) => b.isSuspended ? 'Suspended' : (b.unpaidAccessGranted ? 'Access granted' : (hasPendingRenewal(b) ? 'Renewal pending' : (b.hasActiveSubscription ? 'Active' : (b.isVerified ? 'Subscription inactive' : 'Pending'))))
+  const getStatus = (b) => b.isSuspended ? 'Suspended' : b.isDeactivated ? (b.deactivatedBy === 'owner' ? 'Paused by owner' : 'Deactivated') : (b.unpaidAccessGranted ? 'Access granted' : (hasPendingRenewal(b) ? 'Renewal pending' : (b.hasActiveSubscription ? 'Active' : (b.isVerified ? 'Subscription inactive' : 'Pending'))))
 
   const filtered = useMemo(() => businesses.filter((b) => {
     const s = getStatus(b)
@@ -153,7 +166,7 @@ export default function BusinessList() {
 
   const badge = (b) => {
     const s = getStatus(b)
-    const map = { Active: 'bg-emerald-100 text-emerald-700', Pending: 'bg-amber-100 text-amber-700', 'Renewal pending': 'bg-amber-100 text-amber-700', 'Access granted': 'bg-sky-100 text-sky-700', 'Subscription inactive': 'bg-orange-100 text-orange-700', Suspended: 'bg-red-100 text-red-700' }
+    const map = { Active: 'bg-emerald-100 text-emerald-700', Pending: 'bg-amber-100 text-amber-700', 'Renewal pending': 'bg-amber-100 text-amber-700', 'Access granted': 'bg-sky-100 text-sky-700', 'Subscription inactive': 'bg-orange-100 text-orange-700', Suspended: 'bg-red-100 text-red-700', Deactivated: 'bg-slate-200 text-slate-700', 'Paused by owner': 'bg-slate-100 text-slate-600' }
     return <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${map[s]}`}>{t(s)}</span>
   }
 
@@ -186,6 +199,8 @@ export default function BusinessList() {
           <option value="pending">{t('Pending')}</option>
           <option value="access granted">{t('Access granted')}</option>
           <option value="suspended">{t('Suspended')}</option>
+          <option value="deactivated">{t('Deactivated')}</option>
+          <option value="paused by owner">{t('Paused by owner')}</option>
         </select>
         <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white capitalize focus:ring-2 focus:ring-indigo-500 outline-none">
           <option value="all">{t('All types')}</option>
@@ -203,13 +218,11 @@ export default function BusinessList() {
 
       <div className="hidden md:block bg-white rounded-xl border border-slate-200 shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-xs min-w-[1120px]">
+          <table className="w-full text-xs min-w-[900px]">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-slate-600">
                   <th className="text-left px-3 py-2 font-semibold">{t('Business')}</th>
-                  <th className="text-left px-3 py-2 font-semibold">{t('Code')}</th>
                   <th className="text-left px-3 py-2 font-semibold">{t('Contact')}</th>
-                  <th className="text-left px-3 py-2 font-semibold">{t('Type')}</th>
                   <th className="text-left px-3 py-2 font-semibold">{t('Location')}</th>
                   <th className="text-left px-3 py-2 font-semibold">{t('Plan')}</th>
                   <th className="text-left px-3 py-2 font-semibold">{t('Registered')}</th>
@@ -219,21 +232,21 @@ export default function BusinessList() {
                 </tr>
               </thead>
             <tbody>
-              {filtered.length === 0 && <tr><td colSpan={10} className="px-3 py-3 text-center text-slate-400">{t('No businesses found.')}</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={8} className="px-3 py-3 text-center text-slate-400">{t('No businesses found.')}</td></tr>}
               {filtered.map((b) => (
                 <tr key={b.id} className="border-b border-slate-100 hover:bg-slate-50">
                   <td className="px-3 py-2">
                     <div className="font-semibold text-slate-900">{b.name}</div>
-                    <div className="text-xs text-slate-400">{b.city || t('N/A')} · {b.country || ''}</div>
+                    <div className="text-xs text-slate-400">
+                      <span className="font-mono">{b.registrationCode || '—'}</span> · {typeof BUSINESS_TYPE_LABELS[b.businessType] === 'string' ? t(BUSINESS_TYPE_LABELS[b.businessType]) : b.businessType || t('N/A')}
+                    </div>
                   </td>
-                  <td className="px-3 py-2 text-slate-600 font-mono text-xs">{b.registrationCode || '—'}</td>
                   <td className="px-3 py-2">
                     <div className="text-slate-700">{b.contactEmail || t('N/A')}</div>
                     <div className="text-xs text-slate-400">{b.contactPhone || ''}</div>
                   </td>
-                  <td className="px-3 py-2 text-slate-700 capitalize">{typeof BUSINESS_TYPE_LABELS[b.businessType] === 'string' ? t(BUSINESS_TYPE_LABELS[b.businessType]) : b.businessType || t('N/A')}</td>
                   <td className="px-3 py-2 text-slate-700">
-                    <div className="font-medium">{b.province || '—'}</div>
+                    <div className="font-medium">{b.province || b.city || '—'}</div>
                     <div className="text-xs text-slate-400">{b.district || ''} {b.sector ? `· ${b.sector}` : ''}</div>
                   </td>
                   <td className="px-3 py-2">
@@ -247,8 +260,8 @@ export default function BusinessList() {
                       <button type="button" title={t('Revoke unpaid platform access')} onClick={() => handleUnpaidAccess(b, false)} disabled={actionLoading === `${b.id}-access`} className="px-2.5 py-1.5 text-xs font-semibold text-red-700 bg-red-50 rounded-lg hover:bg-red-100 disabled:opacity-40">
                         {actionLoading === `${b.id}-access` ? t('Saving...') : t('Revoke access')}
                       </button>
-                    ) : b.isSuspended ? (
-                      <span className="text-xs text-slate-400">{t('Suspended')}</span>
+                    ) : (b.isSuspended || b.isDeactivated) ? (
+                      <span className="text-xs text-slate-400">{t(getStatus(b))}</span>
                     ) : (
                       <button type="button" title={t('Grant unpaid platform access')} onClick={() => handleUnpaidAccess(b, true)} disabled={actionLoading === `${b.id}-access`} className="px-2.5 py-1.5 text-xs font-semibold text-sky-700 bg-sky-50 rounded-lg hover:bg-sky-100 disabled:opacity-40">
                         {actionLoading === `${b.id}-access` ? t('Saving...') : t('Grant unpaid access')}
@@ -257,17 +270,9 @@ export default function BusinessList() {
                   </td>
                   <td className="sticky right-0 z-10 px-3 py-2 bg-white text-right">
                     <div className="flex min-w-max justify-end gap-1.5">
-                      <IconBtn title="View" onClick={() => setViewing(b)} color="text-slate-600 hover:bg-slate-100"></IconBtn>
-                      <IconBtn title="Edit" onClick={() => openEdit(b)} color="text-blue-600 hover:bg-blue-50"></IconBtn>
-                      {!b.isVerified && !b.isSuspended && (
-                        <IconBtn title="Verify business" onClick={() => handleAction(b.id, 'verify')} disabled={actionLoading === `${b.id}-verify`} color="text-emerald-600 hover:bg-emerald-50"></IconBtn>
-                      )}
-                      {b.isSuspended ? (
-                        <IconBtn title="Activate" onClick={() => handleAction(b.id, 'activate')} disabled={actionLoading === `${b.id}-activate`} color="text-emerald-600 hover:bg-emerald-50"></IconBtn>
-                      ) : (
-                        <IconBtn title="Suspend" onClick={() => handleAction(b.id, 'suspend')} disabled={actionLoading === `${b.id}-suspend`} color="text-amber-600 hover:bg-amber-50"></IconBtn>
-                      )}
-                      <IconBtn title="Delete" onClick={() => handleDelete(b)} disabled={actionLoading === `${b.id}-delete`} color="text-red-600 hover:bg-red-50"></IconBtn>
+                      <button type="button" onClick={() => setViewing(b)} className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50">{t('View')}</button>
+                      <button type="button" onClick={() => openEdit(b)} className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50">{t('Edit')}</button>
+                      <button type="button" onClick={() => setManaging(b)} className="px-2.5 py-1.5 text-xs font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700">{t('Manage')}</button>
                     </div>
                   </td>
                 </tr>
@@ -292,6 +297,9 @@ export default function BusinessList() {
               </div>
               {badge(b)}
             </div>
+            {b.statusReason && (b.isSuspended || b.isDeactivated) && (
+              <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600"><span className="font-semibold">{t('Reason')}:</span> {b.statusReason}</p>
+            )}
 
             <div className="mt-4 grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 text-sm">
               <div>
@@ -317,8 +325,8 @@ export default function BusinessList() {
                 <button type="button" onClick={() => handleUnpaidAccess(b, false)} disabled={actionLoading === `${b.id}-access`} className="min-h-11 flex-1 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-50">
                   {actionLoading === `${b.id}-access` ? t('Saving...') : t('Revoke access')}
                 </button>
-              ) : b.isSuspended ? (
-                <span className="flex-1 rounded-xl bg-slate-100 px-3 py-3 text-center text-sm font-medium text-slate-500">{t('Suspended')}</span>
+              ) : (b.isSuspended || b.isDeactivated) ? (
+                <span className="flex-1 rounded-xl bg-slate-100 px-3 py-3 text-center text-sm font-medium text-slate-500">{t(getStatus(b))}</span>
               ) : (
                 <button type="button" onClick={() => handleUnpaidAccess(b, true)} disabled={actionLoading === `${b.id}-access`} className="min-h-11 flex-1 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50">
                   {actionLoading === `${b.id}-access` ? t('Saving...') : t('Grant unpaid access')}
@@ -326,6 +334,7 @@ export default function BusinessList() {
               )}
               <button type="button" onClick={() => setViewing(b)} className="min-h-11 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">{t('View')}</button>
               <button type="button" onClick={() => openEdit(b)} className="min-h-11 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">{t('Edit')}</button>
+              <button type="button" onClick={() => setManaging(b)} className="min-h-11 rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800">{t('Manage')}</button>
             </div>
             <p className="mt-2 text-[11px] leading-4 text-slate-500">{t('Admin access is separate from the paid subscription.')}</p>
           </article>
@@ -340,6 +349,9 @@ export default function BusinessList() {
             <Detail label={t('Registration Code')} value={viewing.registrationCode || '—'} />
             <Detail label={t('Type')} value={typeof BUSINESS_TYPE_LABELS[viewing.businessType] === 'string' ? t(BUSINESS_TYPE_LABELS[viewing.businessType]) : viewing.businessType} />
             <Detail label={t('Status')} value={t(getStatus(viewing))} />
+            {(viewing.isSuspended || viewing.isDeactivated) && (
+              <Detail label={t('Reason')} value={`${viewing.statusReason || '—'}${viewing.statusChangedAt ? ` (${new Date(viewing.statusChangedAt).toLocaleString()})` : ''}`} />
+            )}
             <Detail label={t('Unpaid Access')} value={t(viewing.unpaidAccessGranted ? 'Granted' : 'Not granted')} />
             <Detail label={t('Email')} value={viewing.contactEmail || '—'} />
             <Detail label={t('Phone')} value={viewing.contactPhone || '—'} />
@@ -354,6 +366,17 @@ export default function BusinessList() {
             <Detail label={t('Registered')} value={viewing.createdAt ? new Date(viewing.createdAt).toLocaleString() : '—'} />
           </div>
         </Modal>
+      )}
+
+      {managing && (
+        <ManageBusinessModal
+          business={businesses.find((b) => b.id === managing.id) || managing}
+          status={getStatus(businesses.find((b) => b.id === managing.id) || managing)}
+          busy={Boolean(actionLoading)}
+          onAction={handleAction}
+          onDelete={async (b) => { const err = await handleDelete(b); if (!err) setManaging(null); return err }}
+          onClose={() => setManaging(null)}
+        />
       )}
 
       {/* Edit modal */}
@@ -402,13 +425,106 @@ export default function BusinessList() {
   )
 }
 
-function IconBtn({ children, title, onClick, disabled, color }) {
+// Status actions for one business, chosen by its current state.
+function ManageBusinessModal({ business: b, status, busy, onAction, onDelete, onClose }) {
   const { t } = usePreferences()
-  const translatedTitle = t(title)
+  const { isSuper } = useAdminAccess()
+  const [mode, setMode] = useState(null) // 'suspend' | 'deactivate' | 'delete'
+  const [reason, setReason] = useState('')
+  const [confirmName, setConfirmName] = useState('')
+  const [error, setError] = useState('')
+  const blocked = b.isSuspended || b.isDeactivated
+
+  const run = async (action, why = '') => {
+    setError('')
+    const err = await onAction(b.id, action, why)
+    if (err) setError(err)
+    else { setMode(null); setReason('') }
+  }
+  const choose = (next) => { setMode(next); setReason(''); setConfirmName(''); setError('') }
+  const presets = mode === 'suspend' ? SUSPEND_REASONS : DEACTIVATE_REASONS
+
   return (
-    <button title={translatedTitle} aria-label={translatedTitle} onClick={onClick} disabled={disabled} className={`p-1.5 rounded-lg transition disabled:opacity-40 ${color}`}>
-      {children}
-    </button>
+    <Modal title={`${t('Manage')} ${b.name}`} onClose={onClose}>
+      <div className="space-y-5 text-sm">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl bg-slate-50 px-4 py-3">
+          <span className="text-slate-500">{t('Current status')}:</span>
+          <strong className="text-slate-900">{t(status)}</strong>
+          {blocked && b.statusReason && <span className="w-full text-xs text-slate-600">{t('Reason')}: {b.statusReason}</span>}
+        </div>
+
+        {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-700">{error}</p>}
+
+        {!mode && (
+          <div className="grid gap-3">
+            {!b.isVerified && !blocked && (
+              <ActionRow title={t('Approve business')} text={t('Marks the registration as checked. The business can work once it pays a subscription, or when you grant unpaid access.')} button={t('Approve')} tone="emerald" disabled={busy} onClick={() => run('verify')} />
+            )}
+            {blocked ? (
+              <ActionRow title={t('Reactivate business')} text={t('Lifts the suspension or deactivation. Everyone can sign in again.')} button={t('Reactivate')} tone="emerald" disabled={busy} onClick={() => run('activate')} />
+            ) : (
+              <>
+                <ActionRow title={t('Suspend')} text={t('Temporary block, for example an unpaid subscription or a policy problem. Nobody can sign in until you reactivate it.')} button={t('Suspend')} tone="amber" disabled={busy} onClick={() => choose('suspend')} />
+                <ActionRow title={t('Deactivate')} text={t('Close the account, for example the business has closed or the owner asked. Data is kept and it can be reactivated.')} button={t('Deactivate')} tone="slate" disabled={busy} onClick={() => choose('deactivate')} />
+              </>
+            )}
+            {isSuper && <ActionRow title={t('Delete permanently')} text={t('Removes the business, its users, branches, orders, payments and all other data. This cannot be undone.')} button={t('Delete')} tone="red" disabled={busy} onClick={() => choose('delete')} />}
+          </div>
+        )}
+
+        {(mode === 'suspend' || mode === 'deactivate') && (
+          <div className="space-y-3">
+            <p className="font-semibold text-slate-900">{mode === 'suspend' ? t('Why is this business being suspended?') : t('Why is this business being deactivated?')}</p>
+            <div className="flex flex-wrap gap-2">
+              {presets.map((p) => (
+                <button key={p} type="button" onClick={() => setReason(t(p))} className={`rounded-full border px-3 py-1 text-xs font-semibold ${reason === t(p) ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>{t(p)}</button>
+              ))}
+            </div>
+            <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} maxLength={500} placeholder={t('Reason (the owner sees this by email and when signing in)')} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => choose(null)} className="rounded-lg border border-slate-300 px-4 py-2 font-semibold hover:bg-slate-50">{t('Back')}</button>
+              <button type="button" disabled={busy || reason.trim().length < 3} onClick={() => run(mode, reason.trim())} className={`rounded-lg px-4 py-2 font-semibold text-white disabled:opacity-50 ${mode === 'suspend' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-slate-800 hover:bg-slate-900'}`}>
+                {busy ? t('Saving...') : mode === 'suspend' ? t('Suspend business') : t('Deactivate business')}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {mode === 'delete' && (
+          <div className="space-y-3">
+            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-800">{t('This permanently deletes the business and all its data. It cannot be undone.')}</p>
+            <label className="block text-sm font-semibold text-slate-700">
+              {t('Type the business name to confirm:')} <span className="font-mono text-slate-900">{b.name}</span>
+              <input value={confirmName} onChange={(e) => setConfirmName(e.target.value)} className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal outline-none focus:ring-2 focus:ring-red-500" autoComplete="off" />
+            </label>
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => choose(null)} className="rounded-lg border border-slate-300 px-4 py-2 font-semibold hover:bg-slate-50">{t('Back')}</button>
+              <button type="button" disabled={busy || confirmName.trim() !== String(b.name).trim()} onClick={async () => { const err = await onDelete(b); if (err) setError(err) }} className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-50">
+                {busy ? t('Deleting...') : t('Delete permanently')}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </Modal>
+  )
+}
+
+function ActionRow({ title, text, button, tone, disabled, onClick }) {
+  const tones = {
+    emerald: 'bg-emerald-600 hover:bg-emerald-700 text-white',
+    amber: 'bg-amber-500 hover:bg-amber-600 text-white',
+    slate: 'bg-slate-800 hover:bg-slate-900 text-white',
+    red: 'bg-white border border-red-300 text-red-700 hover:bg-red-50',
+  }
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 px-4 py-3">
+      <div className="min-w-0 flex-1 basis-56">
+        <p className="font-semibold text-slate-900">{title}</p>
+        <p className="mt-0.5 text-xs text-slate-500">{text}</p>
+      </div>
+      <button type="button" disabled={disabled} onClick={onClick} className={`rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-50 ${tones[tone]}`}>{button}</button>
+    </div>
   )
 }
 

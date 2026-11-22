@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import bcrypt from 'bcryptjs'
 import { query } from '../config/database.js'
 import { mapUser } from './helpers.js'
 import { logAudit, getClientIp } from '../utils/audit.js'
@@ -6,6 +7,7 @@ import authMiddleware from '../middleware/authMiddleware.js'
 import { getBranchContext } from '../middleware/branchContext.js'
 import { isOwner, hasGrant, checkCanManageUser, DELEGABLE_ROLES } from '../utils/staffPermissions.js'
 import { normalizeRwandaPhone } from '../services/mobileMoneyProviders.js'
+import { passwordPolicyError } from '../services/platformSettings.js'
 
 const router = Router()
 
@@ -101,6 +103,126 @@ router.get('/me/salary-status', authMiddleware, async (req, res) => {
   }
 })
 
+// ---------------------------------------------------------------- my own account
+
+async function loadMyProfile(userId) {
+  const { rows } = await query(
+    `SELECT u.id, u.full_name, u.email, u.phone, u.role::text AS role, u.avatar_url, u.created_at, u.last_login,
+            u.branch_id, b.name AS branch_name, bu.name AS business_name
+     FROM users u
+     LEFT JOIN branches b ON b.id = u.branch_id
+     LEFT JOIN businesses bu ON bu.id = u.business_id
+     WHERE u.id = $1`,
+    [userId]
+  )
+  const u = rows[0]
+  if (!u) return null
+  return {
+    id: u.id,
+    name: u.full_name || '',
+    email: u.email || '',
+    phone: u.phone || '',
+    role: u.role,
+    avatar: u.avatar_url || null,
+    branchId: u.branch_id || null,
+    branch: u.branch_name || '',
+    business: u.business_name || '',
+    createdAt: u.created_at,
+    lastLogin: u.last_login,
+  }
+}
+
+// GET /users/me — the signed-in user's own profile.
+router.get('/me', authMiddleware, async (req, res) => {
+  try {
+    const profile = await loadMyProfile(req.user.id)
+    if (!profile) return res.status(404).json({ error: 'Account not found.' })
+    res.json(profile)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// PATCH /users/me  { name?, email?, phone? } — anyone may edit their own contact details.
+router.patch('/me', authMiddleware, async (req, res) => {
+  const { name, email, phone } = req.body || {}
+  const fields = []
+  const params = []
+  if (name !== undefined) {
+    const value = String(name || '').trim()
+    if (value.length < 2 || value.length > 120) return res.status(400).json({ error: 'Enter your full name (2 to 120 characters).' })
+    params.push(value); fields.push(`full_name = $${params.length}`)
+  }
+  if (email !== undefined) {
+    const value = String(email || '').trim().toLowerCase()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) || value.length > 200) return res.status(400).json({ error: 'Enter a valid email address.' })
+    const { rows: taken } = await query('SELECT 1 FROM users WHERE LOWER(email) = $1 AND id <> $2 LIMIT 1', [value, req.user.id])
+      .catch(() => ({ rows: [] }))
+    if (taken.length) return res.status(409).json({ error: 'Another account already uses this email address.' })
+    params.push(value); fields.push(`email = $${params.length}`)
+  }
+  if (phone !== undefined) {
+    const value = String(phone || '').trim()
+    if (value) {
+      try {
+        normalizeRwandaPhone(value)
+      } catch (error) {
+        return res.status(400).json({ error: error.message })
+      }
+    }
+    params.push(value || null); fields.push(`phone = $${params.length}`)
+  }
+  if (!fields.length) return res.status(400).json({ error: 'Nothing to update.' })
+
+  try {
+    params.push(req.user.id)
+    await query(`UPDATE users SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${params.length}`, params)
+    await logAudit({
+      userId: req.user.id,
+      actorName: req.user?.full_name || req.user?.email || 'User',
+      action: 'Updated own profile details',
+      targetModule: 'Account',
+      ipAddress: getClientIp(req),
+      businessId: req.user?.businessId,
+    }).catch(() => {})
+    res.json(await loadMyProfile(req.user.id))
+  } catch (error) {
+    if (/unique|duplicate/i.test(error.message)) return res.status(409).json({ error: 'Another account already uses this email address.' })
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// POST /users/me/password  { currentPassword, newPassword }
+router.post('/me/password', authMiddleware, async (req, res) => {
+  const { currentPassword, newPassword } = req.body || {}
+  if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Enter your current password and a new password.' })
+  const next = String(newPassword)
+  const passwordProblem = await passwordPolicyError(next)
+  if (passwordProblem) return res.status(400).json({ error: passwordProblem })
+  if (!/[A-Za-z]/.test(next) || !/\d/.test(next)) {
+    return res.status(400).json({ error: 'The new password must include letters and numbers.' })
+  }
+  if (next === String(currentPassword)) return res.status(400).json({ error: 'The new password must be different from the current one.' })
+  try {
+    const { rows } = await query('SELECT password_hash FROM users WHERE id = $1', [req.user.id])
+    const hash = rows[0]?.password_hash || ''
+    const valid = hash ? await bcrypt.compare(String(currentPassword), hash).catch(() => false) : false
+    if (!valid) return res.status(400).json({ error: 'Your current password is not correct.' })
+    await query('UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2', [await bcrypt.hash(next, 10), req.user.id])
+    await logAudit({
+      userId: req.user.id,
+      actorName: req.user?.full_name || req.user?.email || 'User',
+      action: 'Changed own password',
+      targetModule: 'Account',
+      ipAddress: getClientIp(req),
+      businessId: req.user?.businessId,
+    }).catch(() => {})
+    res.json({ changed: true })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const scope = await getBranchContext(req, { requestedBranchId: req.query.branchId, allowOwnerAll: true })
@@ -120,7 +242,7 @@ router.get('/', authMiddleware, async (req, res) => {
 })
 
 router.post('/', authMiddleware, async (req, res) => {
-  const { name, email, phone, role, status = 'Active', salary = 0, password = 'password123' } = req.body
+  const { name, email, phone, role, status = 'Active', salary = 0, password } = req.body
   let { branch } = req.body
   const allowedRoles = new Set(['manager', 'accountant', 'waiter', 'kitchen', 'bar', 'operator'])
   const actorIsOwner = isOwner(req)
@@ -141,6 +263,8 @@ router.post('/', authMiddleware, async (req, res) => {
   if (!name || !email || !role) {
     return res.status(400).json({ error: 'Name, email, and role are required.' })
   }
+  const passwordProblem = await passwordPolicyError(password)
+  if (passwordProblem) return res.status(400).json({ error: passwordProblem })
   try {
     const { rows: branchRows } = await query(
       `SELECT id FROM branches

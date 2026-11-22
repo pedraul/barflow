@@ -19,6 +19,10 @@ import { sealTransaction } from '../services/transactionLedger.js'
 import { getBranchContext } from '../middleware/branchContext.js'
 import { getTaxBreakdown } from '../utils/taxCalculator.js'
 import { initiateSalaryPayout } from '../services/salaryPayoutService.js'
+import { businessAccessBlock, ensureBusinessStatusSchema } from '../services/businessStatus.js'
+import { clearFailedLogins, lockedMinutes, lockedResponse, recordFailedLogin, wrongPasswordMessage } from '../services/loginSecurity.js'
+import { normalizeCycle, planForClient, priceFor } from '../services/subscriptionPricing.js'
+import { appBaseUrl, passwordPolicyError, subscriptionPaymentOptions } from '../services/platformSettings.js'
 import {
   createOutboundPayoutRequest,
   initiateOutboundPayout,
@@ -29,6 +33,7 @@ import {
   requestMobileMoneyPayment,
   validateMobileMoneyPayoutConfig,
 } from '../services/mobileMoneyProviders.js'
+import { businessAccess, forgetSubscriptionAccess, SUBSCRIPTION_BLOCKED_MESSAGE } from '../services/subscriptionAccess.js'
 
 // ──────────────────────────────────────────────
 // Helper: generate receipt number
@@ -51,32 +56,6 @@ const DEFAULT_ROLE_PERMISSIONS = {
   can_view_withdraw_logs: 0,
   can_view_transfer_logs: 0,
   can_approve_transfers: 0,
-}
-
-async function getBillingConfig() {
-  const { rows } = await query(
-    `SELECT setting_key, setting_value FROM platform_settings
-     WHERE setting_key IN (
-       'subscription_monthly_price', 'subscription_quarterly_price', 'subscription_annually_price',
-       'subscription_quarterly_discount', 'subscription_annually_discount'
-     )`
-  )
-  const map = {}
-  rows.forEach((r) => { map[r.setting_key] = parseFloat(r.setting_value) })
-
-  const num = (v, fallback) => (Number.isFinite(v) ? v : fallback)
-
-  const prices = {
-    monthly: num(map.subscription_monthly_price, 50000),
-    quarterly: num(map.subscription_quarterly_price, 130000),
-    annually: num(map.subscription_annually_price, 480000),
-  }
-  const discounts = {
-    monthly: 0,
-    quarterly: num(map.subscription_quarterly_discount, 8),
-    annually: num(map.subscription_annually_discount, 14),
-  }
-  return { prices, discounts }
 }
 
 async function importMissingRolePermissions(roleNames = [], businessId = null) {
@@ -129,9 +108,14 @@ export async function ownerLogin(req, res) {
       return res.status(400).json({ error: 'Email and password are required.' })
     }
 
+    const lockMinutes = await lockedMinutes('user', email)
+    if (lockMinutes) return lockedResponse(res, lockMinutes)
+
+    await ensureBusinessStatusSchema().catch(() => {})
     const { rows } = await query(
       `SELECT u.*, b.name AS branch_name, bu.id AS business_id, bu.name AS business_name,
-              bu.is_verified AS business_verified, bu.unpaid_access_granted
+              bu.is_verified AS business_verified, bu.unpaid_access_granted,
+              bu.is_suspended, COALESCE(bu.is_deactivated, FALSE) AS is_deactivated, bu.deactivated_by, bu.status_reason
        FROM users u
        LEFT JOIN branches b ON b.id = u.branch_id
        LEFT JOIN businesses bu ON bu.id = u.business_id
@@ -141,22 +125,31 @@ export async function ownerLogin(req, res) {
     )
 
     if (!rows.length) {
-      return res.status(401).json({ error: 'Invalid credentials.' })
+      const result = await recordFailedLogin('user', email)
+      return res.status(401).json({ error: wrongPasswordMessage(result, 'Invalid credentials.') })
     }
 
     const user = rows[0]
     const passwordValid = await bcrypt.compare(password, user.password_hash)
     if (!passwordValid) {
-      return res.status(401).json({ error: 'Invalid credentials.' })
+      const result = await recordFailedLogin('user', email, user.business_id)
+      return res.status(401).json({ error: wrongPasswordMessage(result, 'Invalid credentials.') })
+    }
+    await clearFailedLogins('user', email)
+
+    const blocked = businessAccessBlock(user, 'owner')
+    if (blocked) {
+      return res.status(blocked.status).json({ error: blocked.error, code: blocked.code, reason: blocked.reason })
     }
 
     let subscriptionStatus = 'active'
     let subscriptionExpired = false
     const unpaidAccessGranted = user.unpaid_access_granted === true
-    const businessVerified = user.business_verified === true
-    if (businessVerified) {
+    const access = user.business_id ? await businessAccess(user.business_id, unpaidAccessGranted) : { viaSubscription: false, viaAdminAccess: false }
+    const businessVerified = access.viaSubscription
+    if (access.viaSubscription) {
       subscriptionStatus = 'verified_access'
-    } else if (unpaidAccessGranted) {
+    } else if (access.viaAdminAccess) {
       subscriptionStatus = 'access_granted'
     } else if (user.business_id) {
       subscriptionExpired = true
@@ -164,7 +157,7 @@ export async function ownerLogin(req, res) {
 
     if (subscriptionExpired && String(user.role).toLowerCase() !== 'owner') {
       return res.status(403).json({
-        error: 'Your business subscription is pending activation. Please complete payment and wait for admin verification.',
+        error: SUBSCRIPTION_BLOCKED_MESSAGE,
         code: 'SUBSCRIPTION_PENDING',
         subscriptionStatus,
         subscriptionExpired: true,
@@ -295,6 +288,8 @@ export async function createUser(req, res) {
     if (!allowedRoles.has(String(role).toLowerCase())) {
       return res.status(400).json({ error: 'Only non-owner business roles can be assigned to a branch.' })
     }
+    const passwordProblem = await passwordPolicyError(password)
+    if (passwordProblem) return res.status(400).json({ error: passwordProblem })
 
     const businessId = req.user?.businessId
     if (!businessId) {
@@ -575,9 +570,8 @@ export async function resetUserPassword(req, res) {
   try {
     const { id } = req.params
     const { newPassword } = req.body
-    if (!newPassword || newPassword.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters.' })
-    }
+    const passwordProblem = await passwordPolicyError(newPassword)
+    if (passwordProblem) return res.status(400).json({ error: passwordProblem })
 
     // Owner: any account in the business. Granted staff: delegable roles in their branch.
     const denied = await checkCanManageUser(req, id)
@@ -1726,11 +1720,16 @@ export async function selectSubscriptionPlan(req, res) {
   if (!businessId) return res.status(400).json({ error: 'No business associated with this account.' })
 
   const method = String(paymentMethod || '').toLowerCase()
-  const providerMethod = ({ momo: 'mtn_momo', airtel: 'airtel_money' })[method] || method
-  if (!['mtn_momo', 'airtel_money'].includes(providerMethod)) {
-    return res.status(400).json({ error: 'Choose MTN MoMo or Airtel Money.' })
+  const providerMethod = ({ momo: 'mtn_momo', airtel: 'airtel_money', bank: 'bank_transfer' })[method] || method
+  const options = await subscriptionPaymentOptions()
+  if (!options[providerMethod]) {
+    return res.status(400).json({ error: 'Choose MTN MoMo, Airtel Money or bank transfer.' })
   }
-  if (!phoneNumber) return res.status(400).json({ error: 'Phone number is required.' })
+  if (!options[providerMethod].enabled) {
+    return res.status(400).json({ error: 'This payment method is not available right now. Choose another one.' })
+  }
+  const isBank = providerMethod === 'bank_transfer'
+  if (!isBank && !phoneNumber) return res.status(400).json({ error: 'Phone number is required.' })
 
   try {
     const { rows: pendingRows } = await query(
@@ -1751,11 +1750,10 @@ export async function selectSubscriptionPlan(req, res) {
     }
     if (planId && !selectedPlan) return res.status(404).json({ error: 'Selected subscription plan is not available.' })
 
-    const cycle = String(billingCycle || 'monthly').toLowerCase()
-    if (!['monthly', 'quarterly', 'annually', 'yearly'].includes(cycle)) {
+    const normalizedCycle = normalizeCycle(billingCycle || 'monthly')
+    if (!normalizedCycle) {
       return res.status(400).json({ error: 'Billing cycle must be monthly, quarterly or annually.' })
     }
-    const normalizedCycle = cycle === 'yearly' ? 'annually' : cycle
     const { rows: currentPlans } = await query(
       `SELECT plan_id, plan FROM subscriptions
        WHERE business_id = $1
@@ -1764,39 +1762,22 @@ export async function selectSubscriptionPlan(req, res) {
       [businessId]
     )
     const currentPlan = currentPlans[0]
+    // Renewing without choosing: keep the current plan if it is still offered.
     if (!selectedPlan && currentPlan?.plan_id) {
-      const { rows } = await query('SELECT * FROM subscription_plans WHERE id = $1', [currentPlan.plan_id])
+      const { rows } = await query('SELECT * FROM subscription_plans WHERE id = $1 AND is_active = TRUE', [currentPlan.plan_id])
       selectedPlan = rows[0]
     }
-    if (!selectedPlan && !['monthly', 'quarterly', 'annually', 'yearly'].includes(String(plan || '').toLowerCase())) {
-      return res.status(404).json({ error: 'Selected subscription plan is not available.' })
+    if (!selectedPlan) {
+      return res.status(404).json({ error: 'Choose one of the available subscription plans.' })
     }
 
-    const { rows: platformPrices } = await query(
-      `SELECT setting_key, setting_value FROM platform_settings
-       WHERE setting_key IN (
-         'subscription_monthly_price', 'subscription_quarterly_price', 'subscription_annually_price',
-         'subscription_quarterly_discount', 'subscription_annually_discount'
-       )`
-    )
-    const priceSettings = Object.fromEntries(platformPrices.map((row) => [row.setting_key, Number(row.setting_value)]))
-    const monthlyPrice = Number(selectedPlan?.price_monthly) || priceSettings.subscription_monthly_price || 50000
-    const monthsToAdd = normalizedCycle === 'quarterly' ? 3 : normalizedCycle === 'annually' ? 12 : 1
-    const discountPercent = normalizedCycle === 'quarterly'
-      ? Number(selectedPlan?.discount_quarterly ?? priceSettings.subscription_quarterly_discount ?? 8)
-      : normalizedCycle === 'annually'
-        ? Number(selectedPlan?.discount_annually ?? priceSettings.subscription_annually_discount ?? 14)
-        : 0
-    const amount = normalizedCycle === 'annually'
-      ? Number(selectedPlan?.price_yearly) || priceSettings.subscription_annually_price || Math.round(monthlyPrice * monthsToAdd * (1 - discountPercent / 100))
-      : normalizedCycle === 'quarterly' && !selectedPlan
-        ? priceSettings.subscription_quarterly_price || Math.round(monthlyPrice * monthsToAdd * (1 - discountPercent / 100))
-        : Math.round(monthlyPrice * monthsToAdd * (1 - discountPercent / 100))
+    // Same calculation as the prices shown to the owner (services/subscriptionPricing.js).
+    const { amount, months: monthsToAdd, discountPercent } = priceFor(selectedPlan, normalizedCycle)
     if (!Number.isFinite(amount) || amount <= 0) {
       return res.status(400).json({ error: 'The selected plan has an invalid price.' })
     }
 
-    const phone = normalizeRwandaPhone(phoneNumber)
+    const phone = isBank ? (phoneNumber ? normalizeRwandaPhone(phoneNumber) : null) : normalizeRwandaPhone(phoneNumber)
     const { rows: activeRows } = await query(
       `SELECT current_period_end FROM subscriptions
        WHERE business_id = $1 AND is_active = TRUE AND payment_status = 'verified'
@@ -1817,7 +1798,7 @@ export async function selectSubscriptionPlan(req, res) {
           start_date, current_period_end, expiration_date, next_renewal_date, remaining_days)
        VALUES ($1, $2, $3, $4, $5, $6, 'pending', FALSE, 'pending', $7, $8, $9, $10, $10, $10, $11)
        RETURNING id, plan, billing_cycle, amount_paid, current_period_end, next_renewal_date`,
-      [businessId, selectedPlan?.id || currentPlan?.plan_id || null, selectedPlan?.name || currentPlan?.plan || 'Subscription', normalizedCycle, discountPercent, amount, providerMethod, phone, periodStart, periodEnd, monthsToAdd * 30]
+      [businessId, selectedPlan.id, selectedPlan.name, normalizedCycle, discountPercent, amount, providerMethod, phone, periodStart, periodEnd, monthsToAdd * 30]
     )
     const subscription = subscriptions[0]
     const { rows: payments } = await query(
@@ -1828,6 +1809,35 @@ export async function selectSubscriptionPlan(req, res) {
       [businessId, subscription.id, subscription.plan, normalizedCycle, amount, providerMethod, reference]
     )
     const paymentId = payments[0].id
+
+    if (isBank) {
+      await query(`UPDATE platform_payments SET provider_status = 'AWAITING_BANK_TRANSFER' WHERE id = $1 RETURNING id`, [paymentId])
+      await logAudit({
+        userId: req.user.id,
+        actorName: req.user.full_name || req.user.email,
+        action: `Requested bank transfer subscription payment for ${subscription.plan} (${amount} RWF)`,
+        targetModule: 'Subscription',
+        ipAddress: getClientIp(req),
+        businessId,
+        metadata: { subscriptionId: subscription.id, paymentId, reference },
+      })
+      const shortRef = reference.slice(0, 8).toUpperCase()
+      return res.status(201).json({
+        id: subscription.id,
+        paymentId,
+        reference: shortRef,
+        plan: subscription.plan,
+        billingCycle: subscription.billing_cycle,
+        discountPercent,
+        amount,
+        paymentMethod: providerMethod,
+        bankAccount: options.bank_transfer.account,
+        periodEnd: subscription.current_period_end,
+        nextRenewalDate: subscription.next_renewal_date,
+        status: 'pending',
+        message: `Transfer ${amount} RWF to ${options.bank_transfer.account} with reference ${shortRef}. Your subscription activates when the platform administrator confirms the transfer.`,
+      })
+    }
 
     try {
       const providerRequest = await requestMobileMoneyPayment({
@@ -1881,7 +1891,7 @@ export async function selectSubscriptionPlan(req, res) {
   }
 }
 
-async function completeSubscriptionPayment(paymentId, businessId, providerStatus, providerPayload) {
+export async function completeSubscriptionPayment(paymentId, businessId, providerStatus, providerPayload) {
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
@@ -1947,6 +1957,7 @@ async function completeSubscriptionPayment(paymentId, businessId, providerStatus
       [businessId]
     )
     await client.query('COMMIT')
+    forgetSubscriptionAccess(businessId)
     // Updated inside the transaction: seal the paid subscription payment after commit.
     await sealTransaction('platform_payments', paymentId, 'updated')
     return {
@@ -1991,6 +2002,10 @@ export async function checkSubscriptionPayment(req, res) {
     }
     if (payment.status !== 'pending') {
       return res.json({ status: 'failed', providerStatus: payment.provider_status })
+    }
+    // Bank transfers are confirmed by the platform administrator, not by a provider.
+    if (payment.payment_method === 'bank_transfer') {
+      return res.json({ status: 'pending', providerStatus: 'AWAITING_BANK_TRANSFER', message: 'Waiting for the platform administrator to confirm your bank transfer.' })
     }
 
     const result = await getMobileMoneyPaymentStatus({
@@ -2139,40 +2154,18 @@ export async function renewSubscription(req, res) {
 
 export async function getAvailableSubscriptionPlans(_req, res) {
   try {
-    const [{ rows }, { rows: settings }] = await Promise.all([
-      query(
-        `SELECT id, name, description, price_monthly, price_yearly, discount_quarterly,
-                discount_annually, features
-         FROM subscription_plans
-         WHERE is_active = TRUE
-         ORDER BY created_at DESC`
-      ),
-      query(
-        `SELECT setting_key, setting_value FROM platform_settings
-         WHERE setting_key IN (
-           'subscription_monthly_price', 'subscription_annually_price',
-           'subscription_quarterly_discount', 'subscription_annually_discount'
-         )`
-      ),
-    ])
-    const priceSettings = Object.fromEntries(settings.map((row) => [row.setting_key, Number(row.setting_value)]))
-    res.json(rows.map((p) => {
-      const priceMonthly = Number(p.price_monthly) || priceSettings.subscription_monthly_price || 50000
-      const discountQuarterly = Number(p.discount_quarterly ?? priceSettings.subscription_quarterly_discount ?? 8)
-      const discountAnnually = Number(p.discount_annually ?? priceSettings.subscription_annually_discount ?? 14)
-      return {
-        id: p.id,
-        name: p.name,
-        description: p.description || '',
-        priceMonthly,
-        priceQuarterly: Math.round(priceMonthly * 3 * (1 - discountQuarterly / 100)),
-        priceAnnually: Number(p.price_yearly) || priceSettings.subscription_annually_price || Math.round(priceMonthly * 12 * (1 - discountAnnually / 100)),
-        priceYearly: Number(p.price_yearly) || priceSettings.subscription_annually_price || 0,
-        discountQuarterly,
-        discountAnnually,
-        features: p.features || [],
-      }
-    }))
+    const { rows } = await query(
+      `SELECT * FROM subscription_plans WHERE is_active = TRUE
+       ORDER BY sort_order ASC, price_monthly ASC, created_at ASC`
+    )
+    res.json(rows.map(planForClient))
+  } catch (error) { res.status(500).json({ error: error.message }) }
+}
+
+// GET /api/v1/owner/subscription/payment-options — methods the platform admin has enabled.
+export async function getSubscriptionPaymentOptions(_req, res) {
+  try {
+    res.json(await subscriptionPaymentOptions())
   } catch (error) { res.status(500).json({ error: error.message }) }
 }
 
@@ -2279,14 +2272,6 @@ export async function getSystemSettings(req, res) {
        ORDER BY (business_id IS NOT NULL), updated_at, setting_group, setting_key`,
       [businessId]
     )
-    const { rows: platformSettings } = await query(
-      `SELECT setting_key, setting_value FROM platform_settings
-       WHERE setting_key IN (
-         'subscription_monthly_price', 'subscription_quarterly_price', 'subscription_annually_price',
-         'subscription_quarterly_discount', 'subscription_annually_discount',
-         'alert_before_expiry_days'
-       )`
-    )
     const { rows: distinctRoles } = await query(
       `SELECT DISTINCT role FROM users WHERE business_id = $1 ORDER BY role`,
       [businessId]
@@ -2304,27 +2289,9 @@ export async function getSystemSettings(req, res) {
     const flatSettings = {}
     settings.forEach((s) => { flatSettings[s.setting_key] = s.setting_value })
 
-    // Override subscription pricing with platform settings managed by super admin.
-    const platformMap = {}
-    platformSettings.forEach((s) => { platformMap[s.setting_key] = s.setting_value })
-    const subscriptionKeys = [
-      'subscription_monthly_price', 'subscription_quarterly_price', 'subscription_annually_price',
-      'subscription_quarterly_discount', 'subscription_annually_discount', 'alert_before_expiry_days',
-    ]
-    for (const k of subscriptionKeys) {
-      if (platformMap[k] !== undefined) flatSettings[k] = platformMap[k]
-    }
-
-    // Ensure the super-admin-editable subscription defaults are always present.
-    const settingDefaults = {
-      subscription_monthly_price: '50000',
-      subscription_quarterly_price: '130000',
-      subscription_annually_price: '480000',
-      subscription_quarterly_discount: '8',
-      subscription_annually_discount: '14',
-    }
-    for (const [k, v] of Object.entries(settingDefaults)) {
-      if (flatSettings[k] === undefined) flatSettings[k] = v
+    // Subscription prices are not settings: they live on the plans (GET /subscription/plans).
+    for (const k of Object.keys(flatSettings)) {
+      if (k.startsWith('subscription_')) delete flatSettings[k]
     }
     // Email notifications are sent unless the owner turned them off.
     for (const k of OWNER_NOTIFICATION_KEYS) {
@@ -2422,127 +2389,45 @@ export async function updateSystemSettings(req, res) {
       )
     }
 
-          // Subscription/global keys are routed to platform_settings so all dashboards share one source of truth.
-     if (settings && typeof settings === 'object') {
-       const subscriptionKeys = new Set([
-         'subscription_monthly_price', 'subscription_quarterly_price', 'subscription_annually_price',
-         'subscription_quarterly_discount', 'subscription_annually_discount',
-         'auto_renewal', 'alert_before_expiry_days',
-       ])
-       if (Object.keys(settings).some((key) => subscriptionKeys.has(key))) {
-         return res.status(403).json({ error: 'Subscription plans and platform renewal settings can only be changed by the platform administrator.' })
-       }
-       const globalSettings = {}
-       const localSettings = {}
-       for (const [key, value] of Object.entries(settings)) {
-         if (subscriptionKeys.has(key)) {
-           globalSettings[key] = value
-         } else {
-           localSettings[key] = value
-         }
-       }
-
-       // Email notification preferences belong to this business only.
-       for (const key of Object.keys(localSettings)) {
-         if (!OWNER_NOTIFICATION_KEYS.includes(key)) continue
-         const value = String(localSettings[key]) === 'true' ? 'true' : 'false'
-         delete localSettings[key]
-         const { rows: updatedRows } = await query(
-           `UPDATE system_settings SET setting_value = $3, updated_at = NOW()
-            WHERE business_id = $1 AND setting_key = $2 RETURNING id`,
-           [businessId, key, value]
-         )
-         if (!updatedRows.length) {
-           await query(
-             `INSERT INTO system_settings (business_id, setting_key, setting_value, setting_group)
-              VALUES ($1, $2, $3, 'notifications')`,
-             [businessId, key, value]
-           )
-         }
-       }
-
-       if (Object.keys(localSettings).length > 0) {
-         const groupFor = (key) => {
-           if (key === 'max_login_attempts' || key === 'session_timeout') return 'security'
-           return 'general'
-         }
-         for (const [key, value] of Object.entries(localSettings)) {
-           const { rows: updatedRows } = await query(
-             `UPDATE system_settings SET setting_value = $2, updated_at = NOW() WHERE setting_key = $1 AND business_id IS NULL RETURNING id`,
-             [key, String(value)]
-           )
-           if (!updatedRows.length) {
-             await query(
-               `INSERT INTO system_settings (setting_key, setting_value, setting_group) VALUES ($1, $2, $3)`,
-               [key, String(value), groupFor(key)]
-             )
-           }
-         }
-       }
-
-       if (Object.keys(globalSettings).length > 0) {
-         for (const [key, value] of Object.entries(globalSettings)) {
-           const { rows: updatedRows } = await query(
-             `UPDATE platform_settings SET setting_value = $2, updated_at = NOW() WHERE setting_key = $1 RETURNING id`,
-             [key, String(value)]
-           )
-           if (!updatedRows.length) {
-             await query(
-               `INSERT INTO platform_settings (setting_key, setting_value, setting_group) VALUES ($1, $2, $3)`,
-               [key, String(value), 'subscription']
-             )
-           }
-         }
-
-         const pricingKeys = [
-           'subscription_monthly_price', 'subscription_quarterly_price', 'subscription_annually_price',
-           'subscription_quarterly_discount', 'subscription_annually_discount',
-         ]
-         const hasPricingChange = pricingKeys.some((k) => globalSettings[k] !== undefined)
-
-         if (hasPricingChange) {
-           const { rows: priceRows } = await query(
-             `SELECT setting_key, setting_value FROM platform_settings WHERE setting_key = ANY($1::text[])`,
-             [pricingKeys],
-           )
-           const priceMap = {}
-           priceRows.forEach((r) => { priceMap[r.setting_key] = parseFloat(r.setting_value) })
-
-           const monthlyPrice = Number(priceMap.subscription_monthly_price) || 50000
-           const quarterlyPrice = Number(priceMap.subscription_quarterly_price) || 130000
-           const annuallyPrice = Number(priceMap.subscription_annually_price) || 480000
-           const quarterlyDiscount = Number(priceMap.subscription_quarterly_discount) || 8
-           const annuallyDiscount = Number(priceMap.subscription_annually_discount) || 14
-
-           const monthlyAmount = Math.round(monthlyPrice)
-           const quarterlyAmount = Math.round(quarterlyPrice * (1 - quarterlyDiscount / 100))
-           const annuallyAmount = Math.round(annuallyPrice * (1 - annuallyDiscount / 100))
-
-            await query(
-              `UPDATE subscriptions SET
-                amount_paid = CASE billing_cycle
-                  WHEN 'monthly' THEN $1
-                  WHEN 'quarterly' THEN $2
-                  WHEN 'annually' THEN $3
-                  WHEN 'yearly' THEN $3
-                  ELSE amount_paid
-                END,
-                discount_percent = CASE billing_cycle
-                  WHEN 'monthly' THEN 0
-                  WHEN 'quarterly' THEN $4
-                  WHEN 'annually' THEN $5
-                  WHEN 'yearly' THEN $5
-                  ELSE discount_percent
-                END
-               WHERE is_active = TRUE AND status = 'active'
-                 AND business_id = $6`,
-              [monthlyAmount, quarterlyAmount, annuallyAmount, quarterlyDiscount, annuallyDiscount, req.user.businessId],
-            )
-         }
-       }
-     }
-
-await logAudit({
+    // Business settings the owner may change. They are stored for THIS business only
+    // (business_id = businessId); platform-wide values belong to the platform administrator.
+    if (settings && typeof settings === 'object') {
+      const allowed = new Set(['max_login_attempts', 'session_timeout', ...OWNER_NOTIFICATION_KEYS])
+      const rejected = Object.keys(settings).filter((key) => !allowed.has(key))
+      if (rejected.length) {
+        return res.status(403).json({ error: 'Subscription plans and platform settings can only be changed by the platform administrator.' })
+      }
+      const clean = {}
+      for (const [key, value] of Object.entries(settings)) {
+        if (OWNER_NOTIFICATION_KEYS.includes(key)) {
+          clean[key] = String(value) === 'true' ? 'true' : 'false'
+        } else if (key === 'max_login_attempts') {
+          const n = Math.round(Number(value))
+          if (!Number.isFinite(n) || n < 3 || n > 20) return res.status(400).json({ error: 'Max login attempts must be between 3 and 20.' })
+          clean[key] = String(n)
+        } else if (key === 'session_timeout') {
+          const n = Math.round(Number(value))
+          if (!Number.isFinite(n) || n < 5 || n > 1440) return res.status(400).json({ error: 'Session timeout must be between 5 and 1440 minutes.' })
+          clean[key] = String(n)
+        }
+      }
+      for (const [key, value] of Object.entries(clean)) {
+        const group = OWNER_NOTIFICATION_KEYS.includes(key) ? 'notifications' : 'security'
+        const { rows: updatedRows } = await query(
+          `UPDATE system_settings SET setting_value = $3, updated_at = NOW()
+           WHERE business_id = $1 AND setting_key = $2 RETURNING id`,
+          [businessId, key, value]
+        )
+        if (!updatedRows.length) {
+          await query(
+            `INSERT INTO system_settings (business_id, setting_key, setting_value, setting_group)
+             VALUES ($1, $2, $3, $4)`,
+            [businessId, key, value, group]
+          )
+        }
+      }
+    }
+    await logAudit({
        userId: req.user.id,
        actorName: req.user.full_name || req.user.email,
        action: 'Updated system settings',
@@ -3054,9 +2939,9 @@ export async function generateQRPayment(req, res) {
       return res.status(503).json({ error: 'Automatic QR payments need MTN MoMo or Airtel Money credentials configured on the server.' })
     }
 
-    const frontendUrl = String(process.env.FRONTEND_URL || '').trim()
+    const frontendUrl = await appBaseUrl(req)
     if (!frontendUrl) {
-      return res.status(503).json({ error: 'Set FRONTEND_URL to the public address of this app before generating a payment QR code.' })
+      return res.status(503).json({ error: 'The platform administrator must set the app address (Settings → Platform Info) before payment QR codes can be generated.' })
     }
     const paymentUrl = new URL('/payment', frontendUrl)
     paymentUrl.searchParams.set('orderId', order.id)

@@ -12261,6 +12261,7 @@ svg {
 }
 .sub-method-mark.is-mtn { background: #ffcc00; color: #1f2937; }
 .sub-method-mark.is-airtel { background: #e40000; color: #fff; font-size: 11px; }
+.sub-method-mark.is-bank { background: #1e3a8a; color: #fff; font-size: 11px; }
 .sub-method-name {
   display: block;
   font-size: 15px;

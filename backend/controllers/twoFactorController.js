@@ -6,7 +6,7 @@ import { sendVerificationEmail } from '../services/emailService.js'
 
 export async function getTwoFactorSettings(req, res) {
   try {
-    const businessId = req.query.businessId || req.user?.businessId
+    const businessId = req.user?.businessId
     let settings = null
 
     if (businessId) {
@@ -21,7 +21,7 @@ export async function getTwoFactorSettings(req, res) {
 
   if (!settings) {
     const { rows } = await query(
-      "SELECT * FROM two_factor_settings WHERE scope = 'platform' AND business_id IS NULL LIMIT 1"
+      "SELECT * FROM two_factor_settings WHERE scope = 'platform' AND business_id IS NULL ORDER BY updated_at DESC LIMIT 1"
     )
       if (rows.length) {
         settings = rows[0]
@@ -46,15 +46,16 @@ export async function getTwoFactorSettings(req, res) {
 
 export async function updateTwoFactorSettings(req, res) {
   try {
-    const { isEnabled, method, scope, businessId } = req.body
+    const { isEnabled, method } = req.body
+    // Owners and managers manage 2FA for their own business only; the platform setting
+    // belongs to the platform administrator (Settings → Security).
+    const scope = 'business'
+    const businessId = req.user?.businessId
+    if (!businessId) return res.status(400).json({ error: 'No business associated with this account.' })
     if (!['email', 'sms', 'authenticator'].includes(method)) {
       return res.status(400).json({ error: "Invalid 2FA method. Use email, sms, or authenticator." })
     }
-    if (!['platform', 'business'].includes(scope)) {
-      return res.status(400).json({ error: "Invalid scope. Use platform or business." })
-    }
-
-    const effectiveBusinessId = scope === 'business' ? businessId : null
+    const effectiveBusinessId = businessId
 
     const { rows } = await query(
       `INSERT INTO two_factor_settings (scope, business_id, is_enabled, method, updated_at)

@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { fetchPlatformPayments, fetchPaymentStats, refundPayment, settlePayment } from '../../api/endpoints'
+import { fetchPlatformPayments, fetchPaymentStats, refundPayment, settlePayment, confirmPlatformPayment } from '../../api/endpoints'
 import { useToast } from '../../context/ToastContext'
 import { usePreferences } from '../../context/PreferencesContext'
 
 const CURRENCY = 'RWF'
 const formatCurr = (v) => new Intl.NumberFormat('en-RW', { style: 'currency', currency: CURRENCY, minimumFractionDigits: 0 }).format(v || 0)
-const METHOD_LABEL = { mtn_momo: 'MTN MoMo', airtel_money: 'Airtel Money', bank: 'Bank Transfer', cash: 'Cash', pos: 'POS' }
+const METHOD_LABEL = { mtn_momo: 'MTN MoMo', airtel_money: 'Airtel Money', bank: 'Bank Transfer', bank_transfer: 'Bank Transfer', cash: 'Cash', pos: 'POS' }
 const PAYMENT_STATUS_LABEL = { paid: 'Paid', settled: 'Settled', pending: 'Pending', failed: 'Failed', refunded: 'Refunded' }
 
 export default function Payments() {
@@ -35,7 +35,7 @@ export default function Payments() {
   }
 
   const handleRefund = async (p) => {
-    const reason = window.prompt([`${t('Refund')} ${formatCurr(p.amount)} ${t('to')} ${p.business}?`, t('Optional reason:')].join(String.fromCharCode(10)))
+    const reason = window.prompt([`${t('Refund')} ${formatCurr(p.amount)} ${t('to')} ${p.business}?`, t('The subscription this payment paid for ends now. Send the money back yourself; this only records the refund.'), t('Optional reason:')].join(String.fromCharCode(10)))
     if (reason === null) return
     setBusy(`${p.id}-refund`)
     try {
@@ -44,6 +44,21 @@ export default function Payments() {
       showSuccess(t('Payment updated successfully.'))
     } catch (e) {
       alert(e.response?.data?.error || t('Refund failed.'))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  // Pending payment the provider never confirmed, or a bank transfer you received.
+  const handleConfirm = async (p) => {
+    if (!window.confirm(`${t('Confirm that you received')} ${formatCurr(p.amount)} ${t('from')} ${p.business}? ${t('Their subscription starts now.')}`)) return
+    setBusy(`${p.id}-confirm`)
+    try {
+      const result = await confirmPlatformPayment(p.id)
+      await load()
+      showSuccess(`${t('Payment confirmed. Receipt')} ${result.receiptNumber || ''}`)
+    } catch (e) {
+      alert(e.response?.data?.error || t('Could not confirm the payment.'))
     } finally {
       setBusy(null)
     }
@@ -175,7 +190,10 @@ export default function Payments() {
                       {p.status === 'paid' && (
                         <button title={t('Settle')} onClick={() => handleSettle(p)} disabled={busy === `${p.id}-settle`} className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 disabled:opacity-40">{t('Settle')}</button>
                       )}
-                      {p.status === 'paid' && (
+                      {p.status === 'pending' && (
+                        <button title={t('Confirm payment')} onClick={() => handleConfirm(p)} disabled={busy === `${p.id}-confirm`} className="p-1.5 rounded-lg text-indigo-600 hover:bg-indigo-50 disabled:opacity-40">{t('Confirm')}</button>
+                      )}
+                      {(p.status === 'paid' || p.status === 'settled') && (
                         <button title={t('Refund')} onClick={() => handleRefund(p)} disabled={busy === `${p.id}-refund`} className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 disabled:opacity-40">{t('Refund')}</button>
                       )}
                     </div>

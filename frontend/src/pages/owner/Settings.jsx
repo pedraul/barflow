@@ -7,6 +7,8 @@ import QRCode from '../../components/QRCode'
 import { User, Database, CreditCard, ShieldCheck, Lock, RefreshCw, Settings, FileText, Menu, Wallet, Mail } from 'lucide-react'
 import AuditLogViewer from './AuditLogViewer'
 import PaymentQRSettings from '../../components/PaymentQRSettings'
+import BusinessAccountZone from '../../components/BusinessAccountZone'
+import OwnerPlanSummary from '../../components/OwnerPlanSummary'
 import { usePreferences, stripIcons } from '../../context/PreferencesContext'
 
 const SETTINGS_GROUPS = [
@@ -76,7 +78,8 @@ const PERMISSION_LABELS = [
 
 export default function SystemSettings() {
   const { t } = usePreferences()
-  const { fetchPermissions } = useAuth()
+  const { fetchPermissions, user: authUser } = useAuth()
+  const isOwnerUser = String(authUser?.role || '').toLowerCase() === 'owner'
   const {
     fetchSystemSettings, updateSystemSettings, triggerBackup, fetchBackups,
     restoreBackup, updatePermissions, fetchBranches, createBranch, updateBranch, setActiveBranchId, branches, loading,
@@ -213,15 +216,6 @@ export default function SystemSettings() {
     } catch (e) { setRestoreMsg('❌ ' + e.message) }
   }
 
-  const handleSaveSubscriptionSettings = async () => {
-    try {
-      const keys = ['subscription_monthly_price', 'subscription_quarterly_price', 'subscription_annually_price', 'subscription_quarterly_discount', 'subscription_annually_discount', 'auto_renewal', 'alert_before_expiry_days']
-      const settings = {}
-      keys.forEach((k) => { if (data.settings[k] !== undefined) settings[k] = data.settings[k] })
-      await updateSystemSettings({ settings })
-      flash(t('✅ Subscription settings saved.'))
-    } catch (e) { flash('❌ ' + e.message) }
-  }
   const setSetting = (key, value) =>
     setData({ ...data, settings: { ...data.settings, [key]: value } })
 
@@ -254,7 +248,8 @@ export default function SystemSettings() {
       setTwoFactor({
         isEnabled: !!s.isEnabled,
         method: s.method || 'email',
-        scope: s.scope || 'platform',
+        scope: 'business',
+        platformRequired: s.scope === 'platform' && !!s.isEnabled,
         businessId: s.businessId || null,
       })
     } catch (e) { console.error('Failed to load 2FA settings:', e) }
@@ -265,11 +260,9 @@ export default function SystemSettings() {
       await updateTwoFactorSettings({
         isEnabled: twoFactor.isEnabled,
         method: twoFactor.method,
-        scope: twoFactor.scope,
-        businessId: twoFactor.scope === 'business' ? twoFactor.businessId : null,
       })
       flash(t('✅ Two-factor authentication settings saved.'))
-    } catch (e) { flash('❌ ' + e.message) }
+    } catch (e) { flash('❌ ' + (e?.response?.data?.error || e.message)) }
   }
 
 
@@ -384,6 +377,7 @@ export default function SystemSettings() {
                 </div>
               </div>
             ) : activeSubTab === 'account' ? (
+              <>
               <form onSubmit={(e) => { e.preventDefault(); handleSaveAccount() }} className="p-8 space-y-6">
                 <div className="space-y-1">
                   <h2 className="text-lg font-bold text-[#0F172A] tracking-tight">{t('BUSINESS ACCOUNT SETTINGS')}</h2>
@@ -453,6 +447,8 @@ export default function SystemSettings() {
                   </button>
                 </div>
               </form>
+              {isOwnerUser && <BusinessAccountZone />}
+              </>
             ) : activeSubTab === 'backup' ? (
               <div className="p-8 space-y-6">
                 <SectionTitle title={t('BACKUP & RESTORE')} subtitle={t('Create and restore system backups.')} />
@@ -522,28 +518,7 @@ export default function SystemSettings() {
                 )}
               </div>
             ) : activeSubTab === 'subscription' ? (
-              <div className="p-8 space-y-6">
-                <SectionTitle title={t('SUBSCRIPTION SETTINGS')} subtitle={t('Plans and prices are managed by the platform administrator and update here automatically.')} />
-                <div className="border-t border-slate-100"></div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-                  <Field label={t('Monthly Price')} value={data.settings.subscription_monthly_price ?? 50000} readOnly />
-                  <Field label={t('Quarterly Price')} value={data.settings.subscription_quarterly_price ?? 130000} readOnly />
-                  <Field label={t('Annually Price')} value={data.settings.subscription_annually_price ?? 480000} readOnly />
-                  <Field label={t('Monthly Discount (%)')} value={0} onChange={() => {}} readOnly />
-                  <Field label={t('Quarterly Discount (%)')} value={data.settings.subscription_quarterly_discount ?? 8} readOnly />
-                  <Field label={t('Annually Discount (%)')} value={data.settings.subscription_annually_discount ?? 14} readOnly />
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-800 tracking-wide">{t('Auto Renewal')}</label>
-                    <div className="relative">
-                      <select value={data.settings.auto_renewal ?? 'true'} disabled className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-4 pr-10 py-2.5 text-sm text-slate-900 appearance-none font-medium">
-                        <option value="true">{t('Enabled')}</option>
-                        <option value="false">{t('Disabled')}</option>
-                      </select>
-                    </div>
-                  </div>
-                  <Field label={t('Alert Before Expiry (days)')} value={data.settings.alert_before_expiry_days ?? 7} readOnly />
-                </div>
-              </div>
+              <OwnerPlanSummary />
             ) : activeSubTab === 'permissions' ? (
               <div className="p-8 space-y-6">
                 <SectionTitle title={t('ROLE PERMISSIONS')} subtitle={t('Toggle what each role can do across the system.')} />
@@ -608,15 +583,6 @@ export default function SystemSettings() {
                              <option value="email">{t('Email')}</option>
                              <option value="sms">{t('SMS')}</option>
                              <option value="authenticator">{t('Authenticator App')}</option>
-                           </select>
-                         </div>
-                       </div>
-                       <div className="space-y-1.5">
-                         <label className="text-xs font-bold text-slate-800 tracking-wide">{t('Scope')}</label>
-                         <div className="relative">
-                           <select value={twoFactor.scope} onChange={(e) => setTwoFactor({ ...twoFactor, scope: e.target.value })} className="w-full bg-white border border-slate-200 rounded-lg pl-4 pr-10 py-2.5 text-sm text-slate-900 appearance-none focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition font-medium">
-                             <option value="platform">{t('Platform (all businesses)')}</option>
-                             <option value="business">{t('This Business Only')}</option>
                            </select>
                          </div>
                        </div>
