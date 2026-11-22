@@ -222,7 +222,7 @@ export default function QRCodeManager() {
             })
             return (
               <article className={`qr-card${printTableId === table.id ? ' print-selected' : ''}`} key={table.id}>
-                <QRCode value={url} size={190} level="M" />
+                <QRCode value={url} size={190} />
                 <div className="qr-meta">
                   <strong className="qr-table-label">{t("CLIENT TABLE")}{' '}{table.tableNumber}</strong>
                   <span>{table.branchName}</span>

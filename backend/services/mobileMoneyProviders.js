@@ -36,6 +36,16 @@ function getProviderConfig(method) {
   throw new Error(`Unsupported online payment method: ${method}`)
 }
 
+/** True when the server has the provider's collection API keys (automatic "request to pay"). */
+export function isMobileMoneyApiConfigured(method) {
+  try {
+    getProviderConfig(method)
+    return true
+  } catch {
+    return false
+  }
+}
+
 async function request(config, path, options = {}) {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)

@@ -793,7 +793,7 @@ export default function OperatorDashboard() {
                       businessId: user?.businessId,
                       branchId: qr.branchId,
                       businessSlug: user?.businessSlug,
-                    })} size={160} level="M" />
+                    })} size={160} />
                     <div className="text-center">
                       <strong className="block text-sm">{t("CLIENT TABLE")}{' '}{qr.tableNumber}</strong>
                       <span className="text-xs text-slate-500">{qr.branchName}</span>

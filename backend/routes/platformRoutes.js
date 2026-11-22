@@ -22,6 +22,7 @@ import {
   refundPayment,
   settlePayment,
   confirmPayment,
+  rejectPayment,
   listAdmins,
   createAdmin,
   updateAdmin,
@@ -94,6 +95,7 @@ router.get('/payments/stats', can('payments'), paymentStats)
 router.post('/payments/:id/refund', can('payments'), refundPayment)
 router.post('/payments/:id/settle', can('payments'), settlePayment)
 router.post('/payments/:id/confirm', can('payments'), confirmPayment)
+router.post('/payments/:id/reject', can('payments'), rejectPayment)
 
 // Platform admins (Users)
 router.get('/admins', can('users'), listAdmins)

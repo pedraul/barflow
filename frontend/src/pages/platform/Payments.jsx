@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { fetchPlatformPayments, fetchPaymentStats, refundPayment, settlePayment, confirmPlatformPayment } from '../../api/endpoints'
+import { fetchPlatformPayments, fetchPaymentStats, refundPayment, settlePayment, confirmPlatformPayment, rejectPlatformPayment } from '../../api/endpoints'
 import { useToast } from '../../context/ToastContext'
 import { usePreferences } from '../../context/PreferencesContext'
 
@@ -51,7 +51,15 @@ export default function Payments() {
 
   // Pending payment the provider never confirmed, or a bank transfer you received.
   const handleConfirm = async (p) => {
-    if (!window.confirm(`${t('Confirm that you received')} ${formatCurr(p.amount)} ${t('from')} ${p.business}? ${t('Their subscription starts now.')}`)) return
+    const lines = [
+      `${t('Confirm that you received')} ${formatCurr(p.amount)} ${t('from')} ${p.business}?`,
+      p.payTo ? `${t('Sent to')}: ${p.payTo}` : '',
+      p.payerPhone ? `${t('From number')}: ${p.payerPhone}` : '',
+      p.payerReference ? `${t('Their transaction ID')}: ${p.payerReference}` : '',
+      `${t('Reference')}: ${p.reference}`,
+      t('Check your MoMo / bank statement first. Their subscription starts now.'),
+    ].filter(Boolean)
+    if (!window.confirm(lines.join(String.fromCharCode(10)))) return
     setBusy(`${p.id}-confirm`)
     try {
       const result = await confirmPlatformPayment(p.id)
@@ -59,6 +67,22 @@ export default function Payments() {
       showSuccess(`${t('Payment confirmed. Receipt')} ${result.receiptNumber || ''}`)
     } catch (e) {
       alert(e.response?.data?.error || t('Could not confirm the payment.'))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  // The money never arrived: close the payment so the business can pay again.
+  const handleReject = async (p) => {
+    const reason = window.prompt(`${t('Reject the payment of')} ${formatCurr(p.amount)} ${t('from')} ${p.business}?\n${t('Reason (the owner sees it):')}`, t('Payment not received'))
+    if (reason === null) return
+    setBusy(`${p.id}-reject`)
+    try {
+      await rejectPlatformPayment(p.id, reason)
+      await load()
+      showSuccess(t('Payment rejected. The business can start a new payment.'))
+    } catch (e) {
+      alert(e.response?.data?.error || t('Could not reject the payment.'))
     } finally {
       setBusy(null)
     }
@@ -79,8 +103,8 @@ export default function Payments() {
   }
 
   const filtered = useMemo(() => payments.filter((p) => {
-    const matchesQ = !q || [p.business, p.transactionId, p.plan].some((v) => (v || '').toLowerCase().includes(q.toLowerCase()))
-    const matchesStatus = statusFilter === 'all' || p.status === statusFilter
+    const matchesQ = !q || [p.business, p.transactionId, p.reference, p.plan, p.payerPhone, p.payerReference, p.payTo].some((v) => (v || '').toLowerCase().includes(q.toLowerCase()))
+    const matchesStatus = statusFilter === 'all' || (statusFilter === 'awaiting' ? p.awaitingConfirmation : p.status === statusFilter)
     return matchesQ && matchesStatus
   }), [payments, q, statusFilter])
 
@@ -90,8 +114,9 @@ export default function Payments() {
   }
 
   const exportCsv = () => {
-    const header = [t('Payment ID'), t('Business'), t('Plan'), t('Amount'), t('Method'), t('Transaction ID'), t('Status'), t('Date')].join(',') + '\n'
-    const rows = filtered.map((p) => `"${p.id}","${p.business}","${p.plan}",${p.amount},"${typeof METHOD_LABEL[p.method] === 'string' ? t(METHOD_LABEL[p.method]) : p.method}","${p.transactionId || ''}","${typeof PAYMENT_STATUS_LABEL[p.status] === 'string' ? t(PAYMENT_STATUS_LABEL[p.status]) : p.status}","${p.date ? new Date(p.date).toLocaleString() : ''}"`).join('\n')
+    const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
+    const header = [t('Payment ID'), t('Business'), t('Plan'), t('Amount'), t('Method'), t('Paid to'), t('From number'), t('Their transaction ID'), t('Reference'), t('Status'), t('Date')].map(cell).join(',') + '\n'
+    const rows = filtered.map((p) => [p.id, p.business, p.plan, p.amount, METHOD_LABEL[p.method] ? t(METHOD_LABEL[p.method]) : p.method, p.payTo, p.payerPhone, p.payerReference, p.reference, PAYMENT_STATUS_LABEL[p.status] ? t(PAYMENT_STATUS_LABEL[p.status]) : p.status, p.date ? new Date(p.date).toLocaleString() : ''].map(cell).join(',')).join('\n')
     const blob = new Blob([header + rows], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -150,6 +175,7 @@ export default function Payments() {
         </div>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white capitalize focus:ring-2 focus:ring-indigo-500 outline-none">
           <option value="all">{t('All statuses')}</option>
+          <option value="awaiting">{t('Awaiting your confirmation')}</option>
           <option value="paid">{t('Paid')}</option>
           <option value="settled">{t('Settled')}</option>
           <option value="pending">{t('Pending')}</option>
@@ -167,22 +193,33 @@ export default function Payments() {
                 <th className="text-left px-3 py-2 font-semibold">{t('Plan')}</th>
                 <th className="text-left px-3 py-2 font-semibold">{t('Amount')}</th>
                 <th className="text-left px-3 py-2 font-semibold">{t('Method')}</th>
-                <th className="text-left px-3 py-2 font-semibold">{t('Transaction')}</th>
+                <th className="text-left px-3 py-2 font-semibold">{t('Paid to')}</th>
+                <th className="text-left px-3 py-2 font-semibold">{t('From / their ID')}</th>
+                <th className="text-left px-3 py-2 font-semibold">{t('Reference')}</th>
                 <th className="text-left px-3 py-2 font-semibold">{t('Status')}</th>
                 <th className="text-left px-3 py-2 font-semibold">{t('Date')}</th>
                 <th className="text-right px-3 py-2 font-semibold">{t('Actions')}</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 && <tr><td colSpan={8} className="px-3 py-3 text-center text-slate-400">{t('No payments found.')}</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={10} className="px-3 py-3 text-center text-slate-400">{t('No payments found.')}</td></tr>}
               {filtered.map((p) => (
                 <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50">
                   <td className="px-3 py-2 font-semibold text-slate-900">{p.business}</td>
                   <td className="px-3 py-2 text-slate-700">{p.plan}</td>
                   <td className="px-3 py-2 font-medium text-slate-900">{formatCurr(p.amount)}</td>
                   <td className="px-3 py-2 text-slate-700">{t(METHOD_LABEL[p.method] || p.method)}</td>
-                  <td className="px-3 py-2 text-slate-500 font-mono text-xs">{p.transactionId || '—'}</td>
-                  <td className="px-3 py-2">{badge(p.status)}</td>
+                  <td className="px-3 py-2 text-slate-700 max-w-[200px]">{p.payTo || '—'}</td>
+                  <td className="px-3 py-2 text-slate-600">
+                    <div>{p.payerPhone || '—'}</div>
+                    {p.payerReference && <div className="font-mono text-[11px] text-slate-500">{p.payerReference}</div>}
+                  </td>
+                  <td className="px-3 py-2 text-slate-500 font-mono text-xs" title={p.transactionId || ''}>{p.reference || '—'}</td>
+                  <td className="px-3 py-2">
+                    {badge(p.status)}
+                    {p.awaitingConfirmation && <div className="text-[10px] font-semibold text-amber-700 mt-1">{t('Awaiting your confirmation')}</div>}
+                    {p.reviewNote && <div className="text-[10px] text-slate-500 mt-1 max-w-[180px]">{p.reviewNote}</div>}
+                  </td>
                   <td className="px-3 py-2 text-slate-400">{p.date ? new Date(p.date).toLocaleDateString() : '—'}</td>
                   <td className="px-3 py-2 text-right">
                     <div className="flex justify-end gap-1.5">
@@ -192,6 +229,9 @@ export default function Payments() {
                       )}
                       {p.status === 'pending' && (
                         <button title={t('Confirm payment')} onClick={() => handleConfirm(p)} disabled={busy === `${p.id}-confirm`} className="p-1.5 rounded-lg text-indigo-600 hover:bg-indigo-50 disabled:opacity-40">{t('Confirm')}</button>
+                      )}
+                      {p.status === 'pending' && (
+                        <button title={t('Reject payment')} onClick={() => handleReject(p)} disabled={busy === `${p.id}-reject`} className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 disabled:opacity-40">{t('Reject')}</button>
                       )}
                       {(p.status === 'paid' || p.status === 'settled') && (
                         <button title={t('Refund')} onClick={() => handleRefund(p)} disabled={busy === `${p.id}-refund`} className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 disabled:opacity-40">{t('Refund')}</button>

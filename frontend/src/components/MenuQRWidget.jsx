@@ -98,7 +98,7 @@ export default function MenuQRWidget({
               <QRCode
                 value={getTableUrl(table)}
                 size={180}
-                level="M"
+               
                 ariaLabel={`${t('QR code for CLIENT TABLE')} ${table.tableNumber}`}
               />
               {table.branchName && <span>{table.branchName}</span>}
@@ -119,7 +119,7 @@ export default function MenuQRWidget({
             {printSelection.map((table) => (
               <article className="account-table-qr-print-card" key={table.tableNumber}>
                 <strong>{t('CLIENT TABLE')} {table.tableNumber}</strong>
-                <QRCode value={getTableUrl(table)} size={190} level="M" />
+                <QRCode value={getTableUrl(table)} size={190} />
                 {table.branchName && <span>{table.branchName}</span>}
               </article>
             ))}

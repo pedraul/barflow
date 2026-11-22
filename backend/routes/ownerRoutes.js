@@ -26,6 +26,8 @@ import {
   getSubscriptionPaymentOptions,
   selectSubscriptionPlan,
   checkSubscriptionPayment,
+  submitSubscriptionPaymentReference,
+  cancelSubscriptionPayment,
   getReceipt,
   renewSubscription,
   getGlobalInventory,
@@ -134,6 +136,8 @@ router.get('/subscription/payment-options', ...ownerOnly, getSubscriptionPayment
 router.get('/subscription/receipt', ...ownerOnly, getReceipt)
 router.post('/subscription/select-plan', ...ownerOnly, selectSubscriptionPlan)
 router.get('/subscription/payment/:paymentId/status', ...ownerOnly, checkSubscriptionPayment)
+router.post('/subscription/payment/:paymentId/reference', ...ownerOnly, submitSubscriptionPaymentReference)
+router.post('/subscription/payment/:paymentId/cancel', ...ownerOnly, cancelSubscriptionPayment)
 router.post('/subscription/renew', ...ownerOnly, renewSubscription)
 
 // ──────────────────────────────────────────────

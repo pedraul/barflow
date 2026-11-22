@@ -139,29 +139,27 @@ router.post('/login', async (req, res) => {
     }
 
     const businessId = u.business_id
+    // Two-factor applies when the business turns it on, or when the platform admin requires it
+    // (Settings → Security → Require two-factor). A business cannot switch off a platform requirement.
     let twoFactorEnabled = false
     let twoFactorMethod = 'email'
-    let businessHasTwoFactorRecord = false
     if (businessId) {
       const { rows: tfRows } = await query(
         'SELECT is_enabled, method FROM two_factor_settings WHERE business_id = $1 LIMIT 1',
         [businessId]
       )
-      if (tfRows.length) {
-        businessHasTwoFactorRecord = true
-        if (tfRows[0].is_enabled) {
-          twoFactorEnabled = true
-          twoFactorMethod = tfRows[0].method
-        }
+      if (tfRows.length && tfRows[0].is_enabled) {
+        twoFactorEnabled = true
+        twoFactorMethod = tfRows[0].method || 'email'
       }
     }
-    if (!businessHasTwoFactorRecord) {
+    if (!twoFactorEnabled) {
       const { rows: tfRows } = await query(
         "SELECT is_enabled, method FROM two_factor_settings WHERE scope = 'platform' AND business_id IS NULL ORDER BY updated_at DESC LIMIT 1"
       )
       if (tfRows.length && tfRows[0].is_enabled) {
         twoFactorEnabled = true
-        twoFactorMethod = tfRows[0].method
+        twoFactorMethod = tfRows[0].method || 'email'
       }
     }
 

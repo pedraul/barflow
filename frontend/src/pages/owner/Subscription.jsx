@@ -12,6 +12,12 @@ const PAYMENT_METHODS = [
 const apiError = (e, fallback) => e?.response?.data?.error || e?.message || fallback
 
 const CURRENCY = 'RWF'
+// 250788123456 -> 0788 123 456
+const formatPhone = (value) => {
+  const digits = String(value || '').replace(/\D/g, '')
+  const local = digits.startsWith('250') ? `0${digits.slice(3)}` : digits
+  return /^07\d{8}$/.test(local) ? `${local.slice(0, 4)} ${local.slice(4, 7)} ${local.slice(7)}` : String(value || '')
+}
 const formatCurr = (v) =>
   new Intl.NumberFormat('en-RW', { style: 'currency', currency: CURRENCY, minimumFractionDigits: 0 }).format(v || 0)
 
@@ -19,7 +25,7 @@ export default function Subscription() {
   const { t } = usePreferences()
   const {
     fetchSubscription, fetchAvailableSubscriptionPlans, selectSubscriptionPlan,
-    checkSubscriptionPayment, fetchReceipt, loading,
+    checkSubscriptionPayment, submitSubscriptionPaymentReference, cancelSubscriptionPayment, fetchReceipt, loading,
   } = useOwner()
 
   const [sub, setSub] = useState(null)
@@ -40,9 +46,25 @@ export default function Subscription() {
   const [paymentOptions, setPaymentOptions] = useState(null)
   const availableMethods = PAYMENT_METHODS.filter((m) => !paymentOptions || paymentOptions[m.id]?.enabled)
   const isBank = paymentMethod === 'bank_transfer'
+  // "Send to our number": the owner sends the money themselves and the platform confirms it.
+  const selectedOption = paymentOptions?.[paymentMethod]
+  const isManualMobile = !isBank && selectedOption?.mode === 'manual'
   const [phoneNumber, setPhoneNumber] = useState('')
   const [pending, setPending] = useState(null)
   const [receipt, setReceipt] = useState(null)
+  const [payerReference, setPayerReference] = useState('')
+  const [pendingBusy, setPendingBusy] = useState(false)
+  // Where a method sends the money, as the admin set it (Settings → Payment).
+  const methodHint = (m) => {
+    const o = paymentOptions?.[m.id]
+    if (!o) return t(m.hint)
+    if (m.id === 'bank_transfer') return t(m.hint)
+    if (o.mode === 'manual') {
+      const to = [o.number && formatPhone(o.number), o.name].filter(Boolean).join(' · ')
+      return `${t('Send to')} ${to || `${t('pay code')} ${o.code}`}${o.code && to ? ` · ${t('Pay code')} ${o.code}` : ''}`
+    }
+    return t(m.hint)
+  }
 
   const load = useCallback(async () => {
     try {
@@ -58,6 +80,9 @@ export default function Subscription() {
               amount: data.pendingPaymentAmount,
               paymentMethod: data.pendingPaymentMethod,
               phoneNumber: data.pendingPaymentPhone,
+              payTo: data.pendingPaymentPayTo,
+              payerReference: data.pendingPaymentPayerReference,
+              collection: data.pendingPaymentAwaitingConfirmation ? 'manual' : 'api',
               status: 'pending',
             })
         setStep((current) => current === 2 ? current : 1)
@@ -90,8 +115,10 @@ export default function Subscription() {
         setReceipt(paymentReceipt)
         await load()
       } else if (result.status === 'failed') {
-        setPending((current) => ({ ...current, status: 'failed' }))
-        setMessage('❌ ' + t('❌ The provider declined or could not complete this payment. Start a new payment to try again.'))
+        setPending((current) => ({ ...current, status: 'failed', reason: result.reason }))
+        setMessage('❌ ' + (result.reason
+          ? `${t('The platform administrator rejected this payment')}: ${result.reason}`
+          : t('❌ The provider declined or could not complete this payment. Start a new payment to try again.')))
       }
     } catch (e) {
       setMessage('❌ ' + apiError(e, t('Unable to check provider payment status.')))
@@ -121,6 +148,38 @@ export default function Subscription() {
     if (cycle === 'quarterly') return Number(plan.priceQuarterly) || 0
     if (cycle === 'annually' || cycle === 'yearly') return Number(plan.priceAnnually) || 0
     return Number(plan.priceMonthly) || 0
+  }
+
+  const sendPayerReference = async () => {
+    if (!pending?.paymentId || payerReference.trim().length < 4) return
+    setPendingBusy(true)
+    try {
+      await submitSubscriptionPaymentReference(pending.paymentId, payerReference.trim())
+      setPending((current) => ({ ...current, payerReference: payerReference.trim() }))
+      setPayerReference('')
+      setMessage(t('Thank you. The platform administrator will match your transaction ID and confirm the payment.'))
+    } catch (e) {
+      setMessage('❌ ' + apiError(e, t('Could not send the transaction ID.')))
+    } finally {
+      setPendingBusy(false)
+    }
+  }
+
+  const cancelPendingPayment = async () => {
+    if (!pending?.paymentId) return
+    if (!window.confirm(t('Cancel this payment? Only do this if you have not sent the money.'))) return
+    setPendingBusy(true)
+    try {
+      await cancelSubscriptionPayment(pending.paymentId)
+      setPending(null)
+      setStep(0)
+      setMessage(t('Payment cancelled. You can choose a plan and pay again.'))
+      await load()
+    } catch (e) {
+      setMessage('❌ ' + apiError(e, t('Could not cancel the payment.')))
+    } finally {
+      setPendingBusy(false)
+    }
   }
 
   const handleSelectPlan = async () => {
@@ -392,7 +451,7 @@ export default function Subscription() {
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="sub-method-name">{t(m.label)}</span>
-                      <span className="sub-method-hint">{t(m.hint)}{code ? ` · ${t('Pay code')} ${code}` : ''}</span>
+                      <span className="sub-method-hint">{methodHint(m)}{code && paymentOptions?.[m.id]?.mode !== 'manual' ? ` · ${t('Pay code')} ${code}` : ''}</span>
                     </span>
                     <span className="sub-radio" aria-hidden="true" />
                   </label>
@@ -405,8 +464,16 @@ export default function Subscription() {
                 {t('Bank account')}: <strong>{paymentOptions?.bank_transfer?.account}</strong>. {t('After you continue you get a payment reference to put on the transfer.')}
               </p>
             ) : (
+            <>
+            {isManualMobile && (
+              <p className="sub-muted" style={{ marginTop: 12 }}>
+                {t('You will send')} <strong>{formatCurr(amountFor())}</strong> {t('to')}{' '}
+                <strong>{[selectedOption.number && formatPhone(selectedOption.number), selectedOption.name].filter(Boolean).join(' · ') || `${t('pay code')} ${selectedOption.code}`}</strong>.
+                {' '}{t('After you continue you get a reference; your subscription activates when the platform confirms the money arrived.')}
+              </p>
+            )}
             <label className="sub-field">
-              <span>{t('Mobile-money phone number')}</span>
+              <span>{isManualMobile ? t('Your mobile-money number (the one you pay from)') : t('Mobile-money phone number')}</span>
               <input
                 type="tel"
                 inputMode="tel"
@@ -416,6 +483,7 @@ export default function Subscription() {
                 placeholder={t('+250700000000')}
               />
             </label>
+            </>
             )}
           </section>
 
@@ -444,15 +512,18 @@ export default function Subscription() {
               <h2 className="sub-card-title m-0">
                 {pending.status === 'failed'
                   ? t('Payment not confirmed')
-                  : pending.status === 'completed' ? t('Payment confirmed') : t('Waiting for your approval')}
+                  : pending.status === 'completed' ? t('Payment confirmed')
+                    : pending.collection === 'manual' ? t('Send the money, then wait for confirmation') : t('Waiting for your approval')}
               </h2>
               <p className="sub-muted">
                 {pending.status === 'failed'
-                  ? t('The provider did not confirm this payment. No subscription was activated.')
+                  ? (pending.reason ? `${t('Rejected by the platform administrator')}: ${pending.reason}` : t('The provider did not confirm this payment. No subscription was activated.'))
                   : pending.status === 'completed'
                     ? t('Payment confirmed. Your subscription is active.')
                     : pending.paymentMethod === 'bank_transfer'
-                      ? `${t('Transfer')} ${formatCurr(pending.amount)} ${t('to')} ${pending.bankAccount || paymentOptions?.bank_transfer?.account || ''} ${t('with reference')} ${pending.reference}. ${t('Your subscription activates when the platform administrator confirms the transfer.')}`
+                      ? `${t('Transfer')} ${formatCurr(pending.amount)} ${t('to')} ${pending.bankAccount || pending.payTo || paymentOptions?.bank_transfer?.account || ''} ${t('with reference')} ${pending.reference}. ${t('Your subscription activates when the platform administrator confirms the transfer.')}`
+                      : pending.collection === 'manual'
+                        ? `${t('Send')} ${formatCurr(pending.amount)} ${t('to')} ${pending.payTo || ''}. ${t('Write the reference')} ${pending.reference} ${t('in the message if you can. Your subscription activates when the platform administrator confirms the money arrived.')}`
                       : `${t('Approve the payment prompt on')} ${pending.phoneNumber}. ${t('This page checks the status automatically.')}`}
               </p>
             </div>
@@ -464,15 +535,35 @@ export default function Subscription() {
               ['Amount', formatCurr(pending.amount)],
               ['Provider', PAYMENT_METHODS.find((m) => m.id === pending.paymentMethod)?.label || pending.paymentMethod],
               ...(pending.paymentMethod === 'bank_transfer'
-                ? [['Bank account', pending.bankAccount || paymentOptions?.bank_transfer?.account || '—']]
-                : [['Phone', pending.phoneNumber || '—']]),
+                ? [['Bank account', pending.bankAccount || pending.payTo || paymentOptions?.bank_transfer?.account || '—']]
+                : pending.collection === 'manual'
+                  ? [['Send to', pending.payTo || '—'], ['Your number', pending.phoneNumber || '—']]
+                  : [['Phone', pending.phoneNumber || '—']]),
+              ...(pending.payerReference ? [['Your transaction ID', pending.payerReference]] : []),
               ['Reference', pending.reference || '—'],
             ].map(([k, v]) => (
               <div key={k}><dt>{t(k)}</dt><dd>{v}</dd></div>
             ))}
           </dl>
 
+          {pending.status === 'pending' && pending.collection === 'manual' && (
+            <div className="sub-field" style={{ marginTop: 12 }}>
+              <span>{pending.payerReference ? t('Change the transaction ID') : t('Transaction ID from your confirmation message (helps the platform find your payment)')}</span>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <input value={payerReference} onChange={(e) => setPayerReference(e.target.value)} placeholder={t('e.g. 1234567890')} style={{ flex: 1, minWidth: 180 }} />
+                <button type="button" className="sub-btn-secondary" onClick={sendPayerReference} disabled={pendingBusy || payerReference.trim().length < 4}>
+                  {t('Send')}
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="sub-actions">
+            {pending.status === 'pending' && pending.collection === 'manual' && (
+              <button type="button" className="sub-btn-secondary" onClick={cancelPendingPayment} disabled={pendingBusy}>
+                {t('Cancel this payment')}
+              </button>
+            )}
             {pending.status !== 'pending' && (
               <button type="button" className="sub-btn-secondary" onClick={() => { setPending(null); setStep(0); setMessage('') }}>
                 {t('Choose another plan')}

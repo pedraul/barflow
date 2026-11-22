@@ -4,6 +4,7 @@ import { Globe, Info, CreditCard, Wallet, Mail, Bell, ShieldCheck, Database, Cli
 import { fetchPlatformSettings, updatePlatformSettings, sendPlatformTestEmail, runPlatformDailyJobs } from '../../api/endpoints'
 import { useToast } from '../../context/ToastContext'
 import { usePreferences } from '../../context/PreferencesContext'
+import { refreshPlatformInfo } from '../../hooks/usePlatformInfo'
 
 const SETTINGS_GROUPS = [
   {
@@ -58,6 +59,7 @@ export default function Settings() {
   const [settings, setSettings] = useState({})
   const [saved, setSaved] = useState({})
   const [yourIp, setYourIp] = useState('')
+  const [providers, setProviders] = useState({})
   const [activeTab, setActiveTab] = useState(getTabFromHash)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -82,6 +84,7 @@ export default function Settings() {
       setSettings(data.flat || {})
       setSaved(data.flat || {})
       setYourIp(data.yourIp || '')
+      setProviders(data.providers || {})
     } catch (e) {
       setError(apiError(e, t('Could not load settings.')))
     } finally {
@@ -107,6 +110,7 @@ export default function Settings() {
     setError('')
     try {
       await updatePlatformSettings(changes)
+      refreshPlatformInfo()
       showSuccess(t('Changes saved. They apply across the platform within a few seconds.'))
       await load()
     } catch (e) {
@@ -194,10 +198,9 @@ export default function Settings() {
 
         <div className="flex-1 bg-white border border-slate-200 rounded-xl p-4 md:p-6 shadow-sm min-w-0">
           {activeTab === 'general' && (
-            <TabBody title="General Settings" desc="Platform name, default language, timezone and currency.">
-              <Field label="Platform Name" v="platform_name" hint="Shown on the sign-in page and as the email sender name." {...props} />
-              <Select label="Default language" v="platform_language" hint="Used for visitors who have not chosen a language." options={[['en', 'English'], ['fr', 'French'], ['rw', 'Kinyarwanda'], ['sw', 'Swahili']]} {...props} />
-              <Field label="Timezone" v="platform_timezone" hint="IANA name, for example Africa/Kigali." {...props} />
+            <TabBody title="General Settings" desc="Platform name, default language and currency.">
+              <Field label="Platform Name" v="platform_name" hint="Shown on the sign-in page, in the admin sidebar and as the email sender name." {...props} />
+              <Select label="Default language" v="platform_language" hint="Used for visitors who have not chosen a language themselves." options={[['en', 'English'], ['fr', 'French'], ['rw', 'Kinyarwanda']]} {...props} />
               <Select label="Default currency" v="platform_currency" hint="Currency for newly registered businesses." options={[['RWF', 'RWF'], ['USD', 'USD'], ['EUR', 'EUR'], ['KES', 'KES'], ['UGX', 'UGX'], ['TZS', 'TZS']]} {...props} />
             </TabBody>
           )}
@@ -210,8 +213,8 @@ export default function Settings() {
           {activeTab === 'platform_info' && (
             <TabBody title="Platform Information" desc="Details shown to businesses and used in emails.">
               <Field label="App address" v="platform_app_url" hint="Public address of the web app (e.g. https://app.barflow.rw). Used in password-reset links and payment QR codes." {...props} />
-              <Field label="Logo (URL or emoji)" v="platform_logo" {...props} />
-              <Field label="Website" v="platform_website" {...props} />
+              <Field label="Logo (URL or emoji)" v="platform_logo" hint="Shown on the sign-in page, and in the middle of QR codes when that is turned on." {...props} />
+              <Field label="Website" v="platform_website" hint="Linked at the bottom of the sign-in page." {...props} />
               <Field label="Contact Email" v="platform_contact_email" hint="Receives admin notifications (new businesses, payments)." {...props} />
               <Field label="Contact Phone" v="platform_contact_phone" {...props} />
               <TextArea label="Description" v="platform_description" span {...props} />
@@ -227,13 +230,17 @@ export default function Settings() {
             </TabBody>
           )}
           {activeTab === 'payment' && (
-            <TabBody title="Payment Settings" desc="How businesses can pay for their subscription.">
-              <Toggle label="Enable MTN MoMo" v="payment_momo_enabled" {...props} />
-              <Field label="MoMo pay code" v="payment_momo_code" hint="Shown to owners next to the MTN option." {...props} />
-              <Toggle label="Enable Airtel Money" v="payment_airtel_enabled" {...props} />
-              <Field label="Airtel pay code" v="payment_airtel_code" hint="Shown to owners next to the Airtel option." {...props} />
-              <Toggle label="Enable bank transfer" v="payment_bank_enabled" hint="Owners get a reference; you confirm the transfer in Payments." {...props} />
-              <Field label="Bank account" v="payment_bank_account" hint="Bank name, account number and holder. Required for bank transfer." {...props} />
+            <TabBody title="Payment Settings" desc="Where the money businesses pay for their subscription is received. You can change it at any time; new payments use the new details immediately.">
+              <div className="sm:col-span-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                {t('Only a super admin can change these details. Every change of a receiving number or account is recorded in the Activity Log. Payments already started keep the number they were sent to.')}
+              </div>
+              <PaymentProvider title="MTN MoMo" prefix="payment_momo" api={providers.mtn_momo?.apiConfigured} codeLabel="MoMo Pay merchant code (optional)" {...props} />
+              <PaymentProvider title="Airtel Money" prefix="payment_airtel" api={providers.airtel_money?.apiConfigured} codeLabel="Airtel merchant code (optional)" {...props} />
+              <fieldset className="sm:col-span-2 rounded-xl border border-slate-200 p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+                <legend className="px-1 text-sm font-bold text-slate-800">{t('Bank transfer')}</legend>
+                <Toggle label="Enable bank transfer" v="payment_bank_enabled" hint="Owners get a reference; you confirm the transfer in Payments." {...props} />
+                <Field label="Receiving bank account" v="payment_bank_account" hint="Bank name, account number and holder. Required for bank transfer." {...props} />
+              </fieldset>
             </TabBody>
           )}
           {activeTab === 'email' && (
@@ -295,15 +302,51 @@ export default function Settings() {
             </TabBody>
           )}
           {activeTab === 'qr' && (
-            <TabBody title="QR Code Settings" desc="Defaults for the table and payment QR codes businesses print.">
-              <Field label="Default size (px)" v="qr_default_size" type="number" {...props} />
-              <Toggle label="Show the platform logo in the middle" v="qr_include_logo" hint="Use high error correction with a logo so codes stay readable." {...props} />
-              <Select label="Error correction" v="qr_error_correction" options={[['L', 'Low (L)'], ['M', 'Medium (M)'], ['Q', 'Quartile (Q)'], ['H', 'High (H)']]} {...props} />
+            <TabBody title="QR Code Settings" desc="Applies to every table, menu and payment QR code businesses show or print.">
+              <Select label="Error correction" v="qr_error_correction" hint="Higher levels still scan when a code is scratched or dirty, but have denser dots." options={[['L', 'Low (L)'], ['M', 'Medium (M)'], ['Q', 'Quartile (Q)'], ['H', 'High (H)']]} {...props} />
+              <Toggle label="Show the platform logo in the middle" v="qr_include_logo" hint="Uses the logo from Platform Info. Error correction is raised to High automatically so codes stay readable." {...props} />
             </TabBody>
           )}
         </div>
       </div>
     </div>
+  )
+}
+
+// One mobile-money provider: on/off, how money is collected, and the receiving number.
+function PaymentProvider({ title, prefix, api, codeLabel, settings, set }) {
+  const { t } = usePreferences()
+  const props = { settings, set }
+  const mode = settings[`${prefix}_mode`] || (api ? 'api' : 'manual')
+  const enabled = String(settings[`${prefix}_enabled`] ?? 'true') !== 'false'
+  return (
+    <fieldset className="sm:col-span-2 rounded-xl border border-slate-200 p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+      <legend className="px-1 text-sm font-bold text-slate-800">{title}</legend>
+      <Toggle label={`Enable ${title}`} v={`${prefix}_enabled`} defaultOn {...props} />
+      <div className="space-y-1.5">
+        <label className="block text-sm font-semibold text-slate-700" htmlFor={`ps-${prefix}_mode`}>{t('How the money is collected')}</label>
+        <select id={`ps-${prefix}_mode`} value={mode} onChange={(e) => set(`${prefix}_mode`, e.target.value)} disabled={!enabled}
+          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none disabled:opacity-60">
+          <option value="manual">{t('Send to our number (you confirm each payment)')}</option>
+          <option value="api" disabled={!api}>{t('Automatic request to pay (API)')}{api ? '' : ` — ${t('API keys not set on the server')}`}</option>
+        </select>
+        <p className="text-xs text-slate-500">
+          {mode === 'api'
+            ? t('Owners approve a prompt on their phone. The money goes to the merchant account that owns the API keys on the server, and the subscription activates automatically.')
+            : t('Owners send the money to the number below, then you confirm it in Payments. The subscription activates when you confirm.')}
+        </p>
+      </div>
+      {mode === 'manual' && (
+        <>
+          <Field label="Receiving number" v={`${prefix}_number`} type="tel" hint="The number that receives subscription money, for example 0788123456." {...props} />
+          <Field label="Name on the account" v={`${prefix}_name`} hint="Owners check this name before they send money." {...props} />
+          <Field label={codeLabel} v={`${prefix}_code`} hint="If you have one, owners can pay with the code instead of the number." {...props} />
+        </>
+      )}
+      {mode === 'manual' && enabled && !String(settings[`${prefix}_number`] || '').trim() && !String(settings[`${prefix}_code`] || '').trim() && (
+        <p className="sm:col-span-2 text-xs font-semibold text-amber-700">{t('Owners cannot use this method until you enter a receiving number or pay code.')}</p>
+      )}
+    </fieldset>
   )
 }
 
@@ -364,9 +407,10 @@ function Select({ label, v, settings, set, options, hint }) {
   )
 }
 
-function Toggle({ label, v, settings, set, hint }) {
+function Toggle({ label, v, settings, set, hint, defaultOn = false }) {
   const { t } = usePreferences()
-  const on = String(settings[v]) === 'true'
+  const raw = settings[v]
+  const on = raw === undefined || raw === null || raw === "" ? defaultOn : String(raw) === "true"
   return (
     <div className="space-y-1.5">
       <span className="block text-sm font-semibold text-slate-700">{t(label)}</span>

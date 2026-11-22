@@ -865,6 +865,12 @@ export async function sendPlatformTestEmail(to) {
   return data
 }
 
+// The money never arrived: close a pending subscription payment (the owner sees the reason).
+export async function rejectPlatformPayment(id, reason) {
+  const { data } = await api.post(`/platform/payments/${id}/reject`, { reason })
+  return data
+}
+
 // The signed-in platform admin with fresh role + permissions.
 export async function fetchPlatformMe() {
   const { data } = await api.get('/platform/me')

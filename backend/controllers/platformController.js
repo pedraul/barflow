@@ -1,6 +1,6 @@
 import { query, pool as dbPool } from '../config/database.js'
 import { sign, verify as verifyToken } from '../config/jwt.js'
-import { parsePlanInput, planForClient, planPrices } from '../services/subscriptionPricing.js'
+import { ensurePlanPriceColumns, parsePlanInput, planForClient, planPrices } from '../services/subscriptionPricing.js'
 import bcrypt from 'bcryptjs'
 import { deleteBusinessCompletely, ensureBusinessStatusSchema } from '../services/businessStatus.js'
 import { clearFailedLogins, lockedMinutes, lockedResponse, recordFailedLogin, wrongPasswordMessage } from '../services/loginSecurity.js'
@@ -17,8 +17,11 @@ import {
   sendAdminSubscriptionActivation,
   sendAccountSuspended,
   sendAccountReactivated,
+  sendPlanPriceChange,
 } from '../services/emailNotificationService.js'
 import { forgetSubscriptionAccess } from '../services/subscriptionAccess.js'
+import { displayPhone, ensurePaymentCollectionSchema, shortReference } from '../services/subscriptionCollection.js'
+import { isMobileMoneyApiConfigured, normalizeRwandaPhone } from '../services/mobileMoneyProviders.js'
 
 // Record a platform-level activity entry (not tied to a business).
 export async function logPlatformActivity({ req, actorName, actorId, action, module = 'Platform', category = 'activity' }) {
@@ -500,10 +503,48 @@ function planColumnsSql(values) {
   return { columns, params }
 }
 
+// Keeps the stored annual price (reports) and discount columns in line with the cycle prices.
+function storeDerivedPlanColumns(values, merged) {
+  const prices = planPrices(merged)
+  values.price_yearly = prices.priceAnnually
+  values.discount_quarterly = prices.discountQuarterly
+  values.discount_annually = prices.discountAnnually
+}
+
+// Emails the owner of every business currently subscribed to the plan. Returns how many were emailed.
+async function notifyPlanSubscribers(plan, prices) {
+  const { rows } = await query(
+    `SELECT DISTINCT ON (b.id) b.id, b.name, b.contact_email, s.billing_cycle, s.current_period_end,
+            u.full_name AS owner_name, u.email AS owner_email
+     FROM subscriptions s
+     JOIN businesses b ON b.id = s.business_id
+     LEFT JOIN users u ON u.business_id = b.id AND u.role = 'owner' AND u.is_active = TRUE
+     WHERE s.plan_id = $1 AND s.is_active AND s.payment_status = 'verified' AND s.current_period_end > NOW()
+     ORDER BY b.id, s.current_period_end DESC`,
+    [plan.id]
+  )
+  const recipients = rows.filter((b) => b.owner_email || b.contact_email)
+  for (const b of recipients) {
+    // Sent in the background: the admin does not wait for the mail server.
+    sendPlanPriceChange({
+      businessName: b.name,
+      ownerName: b.owner_name,
+      ownerEmail: b.owner_email || b.contact_email,
+      planName: plan.name,
+      billingCycle: b.billing_cycle === 'yearly' ? 'annually' : b.billing_cycle,
+      prices,
+      renewalDate: b.current_period_end,
+      businessId: b.id,
+    }).catch((error) => console.error('plan price email failed:', error.message))
+  }
+  return recipients.length
+}
+
 export async function createPlan(req, res) {
   const { errors, values } = parsePlanInput(req.body)
   if (errors.length) return res.status(400).json({ error: errors.join(' ') })
   try {
+    await ensurePlanPriceColumns()
     const { rows: existing } = await query('SELECT id FROM subscription_plans WHERE LOWER(name) = $1', [values.name.toLowerCase()])
     if (existing.length) return res.status(409).json({ error: `A plan named "${values.name}" already exists. Edit it instead.` })
     if (values.features === undefined) values.features = '[]'
@@ -512,7 +553,7 @@ export async function createPlan(req, res) {
       const { rows: max } = await query('SELECT COALESCE(MAX(sort_order), 0) + 1 AS next FROM subscription_plans')
       values.sort_order = Number(max[0].next) || 1
     }
-    values.price_yearly = planPrices(values).priceAnnually
+    storeDerivedPlanColumns(values, values)
     const { columns, params } = planColumnsSql(values)
     const { rows } = await query(
       `INSERT INTO subscription_plans (${columns.map((c) => c.column).join(', ')})
@@ -531,13 +572,14 @@ export async function updatePlan(req, res) {
   const { errors, values } = parsePlanInput(req.body, { partial: true })
   if (errors.length) return res.status(400).json({ error: errors.join(' ') })
   try {
+    await ensurePlanPriceColumns()
     const { rows: current } = await query('SELECT * FROM subscription_plans WHERE id = $1', [id])
     if (!current.length) return res.status(404).json({ error: 'Plan not found.' })
     if (values.name) {
       const { rows: clash } = await query('SELECT id FROM subscription_plans WHERE LOWER(name) = $1 AND id <> $2', [values.name.toLowerCase(), id])
       if (clash.length) return res.status(409).json({ error: `Another plan is already named "${values.name}".` })
     }
-    if (values.__recomputeYearly) values.price_yearly = planPrices({ ...current[0], ...values }).priceAnnually
+    if (values.__recomputeYearly) storeDerivedPlanColumns(values, { ...current[0], ...values })
     const { columns, params } = planColumnsSql(values)
     if (!columns.length) return res.status(400).json({ error: 'Nothing to update.' })
     params.push(id)
@@ -546,9 +588,18 @@ export async function updatePlan(req, res) {
        WHERE id = $${params.length} RETURNING *`,
       params
     )
-    // Running subscriptions keep the price they paid; new purchases and renewals use the new price.
-    await logPlatformActivity({ req, actorName: req.user?.name, action: `Updated subscription plan: ${rows[0].name}`, module: 'Plans' })
-    res.json(planForClient(rows[0]))
+    // Prices are read live by registration, the owner's subscription page, renewal and the charge,
+    // so every business sees the new prices at once. A period that is already paid keeps its
+    // price; the next renewal is charged at the new price.
+    const before = planPrices(current[0])
+    const after = planPrices(rows[0])
+    const priceChanged = ['priceMonthly', 'priceQuarterly', 'priceAnnually'].some((k) => before[k] !== after[k])
+    const notified = priceChanged && values.__notifyBusinesses ? await notifyPlanSubscribers(rows[0], after) : 0
+    const change = priceChanged
+      ? ` (prices ${before.priceMonthly}/${before.priceQuarterly}/${before.priceAnnually} -> ${after.priceMonthly}/${after.priceQuarterly}/${after.priceAnnually}${notified ? `, ${notified} business(es) emailed` : ''})`
+      : ''
+    await logPlatformActivity({ req, actorName: req.user?.name, actorId: req.user?.id, action: `Updated subscription plan: ${rows[0].name}${change}`, module: 'Plans' })
+    res.json({ ...planForClient(rows[0]), priceChanged, notifiedBusinesses: notified })
   } catch (error) {
     if (/invalid input syntax for type uuid/i.test(error.message)) return res.status(404).json({ error: 'Plan not found.' })
     res.status(500).json({ error: error.message })
@@ -598,7 +649,7 @@ export async function listEmailNotifications(req, res) {
 export async function platformStats(req, res) {
   try {
     await ensureBusinessStatusSchema().catch(() => {})
-    const [businesses, users, subscriptions, plans, revenue, expiring, admins, chart] = await Promise.all([
+    const [businesses, users, subscriptions, plans, revenue, expiring, admins, awaiting, chart] = await Promise.all([
       query(`SELECT COUNT(*)::int AS total,
                COUNT(*) FILTER (WHERE is_verified)::int AS verified,
                COUNT(*) FILTER (WHERE is_suspended)::int AS suspended,
@@ -620,6 +671,8 @@ export async function platformStats(req, res) {
       query(`SELECT COUNT(*)::int AS soon FROM subscriptions
               WHERE is_active AND current_period_end BETWEEN NOW() AND NOW() + INTERVAL '7 days'`),
       query('SELECT COUNT(*)::int AS total FROM platform_admins WHERE is_active = TRUE'),
+      query(`SELECT COUNT(*)::int AS n FROM platform_payments WHERE status = 'pending'
+             AND provider_status IN ('AWAITING_BANK_TRANSFER', 'AWAITING_MANUAL_CONFIRMATION')`),
       query(`SELECT
                to_char(gs, 'Mon') AS month,
                COALESCE(SUM(CASE WHEN COALESCE(s.billing_cycle, p.billing_cycle) IN ('quarterly', 'annually', 'yearly') THEN 0
@@ -645,6 +698,7 @@ export async function platformStats(req, res) {
       monthlyRevenue: Number(revenue.rows[0].monthly) || 0,
       activePlans: plans.rows[0].total,
       totalAdmins: admins.rows[0].total,
+      paymentsAwaitingConfirmation: awaiting.rows[0].n,
       revenueTotal6m: chart.rows.reduce((sum, r) => sum + Number(r.monthly) + Number(r.quarterly) + Number(r.annual), 0),
       chartData: chart.rows.map((r) => ({
         month: r.month,
@@ -810,6 +864,7 @@ export async function updateSubscriptionAdmin(req, res) {
 
 export async function listPayments(req, res) {
   try {
+    await ensurePaymentCollectionSchema()
     const { rows } = await query(
       `SELECT p.*, b.name AS business_name
        FROM platform_payments p
@@ -825,8 +880,15 @@ export async function listPayments(req, res) {
       amount: Number(p.amount) || 0,
       method: p.payment_method,
       transactionId: p.transaction_id,
+      reference: shortReference(p.transaction_id),
       status: p.status,
-      date: p.paid_at || p.created_at,
+      providerStatus: p.provider_status,
+      payTo: p.pay_to || '',
+      payerPhone: p.payer_phone ? displayPhone(p.payer_phone) : '',
+      payerReference: p.payer_reference || '',
+      reviewNote: p.review_note || '',
+      awaitingConfirmation: p.status === 'pending' && ['AWAITING_BANK_TRANSFER', 'AWAITING_MANUAL_CONFIRMATION'].includes(p.provider_status),
+      date: p.status === 'pending' ? p.created_at : (p.paid_at || p.created_at),
     })))
   } catch (error) {
     res.status(500).json({ error: error.message })
@@ -903,6 +965,31 @@ export async function confirmPayment(req, res) {
   }
 }
 
+// POST /platform/payments/:id/reject  { reason } — the money never arrived (or the wrong amount):
+// the pending payment is closed so the business can start a new one.
+export async function rejectPayment(req, res) {
+  const { id } = req.params
+  const reason = String(req.body?.reason || '').trim().slice(0, 300)
+  if (reason.length < 3) return res.status(400).json({ error: 'Give a reason. The business owner will see it.' })
+  try {
+    await ensurePaymentCollectionSchema()
+    const { rows } = await query(
+      `UPDATE platform_payments SET status = 'failed', provider_status = 'REJECTED_BY_ADMIN', review_note = $2
+       WHERE id = $1 AND status = 'pending' RETURNING id, subscription_id, business_id, transaction_id, amount`,
+      [id, reason]
+    )
+    if (!rows.length) return res.status(409).json({ error: 'Only pending payments can be rejected.' })
+    if (rows[0].subscription_id) {
+      await query(`UPDATE subscriptions SET status = 'payment_failed', payment_status = 'failed' WHERE id = $1 AND payment_status = 'pending'`, [rows[0].subscription_id])
+    }
+    await logPlatformActivity({ req, actorName: req.user?.name, actorId: req.user?.id, action: `Rejected payment ${shortReference(rows[0].transaction_id)} (${rows[0].amount}): ${reason}`, module: 'Payments' })
+    res.json({ success: true })
+  } catch (error) {
+    if (/invalid input syntax for type uuid/i.test(error.message)) return res.status(404).json({ error: 'Payment not found.' })
+    res.status(500).json({ error: error.message })
+  }
+}
+
 export async function settlePayment(req, res) {
   const { id } = req.params
   try {
@@ -910,6 +997,8 @@ export async function settlePayment(req, res) {
     if (!pay.length) return res.status(404).json({ error: 'Payment not found.' })
     const p = pay[0]
     if (p.status === 'settled') return res.status(400).json({ error: 'Payment is already settled.' })
+    if (p.status !== 'paid') return res.status(400).json({ error: 'Only paid payments can be settled.' })
+    await ensurePaymentCollectionSchema()
     await query('UPDATE platform_payments SET status = \'settled\', paid_at = COALESCE(paid_at, NOW()) WHERE id = $1 RETURNING id', [id])
     await logPlatformActivity({ req, actorName: req.user?.name, action: `Settled payment ${p.transaction_id || id}`, module: 'Payments' })
     res.json({ success: true })
@@ -1233,8 +1322,7 @@ export async function reportsOverview(req, res) {
 // Anything not listed here (old SMS / API / global price keys) is ignored.
 const SETTING_RULES = {
   platform_name: { group: 'general', type: 'text', max: 60 },
-  platform_language: { group: 'general', type: 'enum', values: ['en', 'fr', 'rw', 'sw'] },
-  platform_timezone: { group: 'general', type: 'timezone' },
+  platform_language: { group: 'general', type: 'enum', values: ['en', 'fr', 'rw'] },
   platform_currency: { group: 'general', type: 'enum', values: ['RWF', 'USD', 'EUR', 'KES', 'UGX', 'TZS'] },
   maintenance_mode: { group: 'maintenance', type: 'bool' },
   maintenance_message: { group: 'maintenance', type: 'text', max: 300 },
@@ -1266,12 +1354,17 @@ const SETTING_RULES = {
   audit_log_login_events: { group: 'audit', type: 'bool' },
   audit_log_retention_days: { group: 'audit', type: 'int', min: 7, max: 3650 },
   payment_momo_enabled: { group: 'payment', type: 'bool' },
+  payment_momo_mode: { group: 'payment', type: 'enum', values: ['manual', 'api'] },
+  payment_momo_number: { group: 'payment', type: 'rwphone' },
+  payment_momo_name: { group: 'payment', type: 'text', max: 80 },
   payment_momo_code: { group: 'payment', type: 'text', max: 40 },
   payment_airtel_enabled: { group: 'payment', type: 'bool' },
+  payment_airtel_mode: { group: 'payment', type: 'enum', values: ['manual', 'api'] },
+  payment_airtel_number: { group: 'payment', type: 'rwphone' },
+  payment_airtel_name: { group: 'payment', type: 'text', max: 80 },
   payment_airtel_code: { group: 'payment', type: 'text', max: 40 },
   payment_bank_enabled: { group: 'payment', type: 'bool' },
   payment_bank_account: { group: 'payment', type: 'text', max: 200 },
-  qr_default_size: { group: 'qr', type: 'int', min: 96, max: 1024 },
   qr_error_correction: { group: 'qr', type: 'enum', values: ['L', 'M', 'Q', 'H'] },
   qr_include_logo: { group: 'qr', type: 'bool' },
   subscription_renewal_reminder_days: { group: 'subscription', type: 'int', min: 1, max: 60 },
@@ -1297,8 +1390,6 @@ function cleanSetting(key, raw) {
     case 'email':
       if (text && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text)) return { error: `${label} must be a valid email address.` }
       return { value: text }
-    case 'timezone':
-      try { new Intl.DateTimeFormat('en', { timeZone: text }); return { value: text } } catch { return { error: 'Timezone must be a valid IANA name, for example Africa/Kigali.' } }
     case 'iplist': {
       const list = text.split(/[\s,]+/).map((ip) => ip.trim()).filter(Boolean)
       const bad = list.find((ip) => !/^[0-9a-fA-F:.*]+$/.test(ip))
@@ -1308,6 +1399,9 @@ function cleanSetting(key, raw) {
     case 'url':
       if (text && !/^https?:\/\/[^\s/]+(\/[^\s]*)?$/i.test(text)) return { error: 'App address must start with http:// or https://, for example https://app.example.com.' }
       return { value: text.replace(/\/+$/, '') }
+    case 'rwphone':
+      if (!text) return { value: '' }
+      try { return { value: normalizeRwandaPhone(text) } } catch { return { error: `${label} must be a Rwanda mobile number, for example 0788123456.` } }
     case 'secret': return { value: String(raw ?? '') }
     default: return { value: text.slice(0, rule.max || 500) }
   }
@@ -1327,7 +1421,15 @@ export async function getSettings(req, res) {
       grouped[r.setting_group][r.setting_key] = value
       flat[r.setting_key] = value
     })
-    res.json({ grouped, flat, yourIp: requestIp(req) })
+    res.json({
+      grouped,
+      flat,
+      yourIp: requestIp(req),
+      providers: {
+        mtn_momo: { apiConfigured: isMobileMoneyApiConfigured('mtn_momo') },
+        airtel_money: { apiConfigured: isMobileMoneyApiConfigured('airtel_money') },
+      },
+    })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
@@ -1352,6 +1454,36 @@ export async function updateSettings(req, res) {
     else clean[key] = value
   }
   if (errors.length) return res.status(400).json({ error: errors.join(' ') })
+
+  // Where subscription money goes: only a super admin may change it.
+  const paymentKeys = Object.keys(clean).filter((k) => SETTING_RULES[k].group === 'payment')
+  if (paymentKeys.length && req.user?.role !== 'super_admin') {
+    return res.status(403).json({ error: 'Only a super admin can change where subscription payments are received.' })
+  }
+  let paymentBefore = {}
+  if (paymentKeys.length) {
+    const { rows } = await query(`SELECT setting_key, setting_value FROM platform_settings WHERE setting_group = 'payment' OR setting_key LIKE 'payment\_%'`)
+    paymentBefore = Object.fromEntries(rows.map((r) => [r.setting_key, r.setting_value]))
+    const after = { ...paymentBefore, ...clean }
+    const on = (v, fallback) => (v === undefined || v === null || v === '' ? fallback : String(v) === 'true')
+    for (const [prefix, method, label] of [['payment_momo', 'mtn_momo', 'MTN MoMo'], ['payment_airtel', 'airtel_money', 'Airtel Money']]) {
+      // Only check the provider being changed; one that cannot receive money is simply not offered to owners.
+      if (!Object.keys(clean).some((k) => k.startsWith(`${prefix}_`))) continue
+      if (!on(after[`${prefix}_enabled`], true)) continue
+      const apiConfigured = isMobileMoneyApiConfigured(method)
+      const mode = after[`${prefix}_mode`] || (apiConfigured ? 'api' : 'manual')
+      if (mode === 'api' && !apiConfigured) {
+        errors.push(`Automatic ${label} needs the ${label} API keys on the server, and they are not set. Choose "Send to our number" instead, or turn ${label} off.`)
+      }
+      if (mode === 'manual' && !String(after[`${prefix}_number`] || '').trim() && !String(after[`${prefix}_code`] || '').trim()) {
+        errors.push(`Enter the ${label} number (or merchant pay code) that receives subscription payments, or turn ${label} off.`)
+      }
+    }
+    if (Object.keys(clean).some((k) => k.startsWith('payment_bank_')) && on(after.payment_bank_enabled, false) && !String(after.payment_bank_account || '').trim()) {
+      errors.push('Enter the bank account that receives transfers, or turn bank transfer off.')
+    }
+    if (errors.length) return res.status(400).json({ error: errors.join(' ') })
+  }
 
   // Never save an IP allow-list that would lock out the admin who is saving it.
   if (clean.security_ip_whitelist !== undefined) {
@@ -1395,6 +1527,13 @@ export async function updateSettings(req, res) {
     }
 
     invalidatePlatformSettings()
+    // A change of where money is received is recorded in full, as a security event.
+    const receiving = ['payment_momo_number', 'payment_momo_code', 'payment_momo_mode', 'payment_airtel_number', 'payment_airtel_code', 'payment_airtel_mode', 'payment_bank_account']
+      .filter((k) => clean[k] !== undefined && String(clean[k]) !== String(paymentBefore[k] ?? ''))
+    for (const k of receiving) {
+      const show = (v) => (k.endsWith('_number') ? displayPhone(v) : v) || '(empty)'
+      await logPlatformActivity({ req, actorName: req.user?.name, actorId: req.user?.id, action: `Changed subscription payment ${k.replace(/^payment_|_/g, ' ').trim()}: ${show(paymentBefore[k])} -> ${show(clean[k])}`, module: 'Settings', category: 'security' })
+    }
     const changed = Object.keys(clean).map((k) => (SECRET_KEYS.has(k) ? `${k} (changed)` : k)).join(', ')
     await logPlatformActivity({ req, actorName: req.user?.name, action: `Updated platform settings: ${changed || 'nothing'}`, module: 'Settings' })
     res.json({ success: true, saved: Object.keys(clean) })

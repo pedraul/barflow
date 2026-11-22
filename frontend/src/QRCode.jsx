@@ -3,9 +3,13 @@ import QRCodeSVG from "react-qr-code";
 import { useNavigate } from "react-router-dom";
 import "./QRCode.css";
 import { PUBLIC_APP_URL } from './config/publicAppUrl';
+import usePlatformInfo from './hooks/usePlatformInfo';
 
-export default function QRCode({ value, size = 200, fg = '#000000', bg = '#ffffff', level = 'M' }) {
+export default function QRCode({ value, size = 200, fg = '#000000', bg = '#ffffff', level }) {
   const navigate = useNavigate();
+  const platform = usePlatformInfo();
+  // Settings → QR Code (a centre logo needs the highest level to stay readable).
+  const ecLevel = platform?.qr?.includeLogo && platform?.logo ? 'H' : (level || platform?.qr?.errorCorrection || 'M');
 
   const qrValue = value
     ? value.startsWith('/') ? `${PUBLIC_APP_URL}${value}` : value
@@ -29,6 +33,7 @@ export default function QRCode({ value, size = 200, fg = '#000000', bg = '#fffff
           size={size}
           bgColor={bg}
           fgColor={fg}
+          level={ecLevel}
         />
       </button>
 

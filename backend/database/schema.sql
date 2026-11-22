@@ -598,7 +598,11 @@ CREATE TABLE public.platform_payments (
     provider_txn_id character varying(128),
     provider_status character varying(64),
     provider_payload jsonb,
-    CONSTRAINT platform_payments_status_check CHECK (((status)::text = ANY (ARRAY[('paid'::character varying)::text, ('pending'::character varying)::text, ('failed'::character varying)::text, ('refunded'::character varying)::text])))
+    pay_to text,
+    payer_phone text,
+    payer_reference text,
+    review_note text,
+    CONSTRAINT platform_payments_status_check CHECK (((status)::text = ANY (ARRAY[('paid'::character varying)::text, ('settled'::character varying)::text, ('pending'::character varying)::text, ('failed'::character varying)::text, ('refunded'::character varying)::text])))
 );
 
 
@@ -1045,7 +1049,9 @@ CREATE TABLE public.subscription_plans (
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
     discount_quarterly numeric(5,2) DEFAULT 8,
-    discount_annually numeric(5,2) DEFAULT 14
+    discount_annually numeric(5,2) DEFAULT 14,
+    price_quarterly numeric(14,2),
+    price_annually numeric(14,2)
 );
 
 

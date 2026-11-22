@@ -38,6 +38,19 @@ export default function OwnerPlanSummary() {
         <div><p className="text-xs text-slate-500">{t('Ends on')}</p><p className="font-semibold text-slate-900">{end ? new Date(end).toLocaleDateString() : '—'}</p></div>
       </div>
 
+      {(() => {
+        // The plan's current price for this business's cycle: what the next renewal will cost.
+        const plan = plans.find((p) => p.name === sub?.plan)
+        if (!plan || !sub?.billingCycle) return null
+        const cycle = sub.billingCycle === 'yearly' ? 'annually' : sub.billingCycle
+        const next = cycle === 'quarterly' ? plan.priceQuarterly : cycle === 'annually' ? plan.priceAnnually : plan.priceMonthly
+        return (
+          <p className="text-sm text-slate-600">
+            {t('Next renewal price')}: <strong className="text-slate-900">{money(next)}</strong> <span className="text-xs text-slate-500">({t(CYCLE[cycle] || 'Monthly')})</span>
+          </p>
+        )
+      })()}
+
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <div className="overflow-x-auto rounded-xl border border-slate-200">

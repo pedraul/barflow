@@ -1,4 +1,5 @@
 import { query, pool } from '../config/database.js'
+import { awaitsAdminConfirmation, displayPhone, ensurePaymentCollectionSchema, payToText, PROVIDER_LABEL, shortReference } from '../services/subscriptionCollection.js'
 import bcrypt from 'bcryptjs'
 import { checkCanManageUser } from '../utils/staffPermissions.js'
 import { sign } from '../config/jwt.js'
@@ -1607,6 +1608,7 @@ export async function exportAuditLogs(req, res) {
 export async function getSubscription(req, res) {
   try {
     const businessId = req.user?.businessId
+    await ensurePaymentCollectionSchema()
     const businessVerified = req.user?.businessVerified === true
     if (!businessId) {
       return res.json({
@@ -1632,11 +1634,13 @@ export async function getSubscription(req, res) {
              pending_payment.plan AS pending_payment_plan,
              pending_payment.amount_paid AS pending_payment_amount,
              pending_payment.payment_method AS pending_payment_method,
-             pending_payment.phone_number AS pending_payment_phone
+             pending_payment.phone_number AS pending_payment_phone,
+             pending_payment.pay_to AS pending_payment_pay_to,
+             pending_payment.payer_reference AS pending_payment_payer_reference
        FROM subscriptions s
        LEFT JOIN businesses b ON b.id = s.business_id
        LEFT JOIN LATERAL (
-         SELECT pp.id, pp.transaction_id, pp.provider_status,
+         SELECT pp.id, pp.transaction_id, pp.provider_status, pp.pay_to, pp.payer_reference,
                 ps.plan, ps.amount_paid, ps.payment_method, ps.phone_number
          FROM platform_payments pp
          JOIN subscriptions ps ON ps.id = pp.subscription_id
@@ -1701,6 +1705,9 @@ export async function getSubscription(req, res) {
       pendingPaymentAmount: sub.pending_payment_id ? Number(sub.pending_payment_amount) : null,
       pendingPaymentMethod: sub.pending_payment_id ? sub.pending_payment_method : null,
       pendingPaymentPhone: sub.pending_payment_id ? sub.pending_payment_phone : null,
+      pendingPaymentPayTo: sub.pending_payment_id ? sub.pending_payment_pay_to || null : null,
+      pendingPaymentPayerReference: sub.pending_payment_id ? sub.pending_payment_payer_reference || null : null,
+      pendingPaymentAwaitingConfirmation: Boolean(sub.pending_payment_id) && ['AWAITING_BANK_TRANSFER', 'AWAITING_MANUAL_CONFIRMATION'].includes(sub.pending_payment_provider_status),
       receiptNumber: sub.receipt_number || null,
       receiptGenerated: sub.receipt_generated === 1,
       amountPaid: Number(sub.amount_paid) || 0,
@@ -1729,7 +1736,10 @@ export async function selectSubscriptionPlan(req, res) {
     return res.status(400).json({ error: 'This payment method is not available right now. Choose another one.' })
   }
   const isBank = providerMethod === 'bank_transfer'
-  if (!isBank && !phoneNumber) return res.status(400).json({ error: 'Phone number is required.' })
+  const option = options[providerMethod]
+  // Manual: the owner sends the money to the platform's number / account and the admin confirms it.
+  const isManual = isBank || option.mode === 'manual'
+  if (!isBank && !phoneNumber) return res.status(400).json({ error: 'Enter the mobile-money number you pay from.' })
 
   try {
     const { rows: pendingRows } = await query(
@@ -1801,27 +1811,31 @@ export async function selectSubscriptionPlan(req, res) {
       [businessId, selectedPlan.id, selectedPlan.name, normalizedCycle, discountPercent, amount, providerMethod, phone, periodStart, periodEnd, monthsToAdd * 30]
     )
     const subscription = subscriptions[0]
+    await ensurePaymentCollectionSchema()
+    // pay_to records where this payment must go, as configured right now.
+    const payTo = payToText(providerMethod, option)
     const { rows: payments } = await query(
       `INSERT INTO platform_payments
-         (business_id, subscription_id, plan, billing_cycle, amount, payment_method, transaction_id, status, provider_status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', 'PENDING')
+         (business_id, subscription_id, plan, billing_cycle, amount, payment_method, transaction_id, status, provider_status, pay_to, payer_phone)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8, $9, $10)
        RETURNING id`,
-      [businessId, subscription.id, subscription.plan, normalizedCycle, amount, providerMethod, reference]
+      [businessId, subscription.id, subscription.plan, normalizedCycle, amount, providerMethod, reference,
+        isBank ? 'AWAITING_BANK_TRANSFER' : isManual ? 'AWAITING_MANUAL_CONFIRMATION' : 'PENDING', payTo, phone]
     )
     const paymentId = payments[0].id
 
-    if (isBank) {
-      await query(`UPDATE platform_payments SET provider_status = 'AWAITING_BANK_TRANSFER' WHERE id = $1 RETURNING id`, [paymentId])
+    if (isManual) {
+      const shortRef = shortReference(reference)
       await logAudit({
         userId: req.user.id,
         actorName: req.user.full_name || req.user.email,
-        action: `Requested bank transfer subscription payment for ${subscription.plan} (${amount} RWF)`,
+        action: `Started ${PROVIDER_LABEL[providerMethod]} subscription payment for ${subscription.plan} (${amount} RWF) to ${payTo}`,
         targetModule: 'Subscription',
         ipAddress: getClientIp(req),
         businessId,
         metadata: { subscriptionId: subscription.id, paymentId, reference },
       })
-      const shortRef = reference.slice(0, 8).toUpperCase()
+      const destination = isBank ? options.bank_transfer.account : payTo
       return res.status(201).json({
         id: subscription.id,
         paymentId,
@@ -1831,11 +1845,19 @@ export async function selectSubscriptionPlan(req, res) {
         discountPercent,
         amount,
         paymentMethod: providerMethod,
-        bankAccount: options.bank_transfer.account,
+        collection: 'manual',
+        payTo: destination,
+        payToNumber: isBank ? '' : displayPhone(option.number),
+        payToName: isBank ? '' : option.name,
+        payToCode: isBank ? '' : option.code,
+        bankAccount: isBank ? options.bank_transfer.account : undefined,
+        phoneNumber: phone,
         periodEnd: subscription.current_period_end,
         nextRenewalDate: subscription.next_renewal_date,
         status: 'pending',
-        message: `Transfer ${amount} RWF to ${options.bank_transfer.account} with reference ${shortRef}. Your subscription activates when the platform administrator confirms the transfer.`,
+        message: isBank
+          ? `Transfer ${amount} RWF to ${destination} with reference ${shortRef}. Your subscription activates when the platform administrator confirms the transfer.`
+          : `Send ${amount} RWF by ${PROVIDER_LABEL[providerMethod]} to ${destination} (reference ${shortRef}). Your subscription activates when the platform administrator confirms it.`,
       })
     }
 
@@ -2001,11 +2023,11 @@ export async function checkSubscriptionPayment(req, res) {
       })
     }
     if (payment.status !== 'pending') {
-      return res.json({ status: 'failed', providerStatus: payment.provider_status })
+      return res.json({ status: 'failed', providerStatus: payment.provider_status, reason: payment.review_note || null })
     }
-    // Bank transfers are confirmed by the platform administrator, not by a provider.
-    if (payment.payment_method === 'bank_transfer') {
-      return res.json({ status: 'pending', providerStatus: 'AWAITING_BANK_TRANSFER', message: 'Waiting for the platform administrator to confirm your bank transfer.' })
+    // Bank transfers and payments sent to the platform's number are confirmed by the administrator.
+    if (awaitsAdminConfirmation(payment)) {
+      return res.json({ status: 'pending', providerStatus: payment.provider_status, message: 'Waiting for the platform administrator to confirm your payment.' })
     }
 
     const result = await getMobileMoneyPaymentStatus({
@@ -2163,6 +2185,61 @@ export async function getAvailableSubscriptionPlans(_req, res) {
 }
 
 // GET /api/v1/owner/subscription/payment-options — methods the platform admin has enabled.
+// POST /api/v1/owner/subscription/payment/:paymentId/reference  { transactionId }
+// The owner gives the transaction ID from the MoMo / bank confirmation, so the admin can match it.
+export async function submitSubscriptionPaymentReference(req, res) {
+  const businessId = req.user?.businessId
+  const transactionId = String(req.body?.transactionId || '').trim().slice(0, 80)
+  if (transactionId.length < 4) return res.status(400).json({ error: 'Enter the transaction ID from the confirmation message.' })
+  try {
+    await ensurePaymentCollectionSchema()
+    const { rows } = await query(
+      `UPDATE platform_payments SET payer_reference = $3
+       WHERE id = $1 AND business_id = $2 AND status = 'pending'
+         AND provider_status IN ('AWAITING_BANK_TRANSFER', 'AWAITING_MANUAL_CONFIRMATION')
+       RETURNING id`,
+      [req.params.paymentId, businessId, transactionId]
+    )
+    if (!rows.length) return res.status(409).json({ error: 'This payment is not waiting for confirmation any more.' })
+    res.json({ success: true, payerReference: transactionId })
+  } catch (error) {
+    if (/invalid input syntax for type uuid/i.test(error.message)) return res.status(404).json({ error: 'Payment not found.' })
+    res.status(500).json({ error: error.message })
+  }
+}
+
+// POST /api/v1/owner/subscription/payment/:paymentId/cancel — the owner did not send the money
+// (or chose the wrong plan) and wants to start again.
+export async function cancelSubscriptionPayment(req, res) {
+  const businessId = req.user?.businessId
+  try {
+    const { rows } = await query(
+      `UPDATE platform_payments SET status = 'failed', provider_status = 'CANCELLED_BY_OWNER'
+       WHERE id = $1 AND business_id = $2 AND status = 'pending'
+         AND provider_status IN ('AWAITING_BANK_TRANSFER', 'AWAITING_MANUAL_CONFIRMATION')
+       RETURNING id, subscription_id`,
+      [req.params.paymentId, businessId]
+    )
+    if (!rows.length) return res.status(409).json({ error: 'Only a payment waiting for confirmation can be cancelled.' })
+    if (rows[0].subscription_id) {
+      await query(`UPDATE subscriptions SET status = 'cancelled', payment_status = 'failed' WHERE id = $1 AND payment_status = 'pending'`, [rows[0].subscription_id])
+    }
+    await logAudit({
+      userId: req.user.id,
+      actorName: req.user.full_name || req.user.email,
+      action: 'Cancelled a subscription payment waiting for confirmation',
+      targetModule: 'Subscription',
+      ipAddress: getClientIp(req),
+      businessId,
+      metadata: { paymentId: rows[0].id },
+    })
+    res.json({ success: true })
+  } catch (error) {
+    if (/invalid input syntax for type uuid/i.test(error.message)) return res.status(404).json({ error: 'Payment not found.' })
+    res.status(500).json({ error: error.message })
+  }
+}
+
 export async function getSubscriptionPaymentOptions(_req, res) {
   try {
     res.json(await subscriptionPaymentOptions())

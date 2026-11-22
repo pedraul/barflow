@@ -1,6 +1,7 @@
 // Platform-wide settings (super admin → Settings), read with a short cache so every
 // request can check them cheaply. Call invalidatePlatformSettings() after saving.
 import { query } from '../config/database.js'
+import { isMobileMoneyApiConfigured } from './mobileMoneyProviders.js'
 
 const TTL_MS = 15_000
 let cache = null
@@ -91,14 +92,37 @@ export function ipAllowed(ip, whitelist) {
   })
 }
 
-/** Payment methods owners can use for their subscription, from Settings → Payment. */
+/**
+ * Payment methods owners can use for their subscription, and where the money goes
+ * (Settings → Payment). A method is only offered when it can actually receive money:
+ *   manual mode - a receiving number or pay code is set;
+ *   api mode    - the provider's API keys are set on the server.
+ */
 export async function subscriptionPaymentOptions() {
   const s = await getPlatformSettings()
+  const mobile = (prefix, method) => {
+    const apiConfigured = isMobileMoneyApiConfigured(method)
+    // Not chosen yet: automatic when the server has API keys, otherwise "send to our number".
+    const mode = ['manual', 'api'].includes(s[`${prefix}_mode`]) ? s[`${prefix}_mode`] : (apiConfigured ? 'api' : 'manual')
+    const number = String(s[`${prefix}_number`] || '').trim()
+    const code = String(s[`${prefix}_code`] || '').trim()
+    const switchedOn = s[`${prefix}_enabled`] === undefined ? true : isOn(s[`${prefix}_enabled`])
+    const canReceive = mode === 'api' ? apiConfigured : Boolean(number || code)
+    return {
+      enabled: switchedOn && canReceive,
+      mode,
+      number,
+      name: String(s[`${prefix}_name`] || '').trim(),
+      code,
+      apiConfigured,
+    }
+  }
   return {
-    mtn_momo: { enabled: s.payment_momo_enabled === undefined ? true : isOn(s.payment_momo_enabled), code: s.payment_momo_code || '' },
-    airtel_money: { enabled: s.payment_airtel_enabled === undefined ? true : isOn(s.payment_airtel_enabled), code: s.payment_airtel_code || '' },
+    mtn_momo: mobile('payment_momo', 'mtn_momo'),
+    airtel_money: mobile('payment_airtel', 'airtel_money'),
     bank_transfer: {
       enabled: isOn(s.payment_bank_enabled) && String(s.payment_bank_account || '').trim() !== '',
+      mode: 'manual',
       account: s.payment_bank_account || '',
     },
   }
@@ -127,11 +151,9 @@ export async function publicPlatformInfo() {
     website: s.platform_website || '',
     contactEmail: s.platform_contact_email || '',
     contactPhone: s.platform_contact_phone || '',
-    language: s.platform_language || 'en',
+    language: ['en', 'fr', 'rw'].includes(s.platform_language) ? s.platform_language : 'en',
     currency: s.platform_currency || 'RWF',
-    timezone: s.platform_timezone || 'Africa/Kigali',
     qr: {
-      size: Math.min(1024, Math.max(96, Number(s.qr_default_size) || 256)),
       errorCorrection: ['L', 'M', 'Q', 'H'].includes(s.qr_error_correction) ? s.qr_error_correction : 'M',
       includeLogo: s.qr_include_logo === undefined ? false : isOn(s.qr_include_logo),
     },

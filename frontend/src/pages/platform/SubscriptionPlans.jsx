@@ -7,21 +7,18 @@ import BusinessSubscriptions from '../../components/BusinessSubscriptions'
 const money = (v) => `${Math.round(Number(v) || 0).toLocaleString()} RWF`
 const apiError = (e, fallback) => e?.response?.data?.error || e?.message || fallback
 
-// Same formula as the server (services/subscriptionPricing.js), for the live preview.
+// Saving compared with paying monthly, same rule as the server (services/subscriptionPricing.js).
+const saving = (price, monthly, months) =>
+  monthly > 0 && price > 0 ? Math.round((1 - price / (monthly * months)) * 1000) / 10 : 0
+
 function preview(form) {
   const monthly = Math.max(0, Math.round(Number(form.priceMonthly) || 0))
-  const dq = Math.min(90, Math.max(0, Number(form.discountQuarterly) || 0))
-  const da = Math.min(90, Math.max(0, Number(form.discountAnnually) || 0))
-  return {
-    monthly,
-    quarterly: Math.round(monthly * 3 * (1 - dq / 100)),
-    annually: Math.round(monthly * 12 * (1 - da / 100)),
-    dq,
-    da,
-  }
+  const quarterly = Math.max(0, Math.round(Number(form.priceQuarterly) || 0))
+  const annually = Math.max(0, Math.round(Number(form.priceAnnually) || 0))
+  return { monthly, quarterly, annually, dq: saving(quarterly, monthly, 3), da: saving(annually, monthly, 12) }
 }
 
-const EMPTY = { name: '', description: '', priceMonthly: '', discountQuarterly: '0', discountAnnually: '0', features: '', isActive: true, sortOrder: '' }
+const EMPTY = { name: '', description: '', priceMonthly: '', priceQuarterly: '', priceAnnually: '', features: '', isActive: true, sortOrder: '', notifyBusinesses: true }
 
 export default function SubscriptionPlans() {
   const { showSuccess } = useToast()
@@ -60,8 +57,9 @@ export default function SubscriptionPlans() {
       name: plan.name,
       description: plan.description || '',
       priceMonthly: String(plan.priceMonthly || ''),
-      discountQuarterly: String(plan.discountQuarterly ?? 0),
-      discountAnnually: String(plan.discountAnnually ?? 0),
+      priceQuarterly: String(plan.priceQuarterly || ''),
+      priceAnnually: String(plan.priceAnnually || ''),
+      notifyBusinesses: true,
       features: (plan.features || []).join('\n'),
       isActive: plan.isActive !== false,
       sortOrder: String(plan.sortOrder ?? ''),
@@ -83,17 +81,20 @@ export default function SubscriptionPlans() {
         name: form.name.trim(),
         description: form.description.trim(),
         priceMonthly: Number(form.priceMonthly),
-        discountQuarterly: Number(form.discountQuarterly) || 0,
-        discountAnnually: Number(form.discountAnnually) || 0,
+        priceQuarterly: Number(form.priceQuarterly),
+        priceAnnually: Number(form.priceAnnually),
+        ...(editing ? { notifyBusinesses: form.notifyBusinesses } : {}),
         features: form.features.split('\n').map((f) => f.trim()).filter(Boolean),
         isActive: form.isActive,
         ...(form.sortOrder !== '' ? { sortOrder: Number(form.sortOrder) } : {}),
       }
-      if (editing) await updatePlan(editing.id, payload)
-      else await createPlan(payload)
+      const saved = editing ? await updatePlan(editing.id, payload) : await createPlan(payload)
       resetForm()
       await load(false)
-      showSuccess(editing ? t('Plan updated. New purchases and renewals use the new prices.') : t('Plan created.'))
+      if (!editing) showSuccess(t('Plan created. Businesses can choose it now.'))
+      else if (saved?.priceChanged) {
+        showSuccess(`${t('Prices updated for all businesses.')}${saved.notifiedBusinesses ? ` ${saved.notifiedBusinesses} ${t('subscribed business(es) were emailed.')}` : ''}`)
+      } else showSuccess(t('Plan updated.'))
     } catch (err) {
       setError(apiError(err, t('Failed to save plan.')))
     } finally {
@@ -173,21 +174,29 @@ export default function SubscriptionPlans() {
                 <span className="block text-sm font-semibold text-slate-700 mb-1">{t('Description')}</span>
                 <input type="text" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className={input} maxLength={300} placeholder={t('Who this plan is for')} />
               </label>
-              <label className="block">
-                <span className="block text-sm font-semibold text-slate-700 mb-1">{t('Monthly price (RWF)')}</span>
-                <input type="number" min="1" step="1" value={form.priceMonthly} onChange={(e) => setForm({ ...form, priceMonthly: e.target.value })} className={`${input} font-semibold`} placeholder="20000" required />
-              </label>
+              <fieldset className="sm:col-span-2 rounded-xl border border-slate-200 p-4">
+                <legend className="px-1 text-sm font-bold text-slate-800">{t('Prices (RWF)')}</legend>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {[
+                    ['priceMonthly', t('Monthly'), t('1 month'), null, '20000'],
+                    ['priceQuarterly', t('Quarterly'), t('3 months'), 3, '55000'],
+                    ['priceAnnually', t('Annually'), t('12 months'), 12, '200000'],
+                  ].map(([key, label, period, months, placeholder]) => (
+                    <label key={key} className="block">
+                      <span className="block text-sm font-semibold text-slate-700 mb-1">{label} <span className="font-normal text-xs text-slate-500">({period})</span></span>
+                      <input type="number" min="1" step="1" value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} className={`${input} font-semibold`} placeholder={placeholder} required />
+                      {months && p.monthly > 0 && (
+                        <button type="button" onClick={() => setForm({ ...form, [key]: String(p.monthly * months) })} className="mt-1 text-[11px] font-semibold text-indigo-600 hover:underline">
+                          {t('Use')} {months} × {t('monthly')} = {money(p.monthly * months)}
+                        </button>
+                      )}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
               <label className="block">
                 <span className="block text-sm font-semibold text-slate-700 mb-1">{t('Display order')}</span>
                 <input type="number" step="1" value={form.sortOrder} onChange={(e) => setForm({ ...form, sortOrder: e.target.value })} className={input} placeholder={t('1 = shown first')} />
-              </label>
-              <label className="block">
-                <span className="block text-sm font-semibold text-slate-700 mb-1">{t('Quarterly discount (%)')}</span>
-                <input type="number" min="0" max="90" step="0.5" value={form.discountQuarterly} onChange={(e) => setForm({ ...form, discountQuarterly: e.target.value })} className={input} />
-              </label>
-              <label className="block">
-                <span className="block text-sm font-semibold text-slate-700 mb-1">{t('Annual discount (%)')}</span>
-                <input type="number" min="0" max="90" step="0.5" value={form.discountAnnually} onChange={(e) => setForm({ ...form, discountAnnually: e.target.value })} className={input} />
               </label>
               <label className="block sm:col-span-2">
                 <span className="block text-sm font-semibold text-slate-700 mb-1">{t('Features (one per line)')}</span>
@@ -197,6 +206,15 @@ export default function SubscriptionPlans() {
                 <input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />
                 {t('Offered to businesses (active)')}
               </label>
+              {editing && (
+                <label className="flex items-start gap-2 text-sm text-slate-700 sm:col-span-2">
+                  <input type="checkbox" className="mt-0.5" checked={form.notifyBusinesses} onChange={(e) => setForm({ ...form, notifyBusinesses: e.target.checked })} />
+                  <span>
+                    <span className="font-semibold">{t('Email subscribed businesses if the prices change')}</span>
+                    <span className="block text-xs text-slate-500">{editing.activeSubscriptions || 0} {t('business(es) currently on this plan.')}</span>
+                  </span>
+                </label>
+              )}
             </div>
 
             <aside className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-4 text-sm h-fit">
@@ -212,10 +230,11 @@ export default function SubscriptionPlans() {
                   <span className="text-right">
                     <strong className="text-slate-900">{money(amount)}</strong>
                     {pct > 0 && <span className="block text-[11px] font-semibold text-emerald-700">{t('save')} {pct}%</span>}
+                    {pct < 0 && <span className="block text-[11px] font-semibold text-amber-700">{t('costs more than paying monthly')}</span>}
                   </span>
                 </div>
               ))}
-              {editing && <p className="mt-2 text-xs text-slate-500">{t('Businesses already subscribed keep the price they paid until they renew.')}</p>}
+              {editing && <p className="mt-2 text-xs text-slate-500">{t('Applies to every business immediately: registration, subscribe and renewal use these prices. A period a business has already paid keeps its price until it renews.')}</p>}
             </aside>
           </div>
 
@@ -243,8 +262,11 @@ export default function SubscriptionPlans() {
                 </span>
               </div>
 
-              <p className="text-2xl font-bold text-slate-900">{money(plan.priceMonthly)} <span className="text-xs font-normal text-slate-500">{t('/ month')}</span></p>
-              <dl className="mt-2 mb-4 grid grid-cols-2 gap-2 text-xs">
+              <dl className="mt-2 mb-4 grid grid-cols-3 gap-2 text-xs">
+                <div className="rounded-lg bg-slate-50 px-3 py-2">
+                  <dt className="text-slate-500">{t('Monthly')}</dt>
+                  <dd className="font-semibold text-slate-900">{money(plan.priceMonthly)}</dd>
+                </div>
                 <div className="rounded-lg bg-slate-50 px-3 py-2">
                   <dt className="text-slate-500">{t('Quarterly')}{plan.discountQuarterly > 0 ? ` (−${plan.discountQuarterly}%)` : ''}</dt>
                   <dd className="font-semibold text-slate-900">{money(plan.priceQuarterly)}</dd>
@@ -266,7 +288,7 @@ export default function SubscriptionPlans() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <button onClick={() => handleEdit(plan)} className="flex-1 py-2 text-sm font-semibold text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition">{t('Edit')}</button>
+              <button onClick={() => handleEdit(plan)} className="flex-1 py-2 text-sm font-semibold text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition">{t('Edit prices & plan')}</button>
               <button onClick={() => toggleActive(plan)} disabled={busyId === plan.id} className="flex-1 py-2 text-sm font-semibold text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50">
                 {plan.isActive ? t('Hide') : t('Offer again')}
               </button>

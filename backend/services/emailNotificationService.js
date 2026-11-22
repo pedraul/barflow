@@ -755,3 +755,49 @@ export async function getEmailNotifications({ businessId, limit = 50, offset = 0
     return []
   }
 }
+// ──────────────────────────────────────────────
+// Plan price change (to owners subscribed to the plan)
+// ──────────────────────────────────────────────
+export async function sendPlanPriceChange({ businessName, ownerName, ownerEmail, planName, billingCycle, prices, renewalDate, businessId }) {
+  if (!(await isNotificationEnabled('notify_plan_price_change', businessId))) return false
+  const rwf = (v) => `RWF ${Math.round(Number(v) || 0).toLocaleString()}`
+  const cycleLabel = { monthly: 'monthly', quarterly: 'quarterly', annually: 'annual' }[billingCycle] || 'monthly'
+  const yourPrice = billingCycle === 'quarterly' ? prices.priceQuarterly : billingCycle === 'annually' ? prices.priceAnnually : prices.priceMonthly
+  const renewal = renewalDate ? new Date(renewalDate).toLocaleDateString() : null
+  const subject = `New prices for the ${planName} plan`
+  const rows = [['Monthly (1 month)', prices.priceMonthly], ['Quarterly (3 months)', prices.priceQuarterly], ['Annually (12 months)', prices.priceAnnually]]
+  const nextLine = renewal ? ` From your next renewal (${renewal}) your ${cycleLabel} price will be ${rwf(yourPrice)}.` : ''
+  const text = `Hello ${ownerName || 'Business Owner'},
+
+The prices of the ${planName} plan used by ${businessName} have changed:
+
+${rows.map(([label, v]) => `  ${label}: ${rwf(v)}`).join('\n')}
+
+Your current period is already paid and does not change.${nextLine}
+
+Best regards,
+The BarFlow Team`
+
+  const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 0;">
+  <div style="max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+    <div style="background: #4F46E5; padding: 30px; text-align: center;">
+      <h1 style="color: #ffffff; margin: 0; font-size: 22px;">New prices for the ${planName} plan</h1>
+    </div>
+    <div style="padding: 30px;">
+      <p style="color: #333; font-size: 16px; line-height: 1.6;">Hello <strong>${ownerName || 'Business Owner'}</strong>,</p>
+      <p style="color: #333; font-size: 16px; line-height: 1.6;">The prices of the <strong>${planName}</strong> plan used by <strong>${businessName}</strong> have changed:</p>
+      <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+        ${rows.map(([label, v]) => `<tr><td style="padding: 10px; border-bottom: 1px solid #eee; color: #666;">${label}</td><td style="padding: 10px; border-bottom: 1px solid #eee; color: #333; font-weight: bold; text-align: right;">${rwf(v)}</td></tr>`).join('')}
+      </table>
+      <p style="color: #333; font-size: 15px; line-height: 1.6;">Your current period is already paid and does not change.${nextLine}</p>
+      <p style="color: #333; font-size: 16px; line-height: 1.6;">Best regards,<br><strong>The BarFlow Team</strong></p>
+    </div>
+  </div>
+</body>
+</html>`
+
+  return sendAndRecord({ toEmail: ownerEmail, toName: ownerName, subject, text, html, notificationType: 'plan_price_change', businessId })
+}

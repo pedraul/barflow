@@ -219,7 +219,7 @@ export default function PaymentQRSettings() {
           <div className="flex flex-col items-center gap-4 rounded-xl border border-slate-200 bg-white p-6">
             <p className="text-xs text-slate-500 text-center">{t('Print this QR code and place it on tables, the counter or receipts. Customers scan it to choose how to pay.')}</p>
             <div className="rounded-lg border border-slate-100 bg-white p-3 shadow-sm">
-              <QRCode value={payUrl} size={220} level="M" ariaLabel={t('Payment QR code')} />
+              <QRCode value={payUrl} size={220} ariaLabel={t('Payment QR code')} />
             </div>
             <p className="text-sm font-bold text-slate-900">{displayName}</p>
             <div className="flex flex-wrap justify-center gap-2">
@@ -239,7 +239,7 @@ export default function PaymentQRSettings() {
           <article className="pay-qr-print-card">
             <p className="pay-qr-print-kicker">{t('Scan to pay')}</p>
             <h1>{displayName}</h1>
-            <QRCode value={payUrl} size={260} level="M" />
+            <QRCode value={payUrl} size={260} />
             <ul>
               {usableMethods.map((m) => (
                 <li key={m.id}>

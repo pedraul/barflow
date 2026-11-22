@@ -297,6 +297,17 @@ export function OwnerProvider({ children }) {
     })
   }, [withLoading])
 
+  const submitSubscriptionPaymentReference = useCallback(async (paymentId, transactionId) => {
+    const { data } = await api.post(`/v1/owner/subscription/payment/${paymentId}/reference`, { transactionId })
+    return data
+  }, [])
+
+  const cancelSubscriptionPayment = useCallback(async (paymentId) => {
+    const { data } = await api.post(`/v1/owner/subscription/payment/${paymentId}/cancel`)
+    subscriptionCacheRef.current = null
+    return data
+  }, [])
+
   const checkSubscriptionPayment = useCallback(async (paymentId) => {
     const { data } = await api.get(`/v1/owner/subscription/payment/${paymentId}/status`)
     return data
@@ -448,7 +459,7 @@ export function OwnerProvider({ children }) {
     fetchReportSummary, exportReport,
     fetchQROrders, fetchWaiters, fetchWaiterOrders, fetchOrderHistory,
     fetchAuditLogs, fetchAuditLogsExport,
-    fetchSubscription, fetchAvailableSubscriptionPlans, selectSubscriptionPlan, checkSubscriptionPayment, fetchReceipt, renewSubscription,
+    fetchSubscription, fetchAvailableSubscriptionPlans, selectSubscriptionPlan, checkSubscriptionPayment, submitSubscriptionPaymentReference, cancelSubscriptionPayment, fetchReceipt, renewSubscription,
     fetchGlobalInventory, fetchStockMovements,
     fetchSystemSettings, updateSystemSettings, fetchBranches, createBranch, updateBranch, triggerBackup, fetchBackups, restoreBackup, updatePermissions,
     fetchPaymentSettings, updatePaymentSettings, generateQRPayment, generateMerchantQRPayment,

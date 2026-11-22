@@ -5,6 +5,7 @@ import { LayoutDashboard, Briefcase, PlusCircle, RefreshCw, CreditCard, Users, B
 import { fetchPlatformStats, fetchBusinesses, fetchPlatformReports, createAdmin, fetchPlatformMe, fetchPlatformHealth } from '../../api/endpoints'
 import { adminCan, PAGE_MODULES, PLATFORM_MODULES } from './adminAccess'
 import ActivityLog from './ActivityLog'
+import usePlatformInfo from '../../hooks/usePlatformInfo'
 import { useToast } from '../../context/ToastContext'
 import { usePreferences, stripIcons } from '../../context/PreferencesContext'
 
@@ -30,6 +31,7 @@ import BackupRestore from './BackupRestore'
 
 export default function SuperAdminDashboard() {
   const { user, logout, updateUser } = useAuth()
+  const platformInfo = usePlatformInfo()
   const { t } = usePreferences()
   const { showSuccess } = useToast()
   const navigate = useNavigate()
@@ -174,6 +176,7 @@ export default function SuperAdminDashboard() {
     { title: t('Awaiting Verification'), value: String(pendingVerification), trend: t('Needs your review'), trendType: 'neutral', bg: 'bg-amber-50', to: '/admin/businesses?status=pending' },
     { title: t('Suspended Businesses'), value: String(suspended), trend: t('Currently suspended'), trendType: 'neutral', bg: 'bg-red-50', to: '/admin/businesses?status=suspended' },
     { title: t('Expiring in 7 Days'), value: String(expiringSoon), trend: t('Action required'), trendType: 'neutral', bg: 'bg-blue-50', to: '/admin/plans' },
+    { title: t('Payments to Confirm'), value: String(stats?.paymentsAwaitingConfirmation ?? 0), trend: Number(stats?.paymentsAwaitingConfirmation) ? t('Check the money arrived') : t('Nothing waiting'), trendType: Number(stats?.paymentsAwaitingConfirmation) ? 'down' : 'neutral', bg: 'bg-amber-50', to: '/admin/payments' },
     { title: t('Revenue This Month'), value: formatCurr(stats?.monthlyRevenue), trend: t('Paid and settled'), trendType: 'up', bg: 'bg-emerald-50', to: can('payments') ? '/admin/payments' : '/admin/reports' },
     { title: t('Business Staff Accounts'), value: String(stats?.totalUsers ?? 0), trend: `${stats?.totalAdmins ?? 0} ${t('active platform admins')}`, trendType: 'neutral', bg: 'bg-slate-50', to: '/admin/businesses' },
   ].filter((m) => {
@@ -244,7 +247,7 @@ export default function SuperAdminDashboard() {
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6366F1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transform rotate-180">
                 <path d="M8 22h8" /><path d="M12 11v11" /><path d="m19 3-7 8-7-8Z" />
               </svg>
-              <span className="text-xl font-black text-white tracking-tight">BarFlow</span>
+              <span className="text-xl font-black text-white tracking-tight truncate">{platformInfo?.name || 'BarFlow'}</span>
             </div>
             <span className="text-[10px] font-bold tracking-wider text-slate-500 uppercase mt-0.5 pl-8">{t('Platform Admin')}</span>
           </div>
