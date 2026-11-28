@@ -1,23 +1,14 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useOwner } from '../../context/OwnerContext'
-import { fetchSubscriptionPaymentOptions } from '../../api/endpoints'
 import { usePreferences } from '../../context/PreferencesContext'
 
 const PAYMENT_METHODS = [
-  { id: 'mtn_momo', label: 'MTN MoMo', hint: 'Approve the payment prompt on your phone', mark: 'MTN', markClass: 'is-mtn' },
-  { id: 'airtel_money', label: 'Airtel Money', hint: 'Approve the payment prompt on your phone', mark: 'airtel', markClass: 'is-airtel' },
-  { id: 'bank_transfer', label: 'Bank transfer', hint: 'Transfer to our account; activated when the platform confirms it', mark: 'BANK', markClass: 'is-bank' },
+  { id: 'mtn_momo', label: 'MTN MoMo', hint: 'Approve the payment prompt on your phone' },
+  { id: 'airtel_money', label: 'Airtel Money', hint: 'Approve the payment prompt on your phone' },
 ]
-const apiError = (e, fallback) => e?.response?.data?.error || e?.message || fallback
 
 const CURRENCY = 'RWF'
-// 250788123456 -> 0788 123 456
-const formatPhone = (value) => {
-  const digits = String(value || '').replace(/\D/g, '')
-  const local = digits.startsWith('250') ? `0${digits.slice(3)}` : digits
-  return /^07\d{8}$/.test(local) ? `${local.slice(0, 4)} ${local.slice(4, 7)} ${local.slice(7)}` : String(value || '')
-}
 const formatCurr = (v) =>
   new Intl.NumberFormat('en-RW', { style: 'currency', currency: CURRENCY, minimumFractionDigits: 0 }).format(v || 0)
 
@@ -25,7 +16,7 @@ export default function Subscription() {
   const { t } = usePreferences()
   const {
     fetchSubscription, fetchAvailableSubscriptionPlans, selectSubscriptionPlan,
-    checkSubscriptionPayment, submitSubscriptionPaymentReference, cancelSubscriptionPayment, fetchReceipt, loading,
+    checkSubscriptionPayment, fetchReceipt, loading,
   } = useOwner()
 
   const [sub, setSub] = useState(null)
@@ -42,29 +33,9 @@ export default function Subscription() {
     ['monthly', 'quarterly', 'annually'].includes(requestedCycle) ? requestedCycle : 'monthly'
   ))
   const [paymentMethod, setPaymentMethod] = useState('mtn_momo')
-  // Methods the platform admin enabled (Settings → Payment), with their pay codes / bank account.
-  const [paymentOptions, setPaymentOptions] = useState(null)
-  const availableMethods = PAYMENT_METHODS.filter((m) => !paymentOptions || paymentOptions[m.id]?.enabled)
-  const isBank = paymentMethod === 'bank_transfer'
-  // "Send to our number": the owner sends the money themselves and the platform confirms it.
-  const selectedOption = paymentOptions?.[paymentMethod]
-  const isManualMobile = !isBank && selectedOption?.mode === 'manual'
   const [phoneNumber, setPhoneNumber] = useState('')
   const [pending, setPending] = useState(null)
   const [receipt, setReceipt] = useState(null)
-  const [payerReference, setPayerReference] = useState('')
-  const [pendingBusy, setPendingBusy] = useState(false)
-  // Where a method sends the money, as the admin set it (Settings → Payment).
-  const methodHint = (m) => {
-    const o = paymentOptions?.[m.id]
-    if (!o) return t(m.hint)
-    if (m.id === 'bank_transfer') return t(m.hint)
-    if (o.mode === 'manual') {
-      const to = [o.number && formatPhone(o.number), o.name].filter(Boolean).join(' · ')
-      return `${t('Send to')} ${to || `${t('pay code')} ${o.code}`}${o.code && to ? ` · ${t('Pay code')} ${o.code}` : ''}`
-    }
-    return t(m.hint)
-  }
 
   const load = useCallback(async () => {
     try {
@@ -80,9 +51,6 @@ export default function Subscription() {
               amount: data.pendingPaymentAmount,
               paymentMethod: data.pendingPaymentMethod,
               phoneNumber: data.pendingPaymentPhone,
-              payTo: data.pendingPaymentPayTo,
-              payerReference: data.pendingPaymentPayerReference,
-              collection: data.pendingPaymentAwaitingConfirmation ? 'manual' : 'api',
               status: 'pending',
             })
         setStep((current) => current === 2 ? current : 1)
@@ -95,11 +63,6 @@ export default function Subscription() {
         || plans.find((plan) => String(plan.id) === String(requestedPlanId))
         || plans[0]
         || null)
-    } catch (e) { console.error(e) }
-    try {
-      const options = await fetchSubscriptionPaymentOptions()
-      setPaymentOptions(options)
-      setPaymentMethod((current) => (options?.[current]?.enabled ? current : PAYMENT_METHODS.find((m) => options?.[m.id]?.enabled)?.id || current))
     } catch (e) { console.error(e) }
   }, [fetchSubscription, fetchAvailableSubscriptionPlans, requestedPlanId])
 
@@ -115,13 +78,11 @@ export default function Subscription() {
         setReceipt(paymentReceipt)
         await load()
       } else if (result.status === 'failed') {
-        setPending((current) => ({ ...current, status: 'failed', reason: result.reason }))
-        setMessage('❌ ' + (result.reason
-          ? `${t('The platform administrator rejected this payment')}: ${result.reason}`
-          : t('❌ The provider declined or could not complete this payment. Start a new payment to try again.')))
+        setPending((current) => ({ ...current, status: 'failed' }))
+        setMessage('❌ ' + t('❌ The provider declined or could not complete this payment. Start a new payment to try again.'))
       }
     } catch (e) {
-      setMessage('❌ ' + apiError(e, t('Unable to check provider payment status.')))
+      setMessage('❌ ' + (e.message || t('Unable to check provider payment status.')))
     }
   }, [pending, checkSubscriptionPayment, fetchReceipt, load])
 
@@ -142,54 +103,26 @@ export default function Subscription() {
     }
   }, [load])
 
-  // Prices come from the server, calculated exactly as they are charged.
   const amountFor = (plan = selectedPlan, cycle = billingCycle) => {
     if (!plan) return 0
-    if (cycle === 'quarterly') return Number(plan.priceQuarterly) || 0
-    if (cycle === 'annually' || cycle === 'yearly') return Number(plan.priceAnnually) || 0
-    return Number(plan.priceMonthly) || 0
-  }
-
-  const sendPayerReference = async () => {
-    if (!pending?.paymentId || payerReference.trim().length < 4) return
-    setPendingBusy(true)
-    try {
-      await submitSubscriptionPaymentReference(pending.paymentId, payerReference.trim())
-      setPending((current) => ({ ...current, payerReference: payerReference.trim() }))
-      setPayerReference('')
-      setMessage(t('Thank you. The platform administrator will match your transaction ID and confirm the payment.'))
-    } catch (e) {
-      setMessage('❌ ' + apiError(e, t('Could not send the transaction ID.')))
-    } finally {
-      setPendingBusy(false)
+    const monthly = Number(plan.priceMonthly || 0)
+    if (cycle === 'quarterly') {
+      const discount = Number(plan.discountQuarterly ?? 8)
+      return Number(plan.priceQuarterly) || Math.round(monthly * 3 * (1 - discount / 100))
     }
-  }
-
-  const cancelPendingPayment = async () => {
-    if (!pending?.paymentId) return
-    if (!window.confirm(t('Cancel this payment? Only do this if you have not sent the money.'))) return
-    setPendingBusy(true)
-    try {
-      await cancelSubscriptionPayment(pending.paymentId)
-      setPending(null)
-      setStep(0)
-      setMessage(t('Payment cancelled. You can choose a plan and pay again.'))
-      await load()
-    } catch (e) {
-      setMessage('❌ ' + apiError(e, t('Could not cancel the payment.')))
-    } finally {
-      setPendingBusy(false)
+    if (cycle === 'annually' || cycle === 'yearly') {
+      const discount = Number(plan.discountAnnually ?? 14)
+      const yearly = Number(plan.priceAnnually) || Number(plan.priceYearly) || Math.round(monthly * 12 * (1 - discount / 100))
+      return Number(yearly)
     }
+    return monthly
   }
 
   const handleSelectPlan = async () => {
     setMessage('')
     try {
-      if (!isBank && !phoneNumber) {
+      if (!phoneNumber) {
         return setMessage('❌ ' + t('❌ Phone number is required to receive the payment request.'))
-      }
-      if (!availableMethods.some((m) => m.id === paymentMethod)) {
-        return setMessage('❌ ' + t('Choose one of the available payment methods.'))
       }
       if (!selectedPlan) {
         return setMessage('❌ ' + t('❌ Select a subscription plan first.'))
@@ -204,13 +137,13 @@ export default function Subscription() {
       setPending(result)
       setMessage(result.message || t('Payment request sent. Approve it on your phone; access activates after provider confirmation.'))
       setStep(1)
-    } catch (e) { setMessage('❌ ' + apiError(e, t('Could not start the payment.'))) }
+    } catch (e) { setMessage('❌ ' + e.message) }
   }
 
   const handleRenew = async (plan) => {
     setMessage('')
     try {
-      if (!isBank && !phoneNumber) return setMessage('❌ ' + t('❌ Phone number is required to receive the payment request.'))
+      if (!phoneNumber) return setMessage('❌ ' + t('❌ Phone number is required to receive the payment request.'))
       const result = await selectSubscriptionPlan({
         plan: plan.name.toLowerCase(),
         planId: plan.id,
@@ -221,7 +154,7 @@ export default function Subscription() {
       setPending(result)
       setMessage(result.message || t('Renewal payment request sent. Approve it on your phone; your renewal activates after confirmation.'))
       setStep(1)
-    } catch (e) { setMessage('❌ ' + apiError(e, t('Could not start the payment.'))) }
+    } catch (e) { setMessage('❌ ' + e.message) }
   }
 
   const downloadReceipt = () => {
@@ -273,9 +206,9 @@ export default function Subscription() {
   const steps = [t('Choose plan'), t('Approve payment'), t('Done')]
 
   const cycles = [
-    { cycle: 'monthly', title: 'Monthly', period: 'per month', months: 1, features: ['Billed every month'] },
-    { cycle: 'quarterly', title: 'Quarterly', period: 'for 3 months', months: 3, features: ['Billed every 3 months'] },
-    { cycle: 'annually', title: 'Annual', period: 'per year', months: 12, features: ['Billed every 12 months'] },
+    { cycle: 'monthly', title: 'Monthly', period: 'per month', months: 1, features: ['Full platform features', 'All core business tools', 'Monthly renewal'] },
+    { cycle: 'quarterly', title: 'Quarterly', period: 'for 3 months', months: 3, features: ['Everything in Monthly', 'Three-month billing period', 'Reduced overall cost'] },
+    { cycle: 'annually', title: 'Annual', period: 'per year', months: 12, features: ['Everything in Quarterly', 'Twelve-month billing period', 'Best long-term value'] },
   ]
 
   const isError = message.startsWith('❌')
@@ -409,7 +342,7 @@ export default function Subscription() {
                     </div>
                     {savePercent > 0 && <span className="sub-save">{t('Save')} {savePercent}%</span>}
                     <ul className="sub-cycle-features">
-                      {[...features, 'Renewal reminder by email'].map((feature) => (
+                      {[...features, 'Automatic renewal reminders'].map((feature) => (
                         <li key={feature}>{t(feature)}</li>
                       ))}
                     </ul>
@@ -417,19 +350,11 @@ export default function Subscription() {
                 )
               })}
             </div>
-            {(() => {
-              // What the selected plan includes, exactly as the platform admin wrote it.
-              const plan = selectedPlan || availablePlans[0]
-              if (!plan) return null
-              return (
-                <div className="sub-includes">
-                  {plan.description && <p className="sub-muted" style={{ width: '100%', margin: '0 0 6px' }}>{plan.name}: {plan.description}</p>}
-                  {(plan.features || []).map((item) => (
-                    <span key={item}>{item}</span>
-                  ))}
-                </div>
-              )
-            })()}
+            <div className="sub-includes">
+              {['All Core Features', '24/7 Support', 'Regular Updates', 'Secure & Reliable'].map((item) => (
+                <span key={item}>{t(item)}</span>
+              ))}
+            </div>
           </section>
 
           <section className="sub-card">
@@ -437,21 +362,17 @@ export default function Subscription() {
               <span className="sub-num">{availablePlans.length > 1 ? 3 : 2}</span>{t('Payment')}
             </h2>
             <div className="sub-method-grid" role="radiogroup" aria-label={t('Choose payment method')}>
-              {!availableMethods.length && (
-                <p className="sub-muted">{t('No payment method is available right now. Contact the platform administrator.')}</p>
-              )}
-              {availableMethods.map((m) => {
+              {PAYMENT_METHODS.map((m) => {
                 const selected = paymentMethod === m.id
-                const code = paymentOptions?.[m.id]?.code
                 return (
                   <label key={m.id} className={`sub-method${selected ? ' is-selected' : ''}`}>
                     <input type="radio" name="pm" checked={selected} onChange={() => setPaymentMethod(m.id)} className="sr-only" />
-                    <span aria-hidden="true" className={`sub-method-mark ${m.markClass}`}>
-                      {m.mark}
+                    <span aria-hidden="true" className={`sub-method-mark ${m.id === 'mtn_momo' ? 'is-mtn' : 'is-airtel'}`}>
+                      {m.id === 'mtn_momo' ? 'MTN' : 'airtel'}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="sub-method-name">{t(m.label)}</span>
-                      <span className="sub-method-hint">{methodHint(m)}{code && paymentOptions?.[m.id]?.mode !== 'manual' ? ` · ${t('Pay code')} ${code}` : ''}</span>
+                      <span className="sub-method-hint">{t(m.hint)}</span>
                     </span>
                     <span className="sub-radio" aria-hidden="true" />
                   </label>
@@ -459,21 +380,8 @@ export default function Subscription() {
               })}
             </div>
 
-            {isBank ? (
-              <p className="sub-muted" style={{ marginTop: 12 }}>
-                {t('Bank account')}: <strong>{paymentOptions?.bank_transfer?.account}</strong>. {t('After you continue you get a payment reference to put on the transfer.')}
-              </p>
-            ) : (
-            <>
-            {isManualMobile && (
-              <p className="sub-muted" style={{ marginTop: 12 }}>
-                {t('You will send')} <strong>{formatCurr(amountFor())}</strong> {t('to')}{' '}
-                <strong>{[selectedOption.number && formatPhone(selectedOption.number), selectedOption.name].filter(Boolean).join(' · ') || `${t('pay code')} ${selectedOption.code}`}</strong>.
-                {' '}{t('After you continue you get a reference; your subscription activates when the platform confirms the money arrived.')}
-              </p>
-            )}
             <label className="sub-field">
-              <span>{isManualMobile ? t('Your mobile-money number (the one you pay from)') : t('Mobile-money phone number')}</span>
+              <span>{t('Mobile-money phone number')}</span>
               <input
                 type="tel"
                 inputMode="tel"
@@ -483,8 +391,6 @@ export default function Subscription() {
                 placeholder={t('+250700000000')}
               />
             </label>
-            </>
-            )}
           </section>
 
           <div className="sub-checkout">
@@ -496,7 +402,7 @@ export default function Subscription() {
                 {billingCycle === 'quarterly' ? t('for 3 months') : billingCycle === 'annually' ? t('for 12 months') : t('for 1 month')}
               </small>
             </div>
-            <button type="button" className="sub-btn-primary" onClick={handleSelectPlan} disabled={loading || !availableMethods.length || !selectedPlan}>
+            <button type="button" className="sub-btn-primary" onClick={handleSelectPlan} disabled={loading}>
               {loading ? t('Sending request…') : t('Continue to payment')}
             </button>
           </div>
@@ -512,19 +418,14 @@ export default function Subscription() {
               <h2 className="sub-card-title m-0">
                 {pending.status === 'failed'
                   ? t('Payment not confirmed')
-                  : pending.status === 'completed' ? t('Payment confirmed')
-                    : pending.collection === 'manual' ? t('Send the money, then wait for confirmation') : t('Waiting for your approval')}
+                  : pending.status === 'completed' ? t('Payment confirmed') : t('Waiting for your approval')}
               </h2>
               <p className="sub-muted">
                 {pending.status === 'failed'
-                  ? (pending.reason ? `${t('Rejected by the platform administrator')}: ${pending.reason}` : t('The provider did not confirm this payment. No subscription was activated.'))
+                  ? t('The provider did not confirm this payment. No subscription was activated.')
                   : pending.status === 'completed'
                     ? t('Payment confirmed. Your subscription is active.')
-                    : pending.paymentMethod === 'bank_transfer'
-                      ? `${t('Transfer')} ${formatCurr(pending.amount)} ${t('to')} ${pending.bankAccount || pending.payTo || paymentOptions?.bank_transfer?.account || ''} ${t('with reference')} ${pending.reference}. ${t('Your subscription activates when the platform administrator confirms the transfer.')}`
-                      : pending.collection === 'manual'
-                        ? `${t('Send')} ${formatCurr(pending.amount)} ${t('to')} ${pending.payTo || ''}. ${t('Write the reference')} ${pending.reference} ${t('in the message if you can. Your subscription activates when the platform administrator confirms the money arrived.')}`
-                      : `${t('Approve the payment prompt on')} ${pending.phoneNumber}. ${t('This page checks the status automatically.')}`}
+                    : `${t('Approve the payment prompt on')} ${pending.phoneNumber}. ${t('This page checks the status automatically.')}`}
               </p>
             </div>
           </div>
@@ -534,36 +435,14 @@ export default function Subscription() {
               ['Plan', pending.plan],
               ['Amount', formatCurr(pending.amount)],
               ['Provider', PAYMENT_METHODS.find((m) => m.id === pending.paymentMethod)?.label || pending.paymentMethod],
-              ...(pending.paymentMethod === 'bank_transfer'
-                ? [['Bank account', pending.bankAccount || pending.payTo || paymentOptions?.bank_transfer?.account || '—']]
-                : pending.collection === 'manual'
-                  ? [['Send to', pending.payTo || '—'], ['Your number', pending.phoneNumber || '—']]
-                  : [['Phone', pending.phoneNumber || '—']]),
-              ...(pending.payerReference ? [['Your transaction ID', pending.payerReference]] : []),
+              ['Phone', pending.phoneNumber || '—'],
               ['Reference', pending.reference || '—'],
             ].map(([k, v]) => (
               <div key={k}><dt>{t(k)}</dt><dd>{v}</dd></div>
             ))}
           </dl>
 
-          {pending.status === 'pending' && pending.collection === 'manual' && (
-            <div className="sub-field" style={{ marginTop: 12 }}>
-              <span>{pending.payerReference ? t('Change the transaction ID') : t('Transaction ID from your confirmation message (helps the platform find your payment)')}</span>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <input value={payerReference} onChange={(e) => setPayerReference(e.target.value)} placeholder={t('e.g. 1234567890')} style={{ flex: 1, minWidth: 180 }} />
-                <button type="button" className="sub-btn-secondary" onClick={sendPayerReference} disabled={pendingBusy || payerReference.trim().length < 4}>
-                  {t('Send')}
-                </button>
-              </div>
-            </div>
-          )}
-
           <div className="sub-actions">
-            {pending.status === 'pending' && pending.collection === 'manual' && (
-              <button type="button" className="sub-btn-secondary" onClick={cancelPendingPayment} disabled={pendingBusy}>
-                {t('Cancel this payment')}
-              </button>
-            )}
             {pending.status !== 'pending' && (
               <button type="button" className="sub-btn-secondary" onClick={() => { setPending(null); setStep(0); setMessage('') }}>
                 {t('Choose another plan')}

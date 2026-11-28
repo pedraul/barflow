@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { registerBusiness, fetchPlans, fetchPlatformInfo } from '../../api/endpoints'
+import { registerBusiness, fetchPlans } from '../../api/endpoints'
 import { useAuth } from '../../context/AuthContext'
 import { buildWorkspaceUrl } from '../../config/workspaceUrl'
 import { LayoutDashboard, Briefcase, CreditCard, RefreshCw, BarChart3, Users, ClipboardList, Settings, Menu } from 'lucide-react'
@@ -36,12 +36,6 @@ export default function RegisterBusiness() {
     if (role === 'operator') return '/dashboard/operator'
     return '/login'
   }
-
-  // Minimum password length set by the platform admin (Settings → Security).
-  const [minPassword, setMinPassword] = useState(8)
-  useEffect(() => {
-    fetchPlatformInfo().then((info) => setMinPassword(info?.security?.minPasswordLength || 8)).catch(() => {})
-  }, [])
 
   useEffect(() => {
     const loadPlans = async () => {
@@ -93,8 +87,8 @@ export default function RegisterBusiness() {
       setError(t('Passwords do not match.'))
       return
     }
-    if (form.password.length < minPassword) {
-      setError(`${t('Password must be at least')} ${minPassword} ${t('characters.')}`)
+    if (form.password.length < 8) {
+      setError(t('Password must be at least 8 characters.'))
       return
     }
 
@@ -382,7 +376,7 @@ export default function RegisterBusiness() {
                     <option value="">{t('Select subscription plan')}</option>
                     {plans.flatMap((plan) => BILLING_CYCLES.map((cycle) => (
                       <option key={`${plan.id}-${cycle.value}`} value={`${plan.id}|${cycle.value}`}>
-                        {plan.name} — {t(cycle.label)} · {Math.round(Number(cycle.value === 'quarterly' ? plan.priceQuarterly : cycle.value === 'annually' ? plan.priceAnnually : plan.priceMonthly) || 0).toLocaleString()} RWF
+                        {plan.name} — {t(cycle.label)}
                       </option>
                     )))}
                   </select>
@@ -454,7 +448,7 @@ export default function RegisterBusiness() {
 
                 <div className="col-span-12 md:col-span-4 bg-emerald-50/60 border border-emerald-100 text-emerald-800 rounded-lg p-3.5 flex items-start gap-2.5 text-xs font-medium">
                   <p className="leading-relaxed">
-                    {`${t('Password must be at least')} ${minPassword} ${t('characters long and include letters and numbers.')}`}
+                    {t('Password must be at least 8 characters long and include letters and numbers.')}
                   </p>
                 </div>
               </div>

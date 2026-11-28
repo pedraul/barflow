@@ -59,21 +59,6 @@ export async function fetchUsers() {
   return data
 }
 
-export async function fetchMyProfile() {
-  const { data } = await api.get('/users/me')
-  return data
-}
-
-export async function updateMyProfile(changes) {
-  const { data } = await api.patch('/users/me', changes)
-  return data
-}
-
-export async function changeMyPassword(currentPassword, newPassword) {
-  const { data } = await api.post('/users/me/password', { currentPassword, newPassword })
-  return data
-}
-
 export async function fetchMySalaryStatus() {
   const { data } = await api.get('/users/me/salary-status')
   return data
@@ -682,29 +667,8 @@ export async function fetchBusiness(id) {
   return data
 }
 
-export async function toggleBusinessStatus(id, action, reason = '') {
-  const { data } = await api.patch(`/platform/businesses/${id}/status`, { action, ...(reason ? { reason } : {}) })
-  return data
-}
-
-// ===== OWNER: BUSINESS ACCOUNT =====
-export async function fetchOwnerBusinessStatus() {
-  const { data } = await api.get('/v1/owner/business/status')
-  return data
-}
-
-export async function pauseOwnerBusiness(password, reason = '') {
-  const { data } = await api.post('/v1/owner/business/deactivate', { password, reason })
-  return data
-}
-
-export async function reactivateOwnerBusiness() {
-  const { data } = await api.post('/v1/owner/business/reactivate')
-  return data
-}
-
-export async function deleteOwnerBusiness(password, confirmName) {
-  const { data } = await api.post('/v1/owner/business/delete', { password, confirmName })
+export async function toggleBusinessStatus(id, action) {
+  const { data } = await api.patch(`/platform/businesses/${id}/status`, { action })
   return data
 }
 
@@ -845,66 +809,8 @@ export async function deletePlatformBackup(id) {
   return data
 }
 
-export async function restorePlatformBackup(id, confirm = '') {
-  const { data } = await api.post(`/platform/backups/${id}/restore`, { confirm })
-  return data
-}
-
-export async function deletePlan(id) {
-  const { data } = await api.delete(`/platform/plans/${id}`)
-  return data
-}
-
-export async function confirmPlatformPayment(id) {
-  const { data } = await api.post(`/platform/payments/${id}/confirm`)
-  return data
-}
-
-export async function sendPlatformTestEmail(to) {
-  const { data } = await api.post('/platform/settings/test-email', { to })
-  return data
-}
-
-// The money never arrived: close a pending subscription payment (the owner sees the reason).
-export async function rejectPlatformPayment(id, reason) {
-  const { data } = await api.post(`/platform/payments/${id}/reject`, { reason })
-  return data
-}
-
-// The signed-in platform admin with fresh role + permissions.
-export async function fetchPlatformMe() {
-  const { data } = await api.get('/platform/me')
-  return data
-}
-
-export async function fetchPlatformHealth() {
-  const { data } = await api.get('/platform/health')
-  return data
-}
-
-export async function fetchPlatformActivity(params = {}) {
-  const { data } = await api.get('/platform/activity', { params })
-  return data
-}
-
-export async function fetchPlatformEmailNotifications(params = {}) {
-  const { data } = await api.get('/platform/email-notifications', { params })
-  return data
-}
-
-export async function runPlatformDailyJobs() {
-  const { data } = await api.get('/internal/cron/daily', { params: { force: 1 } })
-  return data
-}
-
-// Public platform details (name, logo, contact, QR defaults, maintenance notice).
-export async function fetchPlatformInfo() {
-  const { data } = await api.get('/public/platform-info')
-  return data
-}
-
-export async function fetchSubscriptionPaymentOptions() {
-  const { data } = await api.get('/v1/owner/subscription/payment-options')
+export async function restorePlatformBackup(id) {
+  const { data } = await api.post(`/platform/backups/${id}/restore`)
   return data
 }
 

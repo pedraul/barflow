@@ -3,7 +3,6 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { fetchMenu } from '../../api/endpoints'
-import WaiterTablePicker, { readStoredTable, storeTable, tableLabel, useBranchTables } from '../../components/WaiterTablePicker'
 
 const money = (value) => `${Number(value || 0).toLocaleString('en-RW')} RWF`
 
@@ -31,15 +30,6 @@ export default function WaiterNewOrder() {
   const [search, setSearch] = useState('')
   const [cartOpen, setCartOpen] = useState(false)
   const [cartNotice, setCartNotice] = useState('')
-  // The table this order is for; chosen first and carried to the cart.
-  const [table, setTable] = useState(readStoredTable)
-  const { tables, loaded: tablesLoaded } = useBranchTables()
-
-  const chooseTable = (value) => {
-    const next = String(value ?? '')
-    setTable(next)
-    storeTable(next)
-  }
 
   useEffect(() => {
     if (!cartNotice) return undefined
@@ -54,8 +44,6 @@ export default function WaiterNewOrder() {
       sessionStorage.removeItem('waiter_cart')
       sessionStorage.removeItem('waiter_table')
       sessionStorage.removeItem('waiter_business_id')
-      setCart([])
-      setTable('')
     }
     if (currentBiz) {
       sessionStorage.setItem('waiter_business_id', currentBiz)
@@ -137,16 +125,14 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
   const change = (id, delta) => setCart((current) => current.map((item) => item.productId === id ? { ...item, quantity: item.quantity + delta } : item).filter((item) => item.quantity > 0))
   const proceed = () => {
     sessionStorage.setItem('waiter_cart', JSON.stringify(cart))
-    storeTable(table)
-    // The cart page confirms the table (it can still be changed there).
+    // The waiter chooses the table (or Walk-in) on the cart page.
     navigate('/waiter/cart')
   }
 
   return <div className="page waiter-new-order bg-white min-h-screen">
     {cartNotice && <div role="status" aria-live="polite" className="customer-cart-toast">{cartNotice}</div>}
     <div className="p-6 lg:p-8">
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-5"><div><p className="text-xs font-bold text-amber-600 uppercase tracking-wider">{t("Waiter workspace")}</p><h1 className="text-3xl font-extrabold text-slate-950">{t("New Order for Customer")}{table && <span className="waiter-order-table-badge">{tableLabel(table, t)}</span>}</h1><p className="text-slate-500 mt-1">{t("Choose the table, then build the customer's order and send it to the operator for routing.")}</p></div><button type="button" onClick={() => setCartOpen((open) => !open)} aria-expanded={cartOpen} className="flex items-center gap-2 rounded-lg bg-slate-900 px-5 py-3 font-bold text-white shadow-sm hover:bg-slate-700">{' '}{t("My Cart")}{' '}<span className="grid h-6 min-w-6 place-items-center rounded-full bg-orange-500 px-1 text-xs">{count}</span></button></div>
-      <WaiterTablePicker table={table} onChange={chooseTable} tables={tables} loaded={tablesLoaded} collapsible />
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-5"><div><p className="text-xs font-bold text-amber-600 uppercase tracking-wider">{t("Waiter workspace")}</p><h1 className="text-3xl font-extrabold text-slate-950">{t("New Order for Customer")}</h1><p className="text-slate-500 mt-1">{t("Build the customer's order and send it to the operator for routing.")}</p></div><button type="button" onClick={() => setCartOpen((open) => !open)} aria-expanded={cartOpen} className="flex items-center gap-2 rounded-lg bg-slate-900 px-5 py-3 font-bold text-white shadow-sm hover:bg-slate-700">{' '}{t("My Cart")}{' '}<span className="grid h-6 min-w-6 place-items-center rounded-full bg-orange-500 px-1 text-xs">{count}</span></button></div>
       <div className="waiter-order-layout min-h-[680px]">
         <section className="waiter-order-menu w-full rounded-xl border border-slate-200 bg-white p-5 md:p-7">
           {/* Search bar always visible */}
@@ -301,7 +287,6 @@ const allCategories = useMemo(() => menu?.categories || [], [menu])
                 ))}
               </div>
               <div className="border-t pt-4 mt-3">
-                <div className="flex justify-between font-bold mb-2"><span>{t("Table")}</span><span className={table ? '' : 'text-red-600'}>{tableLabel(table, t)}</span></div>
                 <div className="flex justify-between"><span>{t("Subtotal")}</span><span>{money(total)}</span></div>
                 <div className="flex justify-between text-xl font-extrabold mt-3"><span>{t("Total")}</span><span className="text-amber-600">{money(total)}</span></div>
                 <button disabled={!cart.length} onClick={proceed} className="w-full mt-5 bg-gradient-to-r from-amber-500 to-orange-600 text-white py-3 rounded-lg font-bold disabled:opacity-50 flex justify-center gap-2">

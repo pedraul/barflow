@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import authMiddleware, { requirePlatformPermission as can, requireSuperAdmin } from '../middleware/authMiddleware.js'
+import authMiddleware from '../middleware/authMiddleware.js'
 import {
   platformLogin,
   verifyPlatform2FA,
@@ -12,7 +12,6 @@ import {
   listPlans,
   createPlan,
   updatePlan,
-  deletePlan,
   platformStats,
   listSubscriptions,
   subscriptionSummary,
@@ -21,8 +20,6 @@ import {
   paymentStats,
   refundPayment,
   settlePayment,
-  confirmPayment,
-  rejectPayment,
   listAdmins,
   createAdmin,
   updateAdmin,
@@ -31,15 +28,11 @@ import {
   reportsOverview,
   getSettings,
   updateSettings,
-  sendTestEmail,
   listBackups,
   createBackup,
   restoreBackup,
   deleteBackup,
   listEmailNotifications,
-  platformMe,
-  platformHealth,
-  listPlatformActivity,
 } from '../controllers/platformController.js'
 
 const router = Router()
@@ -54,8 +47,7 @@ router.post('/verify-2fa', (req, res, next) => {
   verifyPlatform2FA(req, res).catch(next)
 })
 
-// All routes below require a signed-in, active platform admin.
-// Each module is gated by the admin's permissions (super_admin has every module).
+// All routes below require auth + super_admin role
 router.use(authMiddleware)
 router.use((req, res, next) => {
   if (!req.user?.isPlatformAdmin) {
@@ -64,60 +56,53 @@ router.use((req, res, next) => {
   next()
 })
 
-// The signed-in admin (fresh role + permissions) and system health: every admin
-router.get('/me', platformMe)
-router.get('/health', platformHealth)
-
-// Dashboard: any admin; figures are platform-wide summaries
+// Dashboard
 router.get('/stats', platformStats)
 
 // Business management
-router.get('/businesses', can('businesses', 'subscriptions', 'payments'), listBusinesses)
-router.get('/businesses/:id', can('businesses'), getBusiness)
-router.patch('/businesses/:id/status', can('businesses'), toggleBusinessStatus)
-router.patch('/businesses/:id/access', can('businesses', 'subscriptions'), setUnpaidBusinessAccess)
-router.put('/businesses/:id', can('businesses'), updateBusiness)
-router.delete('/businesses/:id', requireSuperAdmin, deleteBusiness)
+router.get('/businesses', listBusinesses)
+router.get('/businesses/:id', getBusiness)
+router.patch('/businesses/:id/status', toggleBusinessStatus)
+router.patch('/businesses/:id/access', setUnpaidBusinessAccess)
+router.put('/businesses/:id', updateBusiness)
+router.delete('/businesses/:id', deleteBusiness)
 
 // Subscription plans (admin mutation only; read is public above)
-router.post('/plans', can('subscriptions'), createPlan)
-router.put('/plans/:id', can('subscriptions'), updatePlan)
-router.delete('/plans/:id', can('subscriptions'), deletePlan)
+router.post('/plans', createPlan)
+router.put('/plans/:id', updatePlan)
 
 // Subscriptions (platform-wide)
-router.get('/subscriptions', can('subscriptions'), listSubscriptions)
-router.get('/subscriptions/summary', can('subscriptions', 'reports'), subscriptionSummary)
-router.patch('/subscriptions/:id', can('subscriptions'), updateSubscriptionAdmin)
+router.get('/subscriptions', listSubscriptions)
+router.get('/subscriptions/summary', subscriptionSummary)
+router.patch('/subscriptions/:id', updateSubscriptionAdmin)
 
 // Payments + refunds
-router.get('/payments', can('payments'), listPayments)
-router.get('/payments/stats', can('payments'), paymentStats)
-router.post('/payments/:id/refund', can('payments'), refundPayment)
-router.post('/payments/:id/settle', can('payments'), settlePayment)
-router.post('/payments/:id/confirm', can('payments'), confirmPayment)
-router.post('/payments/:id/reject', can('payments'), rejectPayment)
+router.get('/payments', listPayments)
+router.get('/payments/stats', paymentStats)
+router.post('/payments/:id/refund', refundPayment)
+router.post('/payments/:id/settle', settlePayment)
 
 // Platform admins (Users)
-router.get('/admins', can('users'), listAdmins)
-router.post('/admins', can('users'), createAdmin)
-router.put('/admins/:id', can('users'), updateAdmin)
-router.post('/admins/:id/reset-password', can('users'), resetAdminPassword)
-router.delete('/admins/:id', can('users'), deleteAdmin)
+router.get('/admins', listAdmins)
+router.post('/admins', createAdmin)
+router.put('/admins/:id', updateAdmin)
+router.post('/admins/:id/reset-password', resetAdminPassword)
+router.delete('/admins/:id', deleteAdmin)
 
-// Reports + activity
-router.get('/reports', can('reports'), reportsOverview)
-router.get('/activity', can('reports', 'users'), listPlatformActivity)
-router.get('/email-notifications', can('reports', 'settings'), listEmailNotifications)
+// Reports
+router.get('/reports', reportsOverview)
 
 // Settings
-router.get('/settings', can('settings', 'backup'), getSettings)
-router.put('/settings', can('settings', 'backup'), updateSettings)
-router.post('/settings/test-email', can('settings'), sendTestEmail)
+router.get('/settings', getSettings)
+router.put('/settings', updateSettings)
 
-// Backups (restore replaces the whole database: super admin only)
-router.get('/backups', can('backup'), listBackups)
-router.post('/backups', can('backup'), createBackup)
-router.post('/backups/:id/restore', requireSuperAdmin, restoreBackup)
-router.delete('/backups/:id', can('backup'), deleteBackup)
+// Backups
+router.get('/backups', listBackups)
+router.post('/backups', createBackup)
+router.post('/backups/:id/restore', restoreBackup)
+router.delete('/backups/:id', deleteBackup)
+
+// Email notifications
+router.get('/email-notifications', listEmailNotifications)
 
 export default router

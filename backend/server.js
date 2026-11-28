@@ -3,9 +3,6 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 
 import apiRouter from './routes/index.js'
-import { publicPlatformInfo } from './services/platformSettings.js'
-import { startDailyJobTimer } from './services/dailyJobs.js'
-import { verify as verifyToken } from './config/jwt.js'
 import { enforceHttps, securityHeaders } from './middleware/securityHeaders.js'
 import { isTransactionEncryptionConfigured } from './utils/transactionCrypto.js'
 import { migrate, ensureBaseSchema } from './migrations/run.js'
@@ -45,24 +42,6 @@ app.use('/api', (req, res, next) => {
     return res.status(503).json({ error: 'The server is not connected to a database (DATABASE_URL is not set).' })
   }
   next()
-})
-// Maintenance mode (Settings → General): business users and customers get the maintenance
-// message; platform admins keep working so they can switch it off again.
-app.use('/api', async (req, res, next) => {
-  if (req.method === 'OPTIONS') return next()
-  const path = req.path || ''
-  if (path.startsWith('/platform') || path.startsWith('/public/') || path.startsWith('/internal/') || path === '/health') return next()
-  try {
-    const info = await publicPlatformInfo()
-    if (!info.maintenance.enabled) return next()
-    // A platform admin's own requests outside /platform (e.g. viewing a business) are allowed.
-    const header = String(req.headers.authorization || '')
-    const token = header.startsWith('Bearer ') ? verifyToken(header.slice(7)) : null
-    if (token?.isPlatformAdmin) return next()
-    return res.status(503).json({ error: info.maintenance.message, code: 'MAINTENANCE' })
-  } catch {
-    return next()
-  }
 })
 app.use('/api', apiRouter)
 
@@ -114,8 +93,6 @@ async function start() {
   if (!isTransactionEncryptionConfigured()) {
     console.error('[security] TRANSACTION_ENCRYPTION_KEY is missing or invalid: financial transactions will not be sealed.')
   }
-
-  startDailyJobTimer()
 
   const server = app.listen(port, () => {
    console.log(`Server listening on port ${port}`)

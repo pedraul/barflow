@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react'
-import { useAdminAccess } from './adminAccess'
 import { fetchPlatformBackups, createPlatformBackup, deletePlatformBackup, restorePlatformBackup, fetchPlatformSettings, updatePlatformSettings } from '../../api/endpoints'
 import { useToast } from '../../context/ToastContext'
 import { usePreferences, stripIcons } from '../../context/PreferencesContext'
@@ -15,7 +14,6 @@ const BACKUP_TYPE_LABELS = {
 export default function BackupRestore() {
   const { showSuccess } = useToast()
   const { t } = usePreferences()
-  const { isSuper } = useAdminAccess()
   const [history, setHistory] = useState([])
   const [settings, setSettings] = useState({})
   const [backupType, setBackupType] = useState('full')
@@ -65,16 +63,10 @@ export default function BackupRestore() {
   }
 
   const handleRestore = async (rec) => {
-    const typed = window.prompt([
-      `${t('Restore from')} "${rec.name}"?`,
-      t('ALL current data (every business, order, payment and setting) is replaced by this backup. Changes made after it are lost.'),
-      t('Type RESTORE to continue:'),
-    ].join(String.fromCharCode(10)))
-    if (typed === null) return
-    if (typed.trim() !== 'RESTORE') { flash('❌ ' + t('Restore cancelled: you did not type RESTORE.')); return }
+    if (!window.confirm(`${t('Restore from')} "${rec.name}"? ${t('This will overwrite current platform data.')}`)) return
     try {
-      const result = await restorePlatformBackup(rec.id, 'RESTORE')
-      showSuccess(result?.message || t('Backup restored successfully.'))
+      await restorePlatformBackup(rec.id)
+      showSuccess(t('Backup restored successfully.'))
       await load()
     } catch (e) {
       flash('❌ ' + (e.response?.data?.error || t('Restore failed.')))
@@ -82,7 +74,7 @@ export default function BackupRestore() {
   }
 
   const handleDownload = (rec) => {
-    const content = `BarFlow backup details\nName: ${rec.name}\nType: ${rec.type}\nSize: ${rec.size}\nStatus: ${rec.status}\nCreated: ${new Date(rec.createdAt).toLocaleString()}\nFile on server: ${rec.restorable ? 'yes' : 'no'}\n`
+    const content = `BarFlow backup metadata\nName: ${rec.name}\nType: ${rec.type}\nSize: ${rec.size}\nStatus: ${rec.status}\nCreated: ${new Date(rec.createdAt).toLocaleString()}\n`
     const blob = new Blob([content], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -125,7 +117,16 @@ export default function BackupRestore() {
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
           <div className="flex items-center gap-2 font-bold text-sm text-slate-900 border-b border-slate-100 pb-3 mb-4"><span>{t('Manual Backup')}</span></div>
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">{t('Makes a full copy of the database (all businesses and settings) on the server. Needs pg_dump installed on the server.')}</p>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-semibold text-slate-700">{t('Backup Type')}</label>
+              <select value={backupType} onChange={(e) => setBackupType(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                <option value="full">{t('Full Backup')}</option>
+                <option value="incremental">{t('Incremental')}</option>
+                <option value="database">{t('Database Only')}</option>
+                <option value="file">{t('File Backup')}</option>
+                <option value="config">{t('Configuration')}</option>
+              </select>
+            </div>
             <button onClick={handleBackup} disabled={creating} className="w-full px-5 py-2.5 text-sm bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition inline-flex items-center justify-center gap-2">
               {creating ? t('Creating...') : t('Create Backup Now')}
             </button>
@@ -147,6 +148,7 @@ export default function BackupRestore() {
               <div className="space-y-1.5">
                 <label className="block text-sm font-semibold text-slate-700">{t('Frequency')}</label>
                 <select value={settings.backup_frequency ?? 'daily'} onChange={(e) => setS('backup_frequency', e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                  <option value="hourly">{t('Hourly')}</option>
                   <option value="daily">{t('Daily')}</option>
                   <option value="weekly">{t('Weekly')}</option>
                   <option value="monthly">{t('Monthly')}</option>
@@ -191,8 +193,8 @@ export default function BackupRestore() {
                   <td className="px-3 py-2 text-slate-400">{new Date(h.createdAt).toLocaleString()}</td>
                   <td className="px-3 py-2 text-right">
                     <div className="flex justify-end gap-1.5">
-                      <button title={t('Details')} onClick={() => handleDownload(h)} className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100">{t('Details')}</button>
-                      <button title={!isSuper ? t('Only a super admin can restore a backup') : h.restorable ? t('Restore') : t('The backup file is not on this server')} onClick={() => handleRestore(h)} disabled={!h.restorable || !isSuper} className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed">{t('Restore')}</button>
+                      <button title={t('Download')} onClick={() => handleDownload(h)} className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100">{t('Download')}</button>
+                      <button title={t('Restore')} onClick={() => handleRestore(h)} className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50">{t('Restore')}</button>
                       <button title={t('Delete')} onClick={() => handleDelete(h.id)} className="p-1.5 rounded-lg text-red-600 hover:bg-red-50">{t('Delete')}</button>
                     </div>
                   </td>

@@ -3,8 +3,6 @@ import { query } from '../config/database.js'
 import { sign } from '../config/jwt.js'
 import authMiddleware from '../middleware/authMiddleware.js'
 import bcrypt from 'bcryptjs'
-import { businessAccessBlock, ensureBusinessStatusSchema } from '../services/businessStatus.js'
-import { clearFailedLogins, lockedMinutes, lockedResponse, recordFailedLogin, wrongPasswordMessage } from '../services/loginSecurity.js'
 import { logAudit, getClientIp } from '../utils/audit.js'
 import { getPermissions } from '../middleware/permissionMiddleware.js'
 import {
@@ -16,9 +14,6 @@ import {
   sendRegistrationConfirmation,
   sendAdminNewBusinessNotification,
 } from '../services/emailNotificationService.js'
-import { businessAccess, SUBSCRIPTION_BLOCKED_MESSAGE } from '../services/subscriptionAccess.js'
-import { passwordPolicyError, settingText } from '../services/platformSettings.js'
-import { normalizeCycle, priceFor } from '../services/subscriptionPricing.js'
 
 const router = Router()
 
@@ -61,9 +56,6 @@ router.post('/login', async (req, res) => {
   }
 
   try {
-    const lockMinutes = await lockedMinutes('user', username)
-    if (lockMinutes) return lockedResponse(res, lockMinutes)
-
     // Support login by username OR email
     const { rows } = await query(
       `SELECT u.*, b.id AS verified_branch_id, b.name AS branch_name,
@@ -77,17 +69,14 @@ router.post('/login', async (req, res) => {
     )
 
     if (!rows.length) {
-      const result = await recordFailedLogin('user', username)
-      return res.status(401).json({ error: wrongPasswordMessage(result, 'Invalid username or password.') })
+      return res.status(401).json({ error: 'Invalid username or password.' })
     }
 
     const u = rows[0]
     const valid = await bcrypt.compare(password, u.password_hash)
     if (!valid) {
-      const result = await recordFailedLogin('user', username, u.business_id)
-      return res.status(401).json({ error: wrongPasswordMessage(result, 'Invalid username or password.') })
+      return res.status(401).json({ error: 'Invalid username or password.' })
     }
-    await clearFailedLogins('user', username)
 
     const isOwner = String(u.role || '').toLowerCase() === 'owner'
     if ((u.branch_id && !u.verified_branch_id) || (!u.branch_id && !isOwner)) {
@@ -101,36 +90,35 @@ router.post('/login', async (req, res) => {
     let unpaidAccessGranted = false
     let businessVerified = false
     if (u.business_id) {
-      await ensureBusinessStatusSchema().catch(() => {})
       const { rows: bizRows } = await query(
-        `SELECT is_suspended, is_verified, unpaid_access_granted,
-                COALESCE(is_deactivated, FALSE) AS is_deactivated, deactivated_by, status_reason
-         FROM businesses WHERE id = $1`,
+        'SELECT is_suspended, is_verified, unpaid_access_granted FROM businesses WHERE id = $1',
         [u.business_id]
       )
       business = bizRows[0] || null
-      const blocked = businessAccessBlock(business, u.role)
-      if (blocked) {
-        return res.status(blocked.status).json({ error: blocked.error, code: blocked.code, reason: blocked.reason })
+      if (business?.is_suspended) {
+        return res.status(403).json({ error: 'Your business account has been suspended. Contact support.', code: 'BUSINESS_SUSPENDED' })
       }
       unpaidAccessGranted = business?.unpaid_access_granted === true
+      businessVerified = business?.is_verified === true
     }
 
-    // Access needs an active paid subscription, or access granted by the platform admin.
-    // businessVerified tells the app the business has an active subscription.
+    // Business verification or explicit admin access allows entry to the workspace.
     let subscriptionStatus = 'active'
     let subscriptionExpired = false
     if (u.business_id) {
-      const access = await businessAccess(u.business_id, unpaidAccessGranted)
-      businessVerified = access.viaSubscription
-      if (access.viaSubscription) subscriptionStatus = 'verified_access'
-      else if (access.viaAdminAccess) subscriptionStatus = 'access_granted'
-      else subscriptionExpired = true
+      if (businessVerified) {
+        // Verification is the platform approval that lets this business enter its workspace.
+        subscriptionStatus = 'verified_access'
+      } else if (unpaidAccessGranted) {
+        subscriptionStatus = 'access_granted'
+      } else {
+        subscriptionExpired = true
+      }
     }
 
     if (subscriptionExpired && !isOwner) {
       return res.status(403).json({
-        error: SUBSCRIPTION_BLOCKED_MESSAGE,
+        error: 'Your business subscription is pending activation. Please complete payment and wait for admin verification.',
         code: 'SUBSCRIPTION_PENDING',
         subscriptionStatus,
         subscriptionExpired: true,
@@ -139,27 +127,29 @@ router.post('/login', async (req, res) => {
     }
 
     const businessId = u.business_id
-    // Two-factor applies when the business turns it on, or when the platform admin requires it
-    // (Settings → Security → Require two-factor). A business cannot switch off a platform requirement.
     let twoFactorEnabled = false
     let twoFactorMethod = 'email'
+    let businessHasTwoFactorRecord = false
     if (businessId) {
       const { rows: tfRows } = await query(
         'SELECT is_enabled, method FROM two_factor_settings WHERE business_id = $1 LIMIT 1',
         [businessId]
       )
-      if (tfRows.length && tfRows[0].is_enabled) {
-        twoFactorEnabled = true
-        twoFactorMethod = tfRows[0].method || 'email'
+      if (tfRows.length) {
+        businessHasTwoFactorRecord = true
+        if (tfRows[0].is_enabled) {
+          twoFactorEnabled = true
+          twoFactorMethod = tfRows[0].method
+        }
       }
     }
-    if (!twoFactorEnabled) {
+    if (!businessHasTwoFactorRecord) {
       const { rows: tfRows } = await query(
-        "SELECT is_enabled, method FROM two_factor_settings WHERE scope = 'platform' AND business_id IS NULL ORDER BY updated_at DESC LIMIT 1"
+        "SELECT is_enabled, method FROM two_factor_settings WHERE scope = 'platform' AND business_id IS NULL LIMIT 1"
       )
       if (tfRows.length && tfRows[0].is_enabled) {
         twoFactorEnabled = true
-        twoFactorMethod = tfRows[0].method || 'email'
+        twoFactorMethod = tfRows[0].method
       }
     }
 
@@ -293,15 +283,6 @@ router.post('/register-business', async (req, res) => {
   if (!planId) {
     return res.status(400).json({ error: 'Subscription plan is required.' })
   }
-  const passwordProblem = await passwordPolicyError(password)
-  if (passwordProblem) return res.status(400).json({ error: passwordProblem })
-  const registrationCycle = normalizeCycle(billingCycle || 'monthly')
-  if (!registrationCycle) return res.status(400).json({ error: 'Billing cycle must be monthly, quarterly or annually.' })
-  // Check the plan before anything is created, so a bad plan never leaves a half-registered business.
-  const { rows: chosenPlan } = await query('SELECT id FROM subscription_plans WHERE id::text = $1 AND is_active = TRUE', [String(planId)])
-    .catch(() => ({ rows: [] }))
-  if (!chosenPlan.length) return res.status(400).json({ error: 'Selected subscription plan is not available.' })
-  const defaultCurrency = await settingText('platform_currency', 'RWF')
   try {
     // Check if email already exists
     const { rows: existing } = await query('SELECT id FROM users WHERE email = $1', [ownerEmail])
@@ -325,7 +306,7 @@ router.post('/register-business', async (req, res) => {
         country || 'Rwanda',
         businessType || 'bar',
         regCode,
-        currencyCode || defaultCurrency,
+        currencyCode || 'RWF',
         false, // not verified until super admin approves
         description || '',
         province || '',
@@ -358,8 +339,24 @@ router.post('/register-business', async (req, res) => {
       return res.status(400).json({ error: 'Selected subscription plan is not available.' })
     }
 
-    // Same calculation as the prices shown on the registration page (services/subscriptionPricing.js).
-    const { cycle, amount, months: monthsToAdd, discountPercent } = priceFor(selectedPlan, registrationCycle)
+    const cycle = String(billingCycle || 'annually').toLowerCase()
+    let amount = Number(selectedPlan.price_monthly) || 0
+    let monthsToAdd = 1
+    let discountPercent = 0
+    if (cycle === 'quarterly') {
+      monthsToAdd = 3
+      discountPercent = Number(selectedPlan.discount_quarterly ?? 8)
+      const fullQuarter = amount * 3
+      amount = Math.round(fullQuarter * (1 - discountPercent / 100))
+    } else if (cycle === 'annually' || cycle === 'yearly') {
+      monthsToAdd = 12
+      discountPercent = Number(selectedPlan.discount_annually ?? 14)
+      const fullYear = amount * 12
+      amount = Math.round(fullYear * (1 - discountPercent / 100))
+      if (Number(selectedPlan.price_yearly) > 0) {
+        amount = Number(selectedPlan.price_yearly)
+      }
+    }
 
     const now = new Date()
     const periodEnd = new Date(now)

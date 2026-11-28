@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { login, platformLogin } from '../../api/endpoints'
-import { refreshPlatformInfo, isLogoUrl } from '../../hooks/usePlatformInfo'
 import { buildWorkspaceUrl } from '../../config/workspaceUrl'
 import { usePreferences } from '../../context/PreferencesContext'
 
@@ -10,26 +9,9 @@ export default function Login() {
   const navigate = useNavigate()
   const { t } = usePreferences()
   const { login: setAuth } = useAuth()
-  const [mode, setMode] = useState(() => (
-    typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('mode') === 'admin' ? 'admin' : 'business'
-  )) // 'business' | 'admin'
-  // Platform details from Settings (description, support contact, maintenance notice).
-  // Fresh on the sign-in page, so a change saved in Settings shows on the next visit.
-  const [platformInfo, setPlatformInfo] = useState(null)
-  useEffect(() => {
-    refreshPlatformInfo().then(setPlatformInfo).catch(() => {})
-  }, [])
-  const platformName = String(platformInfo?.name || 'BarFlow').trim() || 'BarFlow'
-  const websiteRaw = String(platformInfo?.website || '').trim()
-  const websiteUrl = websiteRaw ? (/^https?:\/\//i.test(websiteRaw) ? websiteRaw : `https://${websiteRaw}`) : ''
+  const [mode, setMode] = useState('business') // 'business' | 'admin'
   const [form, setForm] = useState({ username: '', password: '', email: '', password2: '' })
-  // A message left by the app when a session was ended (business suspended, deleted, ...).
-  const [error, setError] = useState(() => {
-    try { return sessionStorage.getItem('barflow.loginNotice') || '' } catch { return '' }
-  })
-  useEffect(() => {
-    try { sessionStorage.removeItem('barflow.loginNotice') } catch { /* ignore */ }
-  }, [])
+  const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e) => {
@@ -106,31 +88,15 @@ export default function Login() {
         {/* Brand */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-3 mb-2">
-            {/* Settings → Platform Info → Logo (image address or text/emoji), else the default mark */}
-            {isLogoUrl(platformInfo?.logo) ? (
-              <img src={platformInfo.logo} alt="" className="w-12 h-12 rounded-xl object-contain bg-white/10" />
-            ) : (
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-400 flex items-center justify-center">
-                <span className="text-white font-bold text-lg">{String(platformInfo?.logo || '').trim().slice(0, 2) || platformName.charAt(0).toUpperCase()}</span>
-              </div>
-            )}
-            {/* Settings → General → Platform Name */}
-            {platformName.toLowerCase() === 'barflow' ? (
-              <h1 className="text-5xl sm:text-6xl leading-none font-black uppercase">
-                <span className="text-yellow-300">BAR</span><span className="text-emerald-400">FLOW</span>
-              </h1>
-            ) : (
-              <h1 className="text-4xl sm:text-5xl leading-none font-black text-white">{platformName}</h1>
-            )}
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-400 flex items-center justify-center">
+              <span className="text-white font-bold text-lg">B</span>
+            </div>
+            <h1 className="text-5xl sm:text-6xl leading-none font-black uppercase">
+              <span className="text-yellow-300">BAR</span><span className="text-emerald-400">FLOW</span>
+            </h1>
           </div>
-          <p className="text-slate-400 text-sm">{platformInfo?.description ? platformInfo.description : t('Multi-business management platform')}</p>
+          <p className="text-slate-400 text-sm">{t('Multi-business management platform')}</p>
         </div>
-
-        {platformInfo?.maintenance?.enabled && mode === 'business' && (
-          <div role="status" className="mb-4 rounded-xl border border-amber-300/40 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
-            {platformInfo.maintenance.message}
-          </div>
-        )}
 
         {/* Mode Toggle */}
         <div className="flex bg-amber-200/40 rounded-xl p-1 mb-6">
@@ -242,18 +208,6 @@ export default function Login() {
             </>
           )}
         </form>
-        {(platformInfo?.contactEmail || platformInfo?.contactPhone) && (
-          <p className="mt-6 text-center text-xs text-slate-400">
-            {t('Need help?')} {[platformInfo.contactEmail, platformInfo.contactPhone].filter(Boolean).join(' · ')}
-          </p>
-        )}
-        {websiteUrl && (
-          <p className="mt-2 text-center text-xs">
-            <a href={websiteUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-300 hover:text-indigo-200 underline">
-              {websiteUrl.replace(/^https?:\/\//i, '').replace(/\/$/, '')}
-            </a>
-          </p>
-        )}
       </div>
     </div>
   )

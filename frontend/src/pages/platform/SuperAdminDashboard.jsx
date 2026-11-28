@@ -1,11 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { LayoutDashboard, Briefcase, PlusCircle, RefreshCw, CreditCard, Users, BarChart3, Settings, LogOut, Menu, HardDriveDownload, X, ScrollText } from 'lucide-react'
-import { fetchPlatformStats, fetchBusinesses, fetchPlatformReports, createAdmin, fetchPlatformMe, fetchPlatformHealth } from '../../api/endpoints'
-import { adminCan, PAGE_MODULES, PLATFORM_MODULES } from './adminAccess'
-import ActivityLog from './ActivityLog'
-import usePlatformInfo from '../../hooks/usePlatformInfo'
+import { LayoutDashboard, Briefcase, PlusCircle, RefreshCw, CreditCard, Users, BarChart3, Settings, LogOut, Menu, HardDriveDownload, X } from 'lucide-react'
+import { fetchPlatformStats, fetchBusinesses, fetchPlatformReports, fetchAdmins, createAdmin } from '../../api/endpoints'
 import { useToast } from '../../context/ToastContext'
 import { usePreferences, stripIcons } from '../../context/PreferencesContext'
 
@@ -30,8 +27,7 @@ import PlatformSettings from './Settings'
 import BackupRestore from './BackupRestore'
 
 export default function SuperAdminDashboard() {
-  const { user, logout, updateUser } = useAuth()
-  const platformInfo = usePlatformInfo()
+  const { user, logout } = useAuth()
   const { t } = usePreferences()
   const { showSuccess } = useToast()
   const navigate = useNavigate()
@@ -39,11 +35,7 @@ export default function SuperAdminDashboard() {
 
   const [stats, setStats] = useState(null)
   const [businesses, setBusinesses] = useState([])
-  const [health, setHealth] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState('')
-  const can = (...modules) => adminCan(user, ...modules)
-  const isSuper = user?.role === 'super_admin'
   const [viewing, setViewing] = useState(null)
   const [adminOpen, setAdminOpen] = useState(false)
   const [adminForm, setAdminForm] = useState({ name: '', email: '', phone: '', password: '', role: 'admin', permissions: ['businesses', 'subscriptions', 'payments', 'reports'] })
@@ -60,30 +52,15 @@ export default function SuperAdminDashboard() {
     load()
   }, [])
 
-  const loadHealth = () => fetchPlatformHealth().then(setHealth).catch(() => setHealth({ failed: true }))
-
   const load = async () => {
     setLoading(true)
-    setLoadError('')
     try {
-      // Role and permissions can change while signed in: always use the server's current view.
-      let me = user
-      try {
-        me = await fetchPlatformMe()
-        updateUser({ role: me.role, permissions: me.permissions, name: me.name, email: me.email, phone: me.phone })
-      } catch (e) {
-        if (e.response?.status === 401 || e.response?.status === 403) throw e
-      }
-      const [s, b] = await Promise.all([
-        fetchPlatformStats(),
-        adminCan(me, 'businesses', 'subscriptions', 'payments') ? fetchBusinesses() : Promise.resolve([]),
-      ])
+      const s = await fetchPlatformStats()
+      const b = await fetchBusinesses()
       setStats(s)
       setBusinesses(b)
-      loadHealth()
     } catch (e) {
       console.error('Failed to load admin data:', e)
-      setLoadError(e.response?.data?.error || e.message || t('Failed to load dashboard data.'))
     } finally {
       setLoading(false)
     }
@@ -117,10 +94,10 @@ export default function SuperAdminDashboard() {
     setAdminSaving(true)
     setAdminMsg('')
     try {
-      await createAdmin({ name: adminForm.name, email: adminForm.email, phone: adminForm.phone, password: adminForm.password, role: adminForm.role, permissions: adminForm.role === 'super_admin' ? PLATFORM_MODULES : adminForm.permissions.filter((p) => can(p)) })
+      await createAdmin({ name: adminForm.name, email: adminForm.email, phone: adminForm.phone, password: adminForm.password, role: adminForm.role, permissions: adminForm.role === 'super_admin' ? ['businesses', 'subscriptions', 'payments', 'users', 'reports', 'settings', 'backup'] : adminForm.permissions })
       showSuccess(t('Changes saved successfully.'))
       setAdminForm({ name: '', email: '', phone: '', password: '', role: 'admin', permissions: ['businesses', 'subscriptions', 'payments', 'reports'] })
-      setAdminOpen(false)
+      setTimeout(() => setAdminOpen(false), 1200)
     } catch (e) {
       setAdminMsg('❌ ' + (e.response?.data?.error || e.message || t('Failed to create admin.')))
     } finally {
@@ -131,7 +108,7 @@ export default function SuperAdminDashboard() {
   const handleExportReports = async () => {
     setExporting(true)
     try {
-      const [r, s] = await Promise.all([can('reports') ? fetchPlatformReports() : Promise.resolve({}), fetchPlatformStats()])
+      const [r, s] = await Promise.all([fetchPlatformReports(), fetchPlatformStats()])
       const rows = [
         [t('Metric'), t('Value')],
         [t('Total Businesses'), s?.totalBusinesses ?? 0],
@@ -144,8 +121,7 @@ export default function SuperAdminDashboard() {
         [t('Income This Year'), r?.income?.thisYear ?? 0],
         [t('Income All Time'), r?.income?.allTime ?? 0],
       ]
-      const cell = (v) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v))
-      const csv = rows.map((r2) => r2.map(cell).join(',')).join('\n')
+      const csv = rows.map((r2) => r2.join(',')).join('\n')
       const blob = new Blob([csv], { type: 'text/csv' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -166,7 +142,7 @@ export default function SuperAdminDashboard() {
   const suspended = Number(stats?.suspendedBusinesses || 0)
   const activeSubs = Number(stats?.activeSubscriptions || 0)
   const expiredSubs = Number(stats?.expiredSubscriptions || 0)
-  const pendingVerification = Number(stats?.pendingVerification ?? Math.max(0, total - verified - suspended))
+  const pendingVerification = Number(stats?.pendingVerification || Math.max(0, total - verified - suspended))
   const expiringSoon = Number(stats?.expiringSoon || 0)
 
   const metrics = [
@@ -175,40 +151,30 @@ export default function SuperAdminDashboard() {
     { title: t('Expired Subscriptions'), value: String(expiredSubs), trend: t('Needs attention'), trendType: 'down', bg: 'bg-rose-50', to: '/admin/businesses?status=subscription%20inactive' },
     { title: t('Awaiting Verification'), value: String(pendingVerification), trend: t('Needs your review'), trendType: 'neutral', bg: 'bg-amber-50', to: '/admin/businesses?status=pending' },
     { title: t('Suspended Businesses'), value: String(suspended), trend: t('Currently suspended'), trendType: 'neutral', bg: 'bg-red-50', to: '/admin/businesses?status=suspended' },
-    { title: t('Expiring in 7 Days'), value: String(expiringSoon), trend: t('Action required'), trendType: 'neutral', bg: 'bg-blue-50', to: '/admin/plans' },
-    { title: t('Payments to Confirm'), value: String(stats?.paymentsAwaitingConfirmation ?? 0), trend: Number(stats?.paymentsAwaitingConfirmation) ? t('Check the money arrived') : t('Nothing waiting'), trendType: Number(stats?.paymentsAwaitingConfirmation) ? 'down' : 'neutral', bg: 'bg-amber-50', to: '/admin/payments' },
-    { title: t('Revenue This Month'), value: formatCurr(stats?.monthlyRevenue), trend: t('Paid and settled'), trendType: 'up', bg: 'bg-emerald-50', to: can('payments') ? '/admin/payments' : '/admin/reports' },
-    { title: t('Business Staff Accounts'), value: String(stats?.totalUsers ?? 0), trend: `${stats?.totalAdmins ?? 0} ${t('active platform admins')}`, trendType: 'neutral', bg: 'bg-slate-50', to: '/admin/businesses' },
-  ].filter((m) => {
-    const needed = PAGE_MODULES[m.to.split('?')[0]]
-    return !needed || can(...needed)
-  })
+    { title: t('Expiring in 7 Days'), value: String(expiringSoon), trend: t('Action required'), trendType: 'neutral', bg: 'bg-blue-50', to: '/admin/businesses?status=active' },
+  ]
 
   const getStatus = (b) => {
-    if (b.isSuspended || b.isDeactivated) return 'Suspended'
+    if (b.isSuspended) return 'Suspended'
     if (!b.isVerified) return 'Pending'
     // Business was verified before but its renewed subscription is still pending admin verification
     if (b.subPaymentStatus === 'pending') return 'Pending'
     return 'Active'
   }
   const getStatusColor = (status) =>
-    status === 'Active' ? 'bg-emerald-500' : status === 'Expired' || status === 'Suspended' ? 'bg-rose-500' : 'bg-amber-500'
+    status === 'Active' ? 'bg-emerald-500' : status === 'Expired' ? 'bg-rose-500' : 'bg-amber-500'
   const getPlanBg = (plan) => {
     if (plan === 'Annual') return 'bg-blue-50 text-blue-600 border border-blue-200'
     if (plan === 'Quarterly') return 'bg-amber-50 text-amber-600 border border-amber-200'
     return 'bg-purple-50 text-purple-600 border border-purple-200'
   }
-  const getAction = (status) => (status === 'Active' || !can('businesses') ? 'View' : status === 'Expired' ? 'Renew' : 'Review')
+  const getAction = (status) => (status === 'Active' ? 'View' : status === 'Expired' ? 'Renew' : 'Review')
 
   const chartData = stats?.chartData || []
-  const pageModules = PAGE_MODULES[location.pathname.replace(/\/+$/, '')]
-  const roleLabel = { super_admin: 'Super Admin', admin: 'Admin', billing: 'Billing' }[user?.role] || 'Admin'
-  const initials = String(user?.name || roleLabel).split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('') || 'A'
 
   const recentBusinesses = businesses.slice(0, 5).map((b) => {
     const status = getStatus(b)
     return {
-      raw: b,
       name: b.name,
       owner: b.contactEmail || t('N/A'),
       plan: b.plan || 'Monthly',
@@ -247,7 +213,7 @@ export default function SuperAdminDashboard() {
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6366F1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transform rotate-180">
                 <path d="M8 22h8" /><path d="M12 11v11" /><path d="m19 3-7 8-7-8Z" />
               </svg>
-              <span className="text-xl font-black text-white tracking-tight truncate">{platformInfo?.name || 'BarFlow'}</span>
+              <span className="text-xl font-black text-white tracking-tight">BarFlow</span>
             </div>
             <span className="text-[10px] font-bold tracking-wider text-slate-500 uppercase mt-0.5 pl-8">{t('Platform Admin')}</span>
           </div>
@@ -264,28 +230,23 @@ export default function SuperAdminDashboard() {
 
             <div className="space-y-1">
               <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-2">{t('Management')}</p>
-              {can('businesses') && <SidebarLink to="/admin/businesses" icon={<Briefcase size={16} />} label="Businesses" active={location.pathname === '/admin/businesses'} />}
-              {can('businesses') && <SidebarLink to="/register" icon={<PlusCircle size={16} />} label="Business Registration" active={location.pathname === '/register'} />}
-              {can('subscriptions') && <SidebarLink to="/admin/plans" icon={<RefreshCw size={16} />} label="Subscriptions" active={location.pathname === '/admin/plans'} />}
-              {can('payments') && <SidebarLink to="/admin/payments" icon={<CreditCard size={16} />} label="Payments" active={location.pathname === '/admin/payments'} />}
-              {can('users') && <SidebarLink to="/admin/users" icon={<Users size={16} />} label="Users" active={location.pathname === '/admin/users'} />}
+              <SidebarLink to="/admin/businesses" icon={<Briefcase size={16} />} label="Businesses" active={location.pathname === '/admin/businesses'} />
+              <SidebarLink to="/register" icon={<PlusCircle size={16} />} label="Business Registration" active={location.pathname === '/register'} />
+              <SidebarLink to="/admin/plans" icon={<RefreshCw size={16} />} label="Subscriptions" active={location.pathname === '/admin/plans'} />
+              <SidebarLink to="/admin/payments" icon={<CreditCard size={16} />} label="Payments" active={location.pathname === '/admin/payments'} />
+              <SidebarLink to="/admin/users" icon={<Users size={16} />} label="Users" active={location.pathname === '/admin/users'} />
             </div>
 
-            {can('reports', 'users', 'settings') && (
-              <div className="space-y-1">
-                <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-2">{t('System')}</p>
-                {can('reports') && <SidebarLink to="/admin/reports" icon={<BarChart3 size={16} />} label="Reports" active={location.pathname === '/admin/reports'} />}
-                {can('reports', 'users') && <SidebarLink to="/admin/activity" icon={<ScrollText size={16} />} label="Activity Log" active={location.pathname === '/admin/activity'} />}
-                {can('settings') && <SidebarLink to="/admin/settings" icon={<Settings size={16} />} label="Settings" active={location.pathname === '/admin/settings'} />}
-              </div>
-            )}
+            <div className="space-y-1">
+              <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-2">{t('System')}</p>
+              <SidebarLink to="/admin/reports" icon={<BarChart3 size={16} />} label="Reports" active={location.pathname === '/admin/reports'} />
+              <SidebarLink to="/admin/settings" icon={<Settings size={16} />} label="Settings" active={location.pathname === '/admin/settings'} />
+            </div>
 
-            {can('backup') && (
-              <div className="space-y-1">
-                <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-2">{t('Maintenance')}</p>
-                <SidebarLink to="/admin/backup" icon={<HardDriveDownload size={16} />} label="Backup & Restore" active={location.pathname === '/admin/backup'} />
-              </div>
-            )}
+            <div className="space-y-1">
+              <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-2">{t('Maintenance')}</p>
+              <SidebarLink to="/admin/backup" icon={<HardDriveDownload size={16} />} label="Backup & Restore" active={location.pathname === '/admin/backup'} />
+            </div>
           </nav>
         </div>
 
@@ -321,7 +282,7 @@ export default function SuperAdminDashboard() {
               ><Menu size={20} /></button>
               <div className="flex flex-col">
                 <h1 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                  {t('Welcome back')}, {user?.name || t(roleLabel)}
+                  {t('Welcome back, Super Admin')}
                 </h1>
                 <p className="text-xs text-slate-500 mt-0.5">{t('Manage and grow the BarFlow platform')}</p>
               </div>
@@ -330,11 +291,11 @@ export default function SuperAdminDashboard() {
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-3 border-l pl-6 border-slate-200 cursor-pointer group">
                 <div className="w-8 h-8 rounded-full bg-[#4F46E5] text-white flex items-center justify-center font-bold text-xs shadow-sm">
-                  {initials}
+                  SA
                 </div>
                 <div className="text-left hidden sm:block">
-                  <p className="text-xs font-bold text-slate-900 leading-tight">{t(roleLabel)}</p>
-                  <p className="text-[10px] text-slate-400 font-medium">{user?.email || ''}</p>
+                  <p className="text-xs font-bold text-slate-900 leading-tight">{t('Super Admin')}</p>
+                  <p className="text-[10px] text-slate-400 font-medium">{user?.email || 'superadmin@barflow.rw'}</p>
                 </div>
               </div>
             </div>
@@ -342,14 +303,8 @@ export default function SuperAdminDashboard() {
 
           {/* WORKSPACE APP BODY OVERFLOW SCROLL */}
           <main className="flex-1 overflow-y-auto p-8 space-y-6">
-            {loadError && (
-              <div className="p-3 rounded-lg text-sm font-medium border bg-red-50 border-red-300 text-red-800 flex items-center justify-between gap-3">
-                <span>{loadError}</span>
-                <button onClick={load} className="px-3 py-1 text-xs font-bold bg-white border border-red-300 rounded-lg hover:bg-red-100">{t('Retry')}</button>
-              </div>
-            )}
-            {pageModules && !can(...pageModules) ? (
-              <NoAccess />
+            {location.pathname === '/admin' || location.pathname === '/admin/dashboard' ? (
+              <Overview metrics={metrics} recentBusinesses={recentBusinesses} chartData={chartData} pendingVerification={pendingVerification} expiringSoon={expiringSoon} businesses={businesses} onViewBusiness={setViewing} onNavigate={navigate} onAddAdmin={() => setAdminOpen(true)} onExportReports={handleExportReports} exporting={exporting} />
             ) : location.pathname === '/admin/businesses' ? (
               <BusinessList />
             ) : location.pathname === '/admin/plans' ? (
@@ -360,14 +315,12 @@ export default function SuperAdminDashboard() {
               <UsersPage />
             ) : location.pathname === '/admin/reports' ? (
               <Reports />
-            ) : location.pathname === '/admin/activity' ? (
-              <ActivityLog />
             ) : location.pathname === '/admin/settings' ? (
               <PlatformSettings />
             ) : location.pathname === '/admin/backup' ? (
               <BackupRestore />
             ) : (
-              <Overview metrics={metrics} recentBusinesses={recentBusinesses} chartData={chartData} pendingVerification={pendingVerification} expiringSoon={expiringSoon} onViewBusiness={setViewing} onNavigate={navigate} onAddAdmin={() => setAdminOpen(true)} onExportReports={handleExportReports} exporting={exporting} health={health} onRefreshHealth={loadHealth} can={can} showBusinesses={can('businesses', 'subscriptions', 'payments')} />
+              <Overview metrics={metrics} recentBusinesses={recentBusinesses} chartData={chartData} pendingVerification={pendingVerification} expiringSoon={expiringSoon} businesses={businesses} onViewBusiness={setViewing} onNavigate={navigate} onAddAdmin={() => setAdminOpen(true)} onExportReports={handleExportReports} exporting={exporting} />
             )}
           </main>
         </div>
@@ -377,7 +330,7 @@ export default function SuperAdminDashboard() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setAdminOpen(false)}>
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white">
-              <h2 className="font-bold text-slate-900 flex items-center gap-2">{t('Add Admin')}</h2>
+              <h2 className="font-bold text-slate-900 flex items-center gap-2">{t('Add Super Admin')}</h2>
               <button onClick={() => setAdminOpen(false)} aria-label={t('Close')} title={t('Close')} className="text-slate-400 hover:text-slate-700"><X size={20} /></button>
             </div>
             <div className="p-6 space-y-4">
@@ -403,7 +356,7 @@ export default function SuperAdminDashboard() {
                 <select value={adminForm.role} onChange={(e) => setAdminForm({ ...adminForm, role: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white capitalize focus:ring-2 focus:ring-indigo-500 outline-none">
                   <option value="admin">{t('Admin')}</option>
                   <option value="billing">{t('Billing')}</option>
-                  {isSuper && <option value="super_admin">{t('Super Admin')}</option>}
+                  <option value="super_admin">{t('Super Admin')}</option>
                 </select>
               </div>
               <div className="space-y-2">
@@ -411,7 +364,7 @@ export default function SuperAdminDashboard() {
                 <div className="grid grid-cols-2 gap-2">
                   {['businesses', 'subscriptions', 'payments', 'users', 'reports', 'settings', 'backup'].map((p) => (
                     <label key={p} className="flex items-center gap-2 text-sm text-slate-600 capitalize">
-                      <input type="checkbox" checked={adminForm.role === 'super_admin' || adminForm.permissions.includes(p)} disabled={adminForm.role === 'super_admin' || !can(p)} onChange={() => setAdminForm((f) => ({ ...f, permissions: f.permissions.includes(p) ? f.permissions.filter((x) => x !== p) : [...f.permissions, p] }))} />
+                      <input type="checkbox" checked={adminForm.permissions.includes(p)} disabled={adminForm.role === 'super_admin'} onChange={() => setAdminForm((f) => ({ ...f, permissions: f.permissions.includes(p) ? f.permissions.filter((x) => x !== p) : [...f.permissions, p] }))} />
                       {t(PERMISSION_LABELS[p])}
                     </label>
                   ))}
@@ -458,25 +411,8 @@ export default function SuperAdminDashboard() {
   )
 }
 
-function Overview({ metrics, recentBusinesses, chartData, pendingVerification, expiringSoon, onViewBusiness, onNavigate, onAddAdmin, onExportReports, exporting, health, onRefreshHealth, can, showBusinesses }) {
+function Overview({ metrics, recentBusinesses, chartData, pendingVerification, expiringSoon, businesses = [], onViewBusiness, onNavigate, onAddAdmin, onExportReports, exporting }) {
   const { t } = usePreferences()
-  // Bars are scaled to the busiest month; axis labels are real amounts.
-  const monthTotal = (d) => (Number(d.monthly) || 0) + (Number(d.quarterly) || 0) + (Number(d.annual) || 0)
-  const chartMax = Math.max(0, ...chartData.map(monthTotal))
-  const pct = (v) => (chartMax > 0 ? ((Number(v) || 0) / chartMax) * 100 : 0)
-  const compact = (v) => new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(v || 0)
-  const axis = chartMax > 0 ? [1, 0.75, 0.5, 0.25].map((f) => `${CURRENCY} ${compact(chartMax * f)}`) : []
-  const db = health?.database
-  const healthRows = health?.failed
-    ? [{ label: t('Server Status'), ok: false, status: t('Unreachable') }]
-    : health
-      ? [
-          { label: t('Server Status'), ok: true, status: `${t('Online')} · ${formatUptime(health.server?.uptimeSeconds)}` },
-          { label: t('Database'), ok: db?.ok, status: db?.ok ? `${t('Connected')} · ${db.latencyMs} ms` : (db?.error || t('Unavailable')) },
-          { label: t('Email (SMTP)'), ok: health.email?.configured, warn: !health.email?.configured, status: health.email?.configured ? t('Configured') : t('Not configured') },
-          { label: t('Last Backup'), ok: Boolean(health.lastBackup) && health.lastBackup.status !== 'failed', warn: !health.lastBackup, status: health.lastBackup ? `${new Date(health.lastBackup.at).toLocaleDateString()} · ${t(health.lastBackup.status || 'completed')}` : t('Never') },
-        ]
-      : null
 
   return (
     <div className="space-y-6">
@@ -502,7 +438,7 @@ function Overview({ metrics, recentBusinesses, chartData, pendingVerification, e
       <div className="grid grid-cols-12 gap-6">
 
         {/* Table Area (7/12 width) */}
-        {showBusinesses && <div className="col-span-12 lg:col-span-8 bg-white border border-slate-200 rounded-xl shadow-xs flex flex-col justify-between">
+        <div className="col-span-12 lg:col-span-8 bg-white border border-slate-200 rounded-xl shadow-xs flex flex-col justify-between">
           <div>
             <div className="p-5 flex items-center justify-between border-b border-slate-100">
               <div className="flex items-center gap-2 font-bold text-sm text-slate-900">
@@ -554,8 +490,8 @@ function Overview({ metrics, recentBusinesses, chartData, pendingVerification, e
                       <td className="p-2 pr-6 text-right">
                         <button
                           onClick={() => {
-                            if (b.action === 'View') onViewBusiness && onViewBusiness(b.raw)
-                            else onNavigate(`/admin/businesses?status=${b.status === 'Suspended' ? 'suspended' : 'pending'}`)
+                            const full = businesses.find((x) => x.name === b.name || x.contactEmail === b.owner)
+                            onViewBusiness && onViewBusiness(full || { name: b.name, contactEmail: b.owner, plan: b.plan, createdAt: b.date, isVerified: b.status === 'Active', isSuspended: b.status === 'Suspended' })
                           }}
                           className={`px-3 py-1 rounded font-bold text-[10px] transition border shadow-xs cursor-pointer ${
                             b.action === 'Renew' || b.action === 'Review' ? 'bg-indigo-600 border-indigo-600 text-white hover:bg-indigo-700' :
@@ -570,15 +506,17 @@ function Overview({ metrics, recentBusinesses, chartData, pendingVerification, e
               </table>
             </div>
           </div>
-        </div>}
+        </div>
 
         {/* Chart Area (5/12 width) */}
-        <div className={`col-span-12 ${showBusinesses ? 'lg:col-span-4' : ''} bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col justify-between`}>
+        <div className="col-span-12 lg:col-span-4 bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between border-b border-slate-100 pb-4">
             <div className="flex items-center gap-2 font-bold text-sm text-slate-900">
               <span>{t('Subscription Revenue')}</span>
             </div>
-            <span className="text-xs font-bold text-slate-500">{t('Last 6 Months')}</span>
+            <select className="bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 py-1 px-2.5 focus:outline-hidden">
+              <option>{t('Last 6 Months')}</option>
+            </select>
           </div>
 
           {/* Chart Core Bar Graph Grid Frame */}
@@ -586,18 +524,18 @@ function Overview({ metrics, recentBusinesses, chartData, pendingVerification, e
 
             {/* Y-Axis Guideline Labels */}
             <div className="absolute left-0 -top-2 text-[9px] font-bold text-slate-400 space-y-7 pointer-events-none w-full pl-1">
-              {axis.map((label) => <div key={label} className="border-b border-slate-50 pb-0.5 w-full">{label}</div>)}
+              <div className="border-b border-slate-50 pb-0.5 w-full">RWF 20M</div>
+              <div className="border-b border-slate-50 pb-0.5 w-full">RWF 15M</div>
+              <div className="border-b border-slate-50 pb-0.5 w-full">RWF 10M</div>
+              <div className="border-b border-slate-50 pb-0.5 w-full">RWF 5M</div>
             </div>
-            {chartMax === 0 && (
-              <p className="absolute inset-0 flex items-center justify-center text-xs text-slate-400">{t('No subscription payments in the last 6 months.')}</p>
-            )}
 
             {chartData.map((d, index) => (
-              <div key={index} className="flex flex-col items-center gap-2 flex-1 z-10 group cursor-pointer" title={`${d.month}: ${formatCurr(monthTotal(d))}`}>
+              <div key={index} className="flex flex-col items-center gap-2 flex-1 z-10 group cursor-pointer">
                 <div className="w-4 flex flex-col justify-end rounded-t overflow-hidden h-32">
-                  <div className="bg-amber-500 transition-all group-hover:opacity-90" style={{ height: `${pct(d.annual)}%` }}></div>
-                  <div className="bg-purple-500 transition-all group-hover:opacity-90" style={{ height: `${pct(d.quarterly)}%` }}></div>
-                  <div className="bg-blue-500 transition-all group-hover:opacity-90" style={{ height: `${pct(d.monthly)}%` }}></div>
+                  <div className="bg-amber-500 transition-all group-hover:opacity-90" style={{ height: `${d.annual}%` }}></div>
+                  <div className="bg-purple-500 transition-all group-hover:opacity-90" style={{ height: `${d.quarterly}%` }}></div>
+                  <div className="bg-blue-500 transition-all group-hover:opacity-90" style={{ height: `${d.monthly}%` }}></div>
                 </div>
                 <span className="text-[10px] font-bold text-slate-400">{d.month}</span>
               </div>
@@ -626,15 +564,15 @@ function Overview({ metrics, recentBusinesses, chartData, pendingVerification, e
           </div>
 
           <div className="grid grid-cols-2 gap-3 flex-1 content-start">
-            {can('businesses') && <Link to="/register" className="col-span-2 bg-[#4F46E5] hover:bg-indigo-700 text-white py-2.5 px-4 rounded-lg font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition">
+            <Link to="/admin/businesses" className="col-span-2 bg-[#4F46E5] hover:bg-indigo-700 text-white py-2.5 px-4 rounded-lg font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition">
               {t('Register Business')}
-            </Link>}
-            {can('subscriptions') && <Link to="/admin/plans" className="border border-slate-200 hover:bg-slate-50 text-slate-700 py-2.5 px-4 rounded-lg font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition bg-white">
+            </Link>
+            <Link to="/admin/plans" className="border border-slate-200 hover:bg-slate-50 text-slate-700 py-2.5 px-4 rounded-lg font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition bg-white">
               {t('Create Plan')}
-            </Link>}
-            {can('users') && <button onClick={onAddAdmin} className="border border-slate-200 hover:bg-slate-50 text-slate-700 py-2.5 px-4 rounded-lg font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition bg-white">
-              {t('Add Admin')}
-            </button>}
+            </Link>
+            <button onClick={onAddAdmin} className="border border-slate-200 hover:bg-slate-50 text-slate-700 py-2.5 px-4 rounded-lg font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition bg-white">
+              {t('Add Super Admin')}
+            </button>
             <button onClick={onExportReports} disabled={exporting} className="col-span-2 border border-slate-200 hover:bg-slate-50 text-slate-700 py-2.5 px-4 rounded-lg font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition bg-white mt-1 disabled:opacity-50">
               {exporting ? t('Exporting...') : t('Export Reports')}
             </button>
@@ -644,20 +582,16 @@ function Overview({ metrics, recentBusinesses, chartData, pendingVerification, e
         {/* System Performance Diagnostics Status Panel */}
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col justify-between">
           <div className="border-b border-slate-100 pb-3 mb-4">
-            <span className="font-bold text-sm text-slate-900 flex items-center justify-between gap-2">
+            <span className="font-bold text-sm text-slate-900 flex items-center gap-2">
               {t('System Status')}
-              <button onClick={onRefreshHealth} className="text-[11px] font-bold text-[#4F46E5] hover:underline">{t('Refresh')}</button>
             </span>
           </div>
 
           <div className="space-y-4 flex-1 flex flex-col justify-between">
             <div className="space-y-3.5">
-              {!healthRows && <p className="text-xs text-slate-400">{t('Checking...')}</p>}
-              {(healthRows || []).map((r) => (
-                <StatusRow key={r.label} label={r.label} status={r.status}
-                  color={r.ok ? 'text-emerald-600' : r.warn ? 'text-amber-600' : 'text-rose-600'}
-                  dot={r.ok ? 'bg-emerald-500' : r.warn ? 'bg-amber-500' : 'bg-rose-500'} />
-              ))}
+              <StatusRow label={t('Server Status')} status={t('Online')} color="text-emerald-600" dot="bg-emerald-500" />
+              <StatusRow label={t('Database')} status={t('Connected')} color="text-emerald-600" dot="bg-emerald-500" />
+              <StatusRow label={t('API Services')} status={t('Healthy')} color="text-emerald-600" dot="bg-emerald-500" />
             </div>
 
             <div className="border-t border-slate-100 pt-3 space-y-2.5">
@@ -679,24 +613,6 @@ function Overview({ metrics, recentBusinesses, chartData, pendingVerification, e
 }
 
 /* --- REUSABLE HELPER BUILDING SUB-COMPONENTS --- */
-
-function formatUptime(seconds) {
-  const s = Number(seconds) || 0
-  if (s < 3600) return `${Math.max(1, Math.round(s / 60))}m`
-  if (s < 86400) return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`
-  return `${Math.floor(s / 86400)}d ${Math.floor((s % 86400) / 3600)}h`
-}
-
-function NoAccess() {
-  const { t } = usePreferences()
-  return (
-    <div className="bg-white border border-slate-200 rounded-xl p-10 text-center shadow-xs">
-      <h2 className="text-lg font-bold text-slate-900">{t('No access')}</h2>
-      <p className="text-sm text-slate-500 mt-2">{t('Your admin account does not have permission for this section. Ask a super admin to grant it.')}</p>
-      <Link to="/admin/dashboard" className="inline-block mt-5 px-4 py-2 text-sm bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700">{t('Back to dashboard')}</Link>
-    </div>
-  )
-}
 
 function SidebarLink({ icon, label, to, active = false }) {
   const { t } = usePreferences()

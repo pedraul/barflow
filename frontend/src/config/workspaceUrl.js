@@ -3,9 +3,6 @@ const platformPaths = new Set([
   'owner', 'admin', 'menu', 'cart', 'payment', 'settings', 'dashboard', 'manager',
   'accountant', 'waiter', 'operator', 'kitchen', 'bar', 'notifications', 'my-account',
   'qr-manager',
-  // Every top-level app route must be listed, or a direct load / refresh treats it as a
-  // business workspace name and shows "Page not found" (e.g. /account, /pay/<id>).
-  'account', 'my-orders', 'pay', 'staff',
 ])
 
 export function slugifyWorkspace(value) {

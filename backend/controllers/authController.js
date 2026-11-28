@@ -3,7 +3,6 @@ import { query } from '../config/database.js'
 import bcrypt from 'bcryptjs'
 import { logAudit, getClientIp } from '../utils/audit.js'
 import { sendPasswordResetEmail, sendPasswordResetConfirmationEmail } from '../services/emailNotificationService.js'
-import { appBaseUrl, passwordPolicyError } from '../services/platformSettings.js'
 
 const mapUser = (u) => ({
   id: u.id,
@@ -71,12 +70,7 @@ export async function forgotPassword(req, res) {
 
     const resetToken = crypto.randomBytes(32).toString('hex')
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000)
-    const appUrl = await appBaseUrl(req)
-    if (!appUrl) {
-      console.error('[password-reset] The app address is not set (Settings → Platform Info → App address, or FRONTEND_URL).')
-      return res.status(503).json({ error: 'Password reset is not available yet: the platform administrator must set the app address.' })
-    }
-    const resetUrl = `${appUrl}/reset-password?token=${encodeURIComponent(resetToken)}`
+    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${encodeURIComponent(resetToken)}`
 
     await query(
       `INSERT INTO password_reset_tokens (user_id, platform_admin_id, token, expires_at)
@@ -134,8 +128,6 @@ export async function resetPassword(req, res) {
       return res.status(400).json({ error: 'Invalid or expired reset token.' })
     }
 
-    const passwordProblem = await passwordPolicyError(password)
-    if (passwordProblem) return res.status(400).json({ error: passwordProblem })
     const resetToken = rows[0]
     const passwordHash = await bcrypt.hash(password, 10)
     let targetEmail = null

@@ -2,8 +2,5 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "npm install",
   "buildCommand": null,
-  "outputDirectory": null,
-  "crons": [
-    { "path": "/api/internal/cron/daily", "schedule": "0 1 * * *" }
-  ]
+  "outputDirectory": null
 }

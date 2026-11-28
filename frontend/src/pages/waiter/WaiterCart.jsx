@@ -2,8 +2,18 @@ import { usePreferences } from '../../context/PreferencesContext'
 import React, { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { createWaiterOrder } from '../../api/endpoints'
-import WaiterTablePicker, { readStoredTable, storeTable, tableLabel, tableOrderValue, useBranchTables } from '../../components/WaiterTablePicker'
+import { createWaiterOrder, fetchBranchTables } from '../../api/endpoints'
+
+// Table selection: '' = not chosen yet, WALK_IN = no table, otherwise the table number.
+const WALK_IN = 'walk-in'
+const normalizeStoredTable = (value) => {
+  const v = String(value || '').trim()
+  if (!v) return ''
+  if (v === WALK_IN) return WALK_IN
+  // Old builds stored "Walk-in customer" automatically; make the waiter choose again.
+  if (/^walk[ -]?in/i.test(v)) return ''
+  return v
+}
 
 const money = (v) =>
   'RWF ' +
@@ -20,13 +30,27 @@ export default function WaiterCart() {
   const [table, setTable] = useState('')
   const [error, setError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
-  const { tables, loaded: tablesLoaded } = useBranchTables()
+  const [tables, setTables] = useState([])
+  const [tablesLoaded, setTablesLoaded] = useState(false)
+
+  // Branch tables (the same ones that have printed QR codes) for the picker.
+  useEffect(() => {
+    let cancelled = false
+    fetchBranchTables()
+      .then((list) => { if (!cancelled) setTables(Array.isArray(list) ? list : []) })
+      .catch(() => { if (!cancelled) setTables([]) })
+      .finally(() => { if (!cancelled) setTablesLoaded(true) })
+    return () => { cancelled = true }
+  }, [])
 
   const chooseTable = (value) => {
     const next = String(value ?? '')
     setTable(next)
     setError(null)
-    storeTable(next)
+    try {
+      if (next) sessionStorage.setItem('waiter_table', next)
+      else sessionStorage.removeItem('waiter_table')
+    } catch { /* storage unavailable */ }
   }
 
   useEffect(() => {
@@ -52,8 +76,9 @@ export default function WaiterCart() {
     }
     try {
       const storedCart = JSON.parse(sessionStorage.getItem('waiter_cart') || '[]')
+      const storedTable = sessionStorage.getItem('waiter_table') || ''
       setCart(storedCart)
-      setTable(readStoredTable())
+      setTable(normalizeStoredTable(storedTable))
     } catch {
       setCart([])
     }
@@ -91,11 +116,11 @@ export default function WaiterCart() {
       document.querySelector('.waiter-table-picker')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       return
     }
-    const orderTable = tableOrderValue(table)
+    const tableLabel = table === WALK_IN ? 'Walk-in customer' : String(table).trim()
     setSubmitting(true)
     try {
       const result = await createWaiterOrder({
-        customer: orderTable,
+        customer: tableLabel,
         items: cart.map((i) => ({
           productId: i.productId,
           name: i.name,
@@ -112,7 +137,7 @@ export default function WaiterCart() {
           order: {
             id: result.id,
             orderNumber: result.orderNumber,
-            tableNumber: result.tableNumber || orderTable,
+            tableNumber: result.tableNumber || tableLabel,
             orderType: result.orderType,
             total: result.total,
             subtotal: result.subtotal,
@@ -168,13 +193,76 @@ export default function WaiterCart() {
           <span className="user-pending">{cartCount}{' '}{t("item(s)")}</span>
         </div>
 
-        <WaiterTablePicker
-          table={table}
-          onChange={chooseTable}
-          tables={tables}
-          loaded={tablesLoaded}
-          missing={Boolean(error) && !table}
-        />
+        <div className={`waiter-table-picker${!table ? ' needs-choice' : ''}`}>
+          <div className="waiter-table-picker-head">
+            <span className="waiter-table-picker-title">{t("Order for table")} <span className="waiter-table-required">*</span></span>
+            <span className={`waiter-table-picker-current${!table ? ' is-empty' : ''}`}>
+              {!table ? t("Not selected") : table === WALK_IN ? t("Walk-in customer") : `${t("Table")} ${table}`}
+            </span>
+          </div>
+
+          {!tablesLoaded ? (
+            <p className="waiter-table-picker-hint">{t("Loading tables…")}</p>
+          ) : tables.length > 0 ? (
+            <>
+              {!table && (
+                <p className={`waiter-table-picker-hint${error ? ' is-error' : ''}`} role={error ? 'alert' : undefined}>
+                  {error ? t("Select the table this order is for (or Walk-in) before placing it.") : t("Tap the table this order is for.")}
+                </p>
+              )}
+              <div className="waiter-table-grid" role="radiogroup" aria-label={t("Choose a table")}>
+                {tables.map((tb) => {
+                  const value = String(tb.tableNumber)
+                  const selected = table === value
+                  return (
+                    <button
+                      key={tb.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() => chooseTable(value)}
+                      className={`waiter-table-chip${selected ? ' is-selected' : ''}`}
+                    >
+                      {value}
+                    </button>
+                  )
+                })}
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={table === WALK_IN}
+                  onClick={() => chooseTable(WALK_IN)}
+                  className={`waiter-table-chip is-walkin${table === WALK_IN ? ' is-selected' : ''}`}
+                >
+                  {t("Walk-in")}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="waiter-table-picker-hint">{t("No tables are set up for this branch yet. Type the table number, or choose Walk-in.")}</p>
+              <div className="waiter-table-manual-row">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={table === WALK_IN ? '' : table}
+                  onChange={(e) => chooseTable(e.target.value.trim())}
+                  placeholder={t("e.g. 5")}
+                  aria-label={t("Table number")}
+                  className="waiter-cart-table-input waiter-table-manual"
+                />
+                <button
+                  type="button"
+                  aria-pressed={table === WALK_IN}
+                  onClick={() => chooseTable(WALK_IN)}
+                  className={`waiter-table-chip is-walkin${table === WALK_IN ? ' is-selected' : ''}`}
+                >
+                  {t("Walk-in")}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
 
         <div className="waiter-cart-layout" style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -223,7 +311,6 @@ export default function WaiterCart() {
 
           <aside className="waiter-cart-aside" style={{ width: 320, background: 'white', borderRadius: 12, padding: 16 }}>
             <div style={{ fontWeight: 700, marginBottom: 12 }}>{t("Order Summary")}</div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontWeight: 700 }}><span>{t("Table")}</span><span style={{ color: table ? 'inherit' : '#dc2626' }}>{table ? tableLabel(table, t) : t("Not selected")}</span></div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', color: '#6c757d' }}><span>{t("Subtotal")}</span><span>{money(cartTotal)}</span></div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', color: '#6c757d' }}><span>{t("Discount")}</span><span>{money(0)}</span></div>
             <div style={{ height: 1, background: '#e9ecef', margin: '12px 0' }} />

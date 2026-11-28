@@ -16,6 +16,8 @@ const router = Router()
 const ownerOrManager = [authMiddleware, roleMiddleware('owner', 'manager')]
 
 router.get('/settings', ...ownerOrManager, async (req, res) => {
+  const businessId = req.query.businessId || req.user?.businessId
+  req.query.businessId = businessId
   getTwoFactorSettings(req, res)
 })
 

@@ -21,7 +21,7 @@ export default function QRCodeDisplay() {
   return (
     <aside className="w-full sm:w-auto max-w-sm rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50 via-white to-indigo-50 p-3 shadow-sm flex items-center gap-3">
       <div className="rounded-xl bg-white p-2 shadow-sm border border-slate-100 shrink-0">
-        <QRCode value={menuUrl} size={132} ariaLabel={t('QR code for CLIENT TABLE 1')} />
+        <QRCode value={menuUrl} size={132} level="M" ariaLabel={t('QR code for CLIENT TABLE 1')} />
       </div>
       <div className="min-w-0">
         <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-violet-700">{t('CLIENT TABLE 1')}</span>

@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import * as api from '../../api/endpoints'
 import QRCodeSVG from 'react-qr-code'
-import { hasRealTable } from '../../utils/orderDisplay'
 
 const money = (v) =>
   'RWF ' +
@@ -34,10 +33,6 @@ export default function WaiterCheckout() {
   const [smsSent, setSmsSent] = useState(false)
   const [error, setError] = useState(null)
   const [qrData, setQrData] = useState(null)
-  // Walk-in orders carry no number, the "Walk-in customer" label, or "N/A" on receipts.
-  const isTable = (value) => hasRealTable(value) && value !== 'N/A'
-  const tableValue = (value) => (isTable(value) ? String(value) : t('Walk-in'))
-  const tableText = (value) => (isTable(value) ? `${t('Table')} ${value}` : t('Walk-in customer'))
 
   useEffect(() => {
     if (!order) navigate('/waiter/new-order')
@@ -231,8 +226,8 @@ export default function WaiterCheckout() {
           <div>
             <p className="eyebrow">{t("Waiter workspace")}</p>
             <h1>{t("Customer checkout")}</h1>
-            <p>{t("Completing payment for the customer's order")}{' '}{order.orderNumber}{' · '}
-              {tableText(order.tableNumber)}.{' '}
+            <p>{t("Completing payment for the customer's order")}{order.orderNumber}{' '}{t("· Table")}{' '}
+              {order.tableNumber}.{' '}
               {selectedMethod === 'qr'
                 ? t("Select QR Payment to show a scannable code for the customer.")
                 : selectedMethod === 'cash'
@@ -320,7 +315,7 @@ export default function WaiterCheckout() {
               </div>
               <div style={{ textAlign: 'left', margin: '20px auto', maxWidth: 320 }}>
                 <Row label={t("Order")} value={order.orderNumber} />
-                <Row label={t("Table")} value={tableValue(order.tableNumber)} />
+                <Row label={t("Table")} value={order.tableNumber} />
                 <Row label={t("Amount")} value={money(total)} />
                 <Row label={t("Merchant")} value={qrData.order?.merchantName || 'BarFlow Business'} />
               </div>
@@ -447,7 +442,7 @@ export default function WaiterCheckout() {
 
         <div style={{ textAlign: 'left', margin: '20px auto', maxWidth: 320 }}>
           <Row label={t("Order")} value={receipt?.orderNumber} />
-          <Row label={t("Table")} value={tableValue(receipt?.tableNumber)} />
+          <Row label={t("Table")} value={receipt?.tableNumber} />
           <Row label={t("Payment")} value={(receipt?.paymentMethod || '').replace('_', ' ').toUpperCase()} />
           <Row label={t("Amount")} value={money(receipt?.total)} />
           <Row label={t("Phone")} value={receipt?.customerPhone} />

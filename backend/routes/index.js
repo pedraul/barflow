@@ -1,9 +1,6 @@
 import { Router } from 'express'
 import { query } from '../config/database.js'
 import authMiddleware from '../middleware/authMiddleware.js'
-import { verify as verifyToken } from '../config/jwt.js'
-import { publicPlatformInfo } from '../services/platformSettings.js'
-import { runDailyJobs } from '../services/dailyJobs.js'
 import { serializeAuditLogs, buildAuditVisibilityClause } from '../utils/audit.js'
 
 import authRoutes from './authRoutes.js'
@@ -35,39 +32,8 @@ router.get('/health', (_req, res) => {
   res.json({ status: 'ok' })
 })
 
-// Platform admins only. The reset additionally needs ALLOW_DATABASE_RESET=true on the server
-// (never set it in production): it deletes every business and every platform admin.
-const platformAdminOnly = [authMiddleware, (req, res, next) => (
-  req.user?.isPlatformAdmin && req.user.role === 'super_admin' ? next() : res.status(403).json({ error: 'Super admin access required.' })
-)]
-
-// Public, non-secret platform details (name, logo, contact, QR defaults, maintenance notice).
-router.get('/public/platform-info', async (_req, res) => {
-  try {
-    res.set('Cache-Control', 'public, max-age=30')
-    res.json(await publicPlatformInfo())
-  } catch (error) {
-    res.status(500).json({ error: error.message })
-  }
-})
-
-// Daily housekeeping (subscriptions, reminders, audit retention, backups).
-// Vercel cron calls it with "Authorization: Bearer <CRON_SECRET>"; platform admins may run it too.
-router.get('/internal/cron/daily', async (req, res) => {
-  const secret = process.env.CRON_SECRET
-  const header = String(req.headers.authorization || '')
-  const fromCron = Boolean(secret) && header === `Bearer ${secret}`
-  const token = header.startsWith('Bearer ') ? verifyToken(header.slice(7)) : null
-  if (!fromCron && !token?.isPlatformAdmin) return res.status(401).json({ error: 'Unauthorized' })
-  try {
-    res.json(await runDailyJobs({ force: req.query.force === '1' && Boolean(token?.isPlatformAdmin) }))
-  } catch (error) {
-    res.status(500).json({ error: error.message })
-  }
-})
-
-// Debug route: quick DB connectivity and table check
-router.get('/_debug/db', ...platformAdminOnly, async (_req, res) => {
+// Debug route: quick DB connectivity and table check (dev only)
+router.get('/_debug/db', async (_req, res) => {
   try {
     const { rows: one } = await query('SELECT 1 AS ok')
     const { rows: notif } = await query("SELECT COUNT(*) AS cnt FROM information_schema.tables WHERE table_name = 'notifications'")
@@ -77,10 +43,7 @@ router.get('/_debug/db', ...platformAdminOnly, async (_req, res) => {
   }
 })
 
-router.post('/reset', ...platformAdminOnly, async (_req, res) => {
-  if (process.env.ALLOW_DATABASE_RESET !== 'true') {
-    return res.status(404).json({ error: 'Not found' })
-  }
+router.post('/reset', async (_req, res) => {
   try {
     await query('TRUNCATE TABLE businesses RESTART IDENTITY CASCADE')
     await query('DELETE FROM platform_admins')

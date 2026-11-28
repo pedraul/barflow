@@ -429,10 +429,7 @@ router.get('/waiter/history', authMiddleware, async (req, res) => {
     const orders = rows.map((o) => ({
       id: o.id,
       orderNumber: o.order_number,
-      // Older orders kept the number only in table_name.
-      tableNumber: o.table_number ?? (/^\d+$/.test(String(o.table_name || '').trim()) ? Number(o.table_name) : null),
-      tableName: o.table_name || '',
-      customer: o.table_name || '',
+      tableNumber: o.table_number,
       waiterName: o.waiter_name || '',
       status: o.status,
       source: o.source,

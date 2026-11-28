@@ -94,7 +94,7 @@ export function AuthProvider({ children }) {
   const login = ({ token: authToken, user: userProfile }) => {
     clearAccountantBranch()
     const role = String(userProfile?.role || '').toLowerCase()
-    if (userProfile?.isPlatformAdmin !== true && !['platform_admin', 'super_admin'].includes(role)) {
+    if (!['platform_admin', 'super_admin'].includes(role)) {
       const branchId = role === 'owner' ? 'all' : userProfile?.branchId
       if (!branchId) {
         throw new Error('Your account is not assigned to a branch. Contact your business owner.')

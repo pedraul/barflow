@@ -4,13 +4,10 @@ import financeTranslations from './translations/finance'
 import platformScreenTranslations from './translations/platform'
 import serviceTranslations from './translations/service'
 import sharedAuthTranslations from './translations/sharedAuth'
-import { loadPlatformInfo } from '../hooks/usePlatformInfo'
 
 const PreferencesContext = createContext(null)
 const THEME_KEY = 'barflow.theme'
 const LANGUAGE_KEY = 'barflow.language'
-// Set once the visitor picks a language; until then the platform default applies.
-const LANGUAGE_CHOSEN_KEY = 'barflow.languageChosen'
 
 export const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -651,24 +648,6 @@ export function PreferencesProvider({ children }) {
     }
   }, [language])
 
-  // Settings → General → Default language: used until the visitor picks a language themselves.
-  useEffect(() => {
-    let chosen = false
-    try { chosen = localStorage.getItem(LANGUAGE_CHOSEN_KEY) === '1' } catch { /* storage blocked */ }
-    if (chosen) return
-    let alive = true
-    loadPlatformInfo().then((info) => {
-      const platformDefault = info?.language
-      if (alive && LANGUAGES.some((item) => item.code === platformDefault)) setLanguage(platformDefault)
-    })
-    return () => { alive = false }
-  }, [])
-
-  const chooseLanguage = useCallback((code) => {
-    try { localStorage.setItem(LANGUAGE_CHOSEN_KEY, '1') } catch { /* storage blocked */ }
-    setLanguage(code)
-  }, [])
-
   const t = useCallback((text) => stripIcons(
     platformTranslations[language]?.[text]
     || translations[language]?.[text]
@@ -680,7 +659,7 @@ export function PreferencesProvider({ children }) {
     || sharedAuthTranslations[language]?.[text]
     || text
   ), [language])
-  const value = useMemo(() => ({ theme, setTheme, language, setLanguage: chooseLanguage, t }), [theme, language, chooseLanguage, t])
+  const value = useMemo(() => ({ theme, setTheme, language, setLanguage, t }), [theme, language, t])
 
   return <PreferencesContext.Provider value={value}>{children}</PreferencesContext.Provider>
 }
