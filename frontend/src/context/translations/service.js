@@ -502,6 +502,18 @@ const entries = [
   ["🖨 Print Receipt", "🖨 Capisha inyemezabwishyu", "🖨 Imprimer le reçu"],
   ["🚀 Send to Bar", "🚀 Ohereza mu kabari", "🚀 Envoyer au bar"],
   ["🚀 Send to Kitchen", "🚀 Ohereza mu gikoni", "🚀 Envoyer en cuisine"],
+  // Waiter table picker
+  ["Choose the table, then build the customer's order and send it to the operator for routing.", "Hitamo ameza, hanyuma utegure ibyo umukiriya yatumije, ubyohereze ku mukoresha wa sisitemu kugira ngo abyoherereze aho bitegurirwa.", "Choisissez la table, puis préparez la commande du client et envoyez-la à l’opérateur pour qu’il l’achemine."],
+  ["Order for table", "Amabwiriza y’ameza", "Commande pour la table"],
+  ["Not selected", "Ntibyahiswemo", "Non choisie"],
+  ["Walk-in customer", "Umukiriya utari ku meza", "Client sans table"],
+  ["Walk-in", "Nta meza", "Sans table"],
+  ["Change table", "Hindura ameza", "Changer de table"],
+  ["Done", "Byarangiye", "Terminé"],
+  ["Tap the table this order is for.", "Kanda ku meza aya mabwiriza agenewe.", "Touchez la table de cette commande."],
+  ["Choose a table", "Hitamo ameza", "Choisir une table"],
+  ["Select the table this order is for (or Walk-in) before placing it.", "Hitamo ameza aya mabwiriza agenewe (cyangwa Nta meza) mbere yo kuyohereza.", "Choisissez la table de cette commande (ou Sans table) avant de la passer."],
+  ["No tables are set up for this branch yet. Type the table number, or choose Walk-in.", "Iri shami ntiriragira ameza. Andika nimero y’ameza, cyangwa uhitemo Nta meza.", "Aucune table n’est encore configurée pour cette succursale. Saisissez le numéro de la table ou choisissez Sans table."],
 ]
 
 const rw = Object.fromEntries(entries.map(([key, kinyarwanda]) => [key, kinyarwanda]))

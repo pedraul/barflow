@@ -12833,6 +12833,49 @@ svg {
 .waiter-table-picker-hint.is-error { color: #b91c1c; font-weight: 600; }
 :root[data-theme="dark"] .waiter-table-picker-hint.is-error { color: var(--danger-text); }
 
+/* Waiter table picker — collapsed to the chosen table on the menu page */
+.waiter-table-picker.is-collapsed { padding: 10px 14px; }
+.waiter-table-picker.is-collapsed .waiter-table-picker-head { margin-bottom: 0; }
+.waiter-table-picker-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.waiter-table-change {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.waiter-table-change:hover { border-color: #ea580c; color: #c2410c; }
+:root[data-theme="dark"] .waiter-table-change {
+  background: var(--surface);
+  border-color: var(--border-2);
+  color: var(--text);
+}
+
+/* Chosen table next to the waiter's "New Order" title */
+.waiter-order-table-badge {
+  display: inline-block;
+  margin-left: 12px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #ea580c;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
 /* Staff access: role-limited permissions */
 .access-roles-tag {
   margin-left: 8px;
